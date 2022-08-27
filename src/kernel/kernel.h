@@ -3,12 +3,16 @@
 
 #include "wos-stdint.h"
 #include "wos-stddef.h"
-//include "Memory.h"
+#include "Memory.h"
 #include "graphics.h"
 
 namespace WorldOS {
 
-    void InitKernel(void* FrameBufferAddress, const uint64_t FrameBufferWidth, const uint64_t FrameBufferHeight/*, const MemoryMapEntry** memoryMap, const size_t MemoryMapEntryCount*/);
+    constexpr uint64_t EARLY_STAGE     = 0x5354414745000000;
+    constexpr uint64_t PRE_LOGIN_STAGE = 0x5354414745000001;
+    constexpr uint64_t USER_STAGE      = 0x5354414745000002;
+
+    void InitKernel(void* FrameBufferAddress, const uint64_t FrameBufferWidth, const uint64_t FrameBufferHeight, MemoryMapEntry** memoryMap, const size_t MemoryMapEntryCount);
 
     struct Position {
         uint64_t x;
@@ -17,7 +21,7 @@ namespace WorldOS {
 
     class Kernel {
     public:
-        Kernel(const FrameBuffer frameBuffer/*, const MemoryMapEntry** MemoryMap, const size_t MemoryMapEntryCount*/);
+        Kernel(const FrameBuffer frameBuffer, MemoryMapEntry** MemoryMap, const size_t MemoryMapEntryCount);
         ~Kernel();
 
         void Print(const char* message);
@@ -30,6 +34,7 @@ namespace WorldOS {
         uint32_t m_fgcolour;
         uint32_t m_bgcolour;
         Position m_CursorPosition;
+        uint64_t m_Stage;
     };
 
     inline void fpu_init() {

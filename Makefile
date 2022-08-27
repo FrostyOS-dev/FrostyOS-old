@@ -6,13 +6,17 @@ kernel_asm_object_files := $(patsubst src/kernel/%.asm, bin-int/kernel/%_asm.o, 
 
 $(kernel_object_files): bin-int/kernel/%.o : src/kernel/%.cpp
 	mkdir -p $(dir $@)
-	g++ -o $@ -c $(patsubst bin-int/kernel/%.o, src/kernel/%.cpp, $@) -m64 -std=c++20 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector -fno-builtin-function -fno-builtin
+	g++ -o $@ -c $(patsubst bin-int/kernel/%.o, src/kernel/%.cpp, $@) -m64 -mcmodel=kernel -std=c++20 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector -fno-builtin-function -fno-builtin
 
 $(kernel_asm_object_files): bin-int/kernel/%_asm.o : src/kernel/%.asm
 	mkdir -p $(dir $@)
 	nasm $(patsubst bin-int/kernel/%_asm.o, src/kernel/%.asm, $@) -f elf64 -o $@
 
 .PHONY: boot-iso
+
+cpp-stdlib: $(cpp_stdlib_object_files)
+	mkdir -p bin/cpp-stdlib
+	$(LD) -shared -Bsymbolic $(cpp_stdlib_object_files) -o bin/cpp-stdlib/cpplib.so
 
 kernel: $(kernel_object_files) $(kernel_asm_object_files)
 	mkdir -p bin/kernel

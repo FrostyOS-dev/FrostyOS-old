@@ -27,7 +27,7 @@
 ### Linux
 
 1. run `make boot-iso`
-2. run `qemu-system-x86_64 -pflash ovmf/OVMF.fd -hda iso/hdimage.bin`
+2. run `qemu-system-x86_64 -pflash ovmf/OVMF.fd -hda iso/hdimage.bin -m 256M`
 
 ### Windows 10
 
