@@ -13,7 +13,7 @@ namespace WorldOS {
 
     class PageFrameAllocator {
     public:
-        PageFrameAllocator(MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount);
+        PageFrameAllocator(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount);
 
         void* AllocatePage();
         void  FreePage(void* page);

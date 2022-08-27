@@ -68,7 +68,7 @@ struct MemoryMapEntry {
         MemoryMapEntry* m_MemoryMapEntries;
     };*/
 }
-size_t GetMemorySize(WorldOS::MemoryMapEntry* MemoryMap, const size_t EntryCount);
+size_t GetMemorySize(const WorldOS::MemoryMapEntry** MemoryMap, const size_t EntryCount);
 
 #endif
 

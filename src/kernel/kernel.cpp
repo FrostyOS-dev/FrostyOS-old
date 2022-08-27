@@ -18,7 +18,7 @@ namespace WorldOS {
         GDT* gdt = &DefaultGDT;
         GDTDescriptor gdtDescriptor = {(sizeof(GDT) - 1), ((uint64_t)gdt)};
         LoadGDT(&gdtDescriptor);
-        uint64_t memSize = GetMemorySize(MemoryMap[0], MemoryMapEntryCount);
+        uint64_t memSize = GetMemorySize((const MemoryMapEntry**)MemoryMap, MemoryMapEntryCount);
 
         m_InitialFrameBuffer = frameBuffer;
         fpu_init();

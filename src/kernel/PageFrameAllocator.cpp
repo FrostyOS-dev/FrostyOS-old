@@ -6,8 +6,8 @@ namespace WorldOS {
 
     /* Public Methods */
 
-    PageFrameAllocator::PageFrameAllocator(MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount) {
-        m_MemSize = GetMemorySize(FirstMemoryMapEntry, MemoryMapEntryCount);
+    PageFrameAllocator::PageFrameAllocator(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount) {
+        m_MemSize = GetMemorySize(&FirstMemoryMapEntry, MemoryMapEntryCount);
         m_FreeMem = 0;
         m_ReservedMem = 0;
         m_UsedMem = 0;

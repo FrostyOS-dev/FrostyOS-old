@@ -32,7 +32,7 @@ uint8_t memcmp(const void* s1, const void* s2, size_t size) {
 
 
 
-size_t GetMemorySize(WorldOS::MemoryMapEntry* MemoryMap, const size_t EntryCount) {
+size_t GetMemorySize(const WorldOS::MemoryMapEntry** MemoryMap, const size_t EntryCount) {
     using namespace WorldOS;
 
     static size_t memorySizeBytes = 0;
@@ -41,7 +41,7 @@ size_t GetMemorySize(WorldOS::MemoryMapEntry* MemoryMap, const size_t EntryCount
     }
 
     for (size_t i = 0; i < EntryCount; i++) {
-        const MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)MemoryMap + (i * 24 /* Entry size */));
+        const MemoryMapEntry* entry = MemoryMap[i];
         memorySizeBytes += entry->length;
     }
 

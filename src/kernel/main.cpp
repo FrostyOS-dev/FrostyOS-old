@@ -44,14 +44,14 @@ extern "C" void _start(void) {
     
     limine_framebuffer* buffer = framebuffer_response->framebuffers[0];
 
-    WorldOS::MemoryMapEntry* memoryMap = (WorldOS::MemoryMapEntry*)*memmap_response->entries;
+    WorldOS::MemoryMapEntry** memoryMap = (WorldOS::MemoryMapEntry**)memmap_response->entries;
 
     /*for (uint64_t i = 0; i < memmap_response->entry_count; i++) {
         limine_memmap_entry entry = *memmap_response->entries[i];
         memoryMap[i] = {entry.base, entry.length, entry.type};
     }*/
 
-    WorldOS::InitKernel(buffer->address, buffer->width, buffer->height, (WorldOS::MemoryMapEntry**)&memoryMap, memmap_response->entry_count);
+    WorldOS::InitKernel(buffer->address, buffer->width, buffer->height, memoryMap, memmap_response->entry_count);
  
     // We're done, just hang...
     done();

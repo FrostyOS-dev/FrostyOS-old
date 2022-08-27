@@ -1,7 +1,8 @@
 #include "cstr.h"
 
-char uintTo_StringOutput[128];
+char uintTo_StringOutput[64];
 const char* to_string(uint64_t value) {
+    for (uint8_t i = 0; i < 64; i++) uintTo_StringOutput[i] = 0;
     uint8_t size;
     size_t sizeTest = value;
     while (sizeTest / 10 > 0) {
