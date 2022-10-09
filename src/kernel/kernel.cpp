@@ -1,42 +1,51 @@
 #include "kernel.h"
-#include "gdt.h"
+#include "HAL/hal.h"
 #include "cstr.h"
 #include "Bitmap.h"
-#include "PageFrameAllocator.h"
 
 namespace WorldOS {
 
-    void InitKernel(void* FrameBufferAddress, uint64_t FrameBufferWidth, uint64_t FrameBufferHeight, MemoryMapEntry** MemoryMap, const size_t MemoryMapEntryCount) {
-        Kernel kernel({FrameBufferAddress, FrameBufferWidth, FrameBufferHeight}, MemoryMap, MemoryMapEntryCount);
-    }
-
-    Kernel::Kernel(const FrameBuffer frameBuffer, MemoryMapEntry** MemoryMap, const size_t MemoryMapEntryCount) {
+    Kernel::Kernel(KernelParams params) {
         m_fgcolour = 0xFFFFFFFF;
         m_bgcolour = 0;
-        m_CursorPosition = {0,0};
         m_Stage = EARLY_STAGE;
-        GDT* gdt = &DefaultGDT;
-        GDTDescriptor gdtDescriptor = {(sizeof(GDT) - 1), ((uint64_t)gdt)};
-        LoadGDT(&gdtDescriptor);
-        uint64_t memSize = GetMemorySize((const MemoryMapEntry**)MemoryMap, MemoryMapEntryCount);
+        HAL_Init();
 
-        m_InitialFrameBuffer = frameBuffer;
-        fpu_init();
+        m_InitialFrameBuffer = params.frameBuffer;
+        m_BasicRenderer = BasicRenderer(m_InitialFrameBuffer, {0,0}, m_fgcolour, m_bgcolour);
+        GlobalBasicRenderer = &m_BasicRenderer;
 
-        PageFrameAllocator frameAllocator(MemoryMap[0], MemoryMapEntryCount);
+        if (params.frameBuffer.bpp != 32) {
+            Panic("Bootloader Frame Buffer Bits per Pixel is not 32", nullptr, false);
+        }
 
-        Print("Total System Memory: ");
-        Print(to_string(memSize));
-        Print("\nFree Memory: ");
-        Print(to_string(frameAllocator.GetFreeMemory()));
-        Print("\nUsed Memory: ");
-        Print(to_string(frameAllocator.GetUsedMemory()));
-        Print("\nReserved Memory: ");
-        Print(to_string(frameAllocator.GetReservedMemory()));
-        Print("\n");
+        if (sizeof(char) != 1) {
+            Panic("Size of char is not 1 byte", nullptr, false);
+        }
 
-        Print("Starting WorldOS!\n");
+        const uint64_t memSize = GetMemorySize((const MemoryMapEntry**)params.MemoryMap, params.MemoryMapEntryCount);
+
+        m_BasicRenderer.ClearScreen(m_bgcolour);
+
+        m_BasicRenderer.Print("Starting WorldOS!\n");
+
         /* Following code is temperary */
+
+        /*m_BasicRenderer.Print("Displaying Memory Map!\n");
+
+        for (uint64_t i = 0; i < params.MemoryMapEntryCount; i++) {
+            MemoryMapEntry* entry = params.MemoryMap[i];
+            m_BasicRenderer.Print("Address: 0x");
+            m_BasicRenderer.Print(to_hstring(entry->Address));
+            m_BasicRenderer.Print("   Length: ");
+            m_BasicRenderer.Print(to_string(entry->length));
+            m_BasicRenderer.Print("   Type: ");
+            m_BasicRenderer.Print(to_string(entry->type));
+            m_BasicRenderer.NewLine(); // same as printing \n
+        }*/
+
+        int i = *(int*)0;
+        i = 1;
         
         while (true) {
             
@@ -44,33 +53,6 @@ namespace WorldOS {
     }
 
     Kernel::~Kernel() {
-
-    }
-
-    void Kernel::Print(const char* message) {
-        FrameBuffer* currentBuffer = nullptr;
-        if (m_Stage == EARLY_STAGE) {
-            currentBuffer = &m_InitialFrameBuffer;
-        }
-        char c = 0x00;
-        uint64_t location = 0;
-        while (true) {
-            c = message[location++];
-            if (c == 0x00) break;
-            if (c == '\n') {
-                m_CursorPosition = {0, m_CursorPosition.y + 16};
-            }
-            else {
-                if (currentBuffer->FrameBufferWidth < (m_CursorPosition.x + 18)) {
-                    m_CursorPosition = {0, m_CursorPosition.y + 16};
-                }
-                DrawChar(*currentBuffer, c, m_CursorPosition.x, m_CursorPosition.y, 0xFFFFFFFF, 0x0);
-                m_CursorPosition = {m_CursorPosition.x + 10, m_CursorPosition.y};
-            }
-        }
-    }
- 
-    void Kernel::Panic(uint64_t ExitCode) {
 
     }
 }

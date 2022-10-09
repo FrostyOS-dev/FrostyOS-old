@@ -19,7 +19,7 @@
 
 #### Debian/Ubuntu/Linux mint/PopOS
 
-- run `sudo apt install build-essential mtools qemu`
+- run `sudo apt install build-essential mtools curl qemu`
 - install `mkgpt` from its website/github
 
 ## Build Instructions

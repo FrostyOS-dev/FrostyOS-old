@@ -1,0 +1,7 @@
+# Dirs
+bin/
+bin-int/
+iso/
+dist/
+
+bochsrc

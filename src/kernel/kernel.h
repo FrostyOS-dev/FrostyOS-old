@@ -3,8 +3,9 @@
 
 #include "wos-stdint.h"
 #include "wos-stddef.h"
-#include "Memory.h"
+#include "Memory/Memory.h"
 #include "graphics.h"
+#include "HAL/hal.h"
 
 namespace WorldOS {
 
@@ -12,44 +13,31 @@ namespace WorldOS {
     constexpr uint64_t PRE_LOGIN_STAGE = 0x5354414745000001;
     constexpr uint64_t USER_STAGE      = 0x5354414745000002;
 
-    void InitKernel(void* FrameBufferAddress, const uint64_t FrameBufferWidth, const uint64_t FrameBufferHeight, MemoryMapEntry** memoryMap, const size_t MemoryMapEntryCount);
-
-    struct Position {
-        uint64_t x;
-        uint64_t y;
+    struct KernelParams {
+        FrameBuffer frameBuffer;
+        MemoryMapEntry** MemoryMap;
+        size_t MemoryMapEntryCount;
+        void* EFI_SYSTEM_TABLE_ADDR;
+        uint64_t kernel_physical_addr;
+        uint64_t kernel_virtual_addr;
+        void* RSDP_table;
     };
 
     class Kernel {
     public:
-        Kernel(const FrameBuffer frameBuffer, MemoryMapEntry** MemoryMap, const size_t MemoryMapEntryCount);
+        Kernel(KernelParams params);
         ~Kernel();
 
-        void Print(const char* message);
-
     private:
-        void Panic(uint64_t ExitCode);
+        void PrepareInterrupts();
 
     private:
         FrameBuffer m_InitialFrameBuffer;
         uint32_t m_fgcolour;
         uint32_t m_bgcolour;
-        Position m_CursorPosition;
         uint64_t m_Stage;
+        BasicRenderer m_BasicRenderer;
     };
-
-    inline void fpu_init() {
-        uint64_t t;
-
-        asm("clts");
-        asm("mov %%cr0, %0" : "=r"(t));
-        t &= ~(1 << 2);
-        t |= (1 << 1);
-        asm("mov %0, %%cr0" :: "r"(t));
-        asm("mov %%cr4, %0" : "=r"(t));
-        t |= 3 << 9;
-        asm("mov %0, %%cr4" :: "r"(t));
-        asm("fninit");
-    }
 }
 
 #endif /* _KERNEL_H */
