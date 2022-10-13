@@ -1,11 +1,11 @@
 #ifndef _KERNEL_H
 #define _KERNEL_H
 
-#include "wos-stdint.h"
-#include "wos-stddef.h"
-#include "Memory/Memory.h"
-#include "graphics.h"
-#include "HAL/hal.h"
+#include <wos-stdint.h>
+#include <wos-stddef.h>
+#include <Memory/Memory.h>
+#include <stdio.h>
+#include <HAL/hal.h>
 
 namespace WorldOS {
 
@@ -29,14 +29,10 @@ namespace WorldOS {
         ~Kernel();
 
     private:
-        void PrepareInterrupts();
-
-    private:
         FrameBuffer m_InitialFrameBuffer;
         uint32_t m_fgcolour;
         uint32_t m_bgcolour;
         uint64_t m_Stage;
-        BasicRenderer m_BasicRenderer;
     };
 }
 

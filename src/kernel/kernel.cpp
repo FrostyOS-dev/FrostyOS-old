@@ -1,7 +1,8 @@
 #include "kernel.h"
-#include "HAL/hal.h"
-#include "cstr.h"
-#include "Bitmap.h"
+
+#include <HAL/graphics.h>
+
+#include <arch/x86_64/E9.h>
 
 namespace WorldOS {
 
@@ -9,11 +10,10 @@ namespace WorldOS {
         m_fgcolour = 0xFFFFFFFF;
         m_bgcolour = 0;
         m_Stage = EARLY_STAGE;
-        HAL_Init();
-
         m_InitialFrameBuffer = params.frameBuffer;
-        m_BasicRenderer = BasicRenderer(m_InitialFrameBuffer, {0,0}, m_fgcolour, m_bgcolour);
-        GlobalBasicRenderer = &m_BasicRenderer;
+
+        HAL_Init(m_InitialFrameBuffer);
+
 
         if (params.frameBuffer.bpp != 32) {
             Panic("Bootloader Frame Buffer Bits per Pixel is not 32", nullptr, false);
@@ -25,9 +25,14 @@ namespace WorldOS {
 
         const uint64_t memSize = GetMemorySize((const MemoryMapEntry**)params.MemoryMap, params.MemoryMapEntryCount);
 
-        m_BasicRenderer.ClearScreen(m_bgcolour);
+        VGA_ClearScreen(m_bgcolour);
 
-        m_BasicRenderer.Print("Starting WorldOS!\n");
+        fprintf(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
+
+
+
+        x86_64_debug_putc('M');
+        
 
         /* Following code is temperary */
 
@@ -43,9 +48,6 @@ namespace WorldOS {
             m_BasicRenderer.Print(to_string(entry->type));
             m_BasicRenderer.NewLine(); // same as printing \n
         }*/
-
-        int i = *(int*)0;
-        i = 1;
         
         while (true) {
             

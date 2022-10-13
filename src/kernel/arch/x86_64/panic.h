@@ -1,7 +1,7 @@
 #ifndef _KERNEL_PANIC_H
 #define _KERNEL_PANIC_H
 
-#include "IDT/isr.h"
+#include "interrupts/isr.h"
 
 struct x86_64_PanicArgs {
     const char* reason;

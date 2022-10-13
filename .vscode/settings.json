@@ -1,8 +1,6 @@
 {
     "files.associations": {
-        "efilib.h": "c",
-        "cstdlib": "cpp",
-        "stdbool.h": "c"
-    },
-    "C_Cpp.errorSquiggles": "Disabled"
+        "system_error": "cpp",
+        "thread": "cpp"
+    }
 }

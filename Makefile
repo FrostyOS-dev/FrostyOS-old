@@ -34,13 +34,9 @@ dependencies:
 	mkdir -p dist/boot/EFI/BOOT
 	curl -L -o dist/boot/EFI/BOOT/BOOTX64.EFI https://github.com/limine-bootloader/limine/raw/v4.20220928.0-binary/BOOTX64.EFI
 
-kernel-special:
-	mkdir -p bin-int/kernel/arch/x86_64/IDT
-	$(KERNEL_CXXC) -o bin-int/kernel/arch/x86_64/IDT/isr.o -c src/kernel/arch/x86_64/IDT/isr.cpp $(KERNEL_CXXFLAGS)
-
-kernel: kernel-special $(kernel_cxx_object_files) $(kernel_c_object_files) $(kernel_asm_object_files)
+kernel: $(kernel_cxx_object_files) $(kernel_c_object_files) $(kernel_asm_object_files)
 	mkdir -p bin/kernel
-	$(KERNEL_LD) $(kernel_cxx_object_files) $(kernel_c_object_files) $(kernel_asm_object_files) -o bin/kernel/kernel.elf $(KERNEL_LDFLAGS)
+	$(KERNEL_LD)  $(kernel_asm_object_files) $(kernel_cxx_object_files) $(kernel_c_object_files) -o bin/kernel/kernel.elf $(KERNEL_LDFLAGS)
 
 clean-kernel:
 	rm -fr bin-int/kernel
