@@ -8,7 +8,7 @@
 - Fixed panic screen
 - Added IRQ and Legacy PIC support
 - Added basic printing functions to `stdio.h`
-- Added debug printing for QEM
+- Added debug printing for QEMU
 - Added variable argument support
 - Refactored graphics into HAL
 - Added basic VFS for `fprintf` & etc funtions (the VFS only supports 5 modes which can be found in `src/kernel/HAL/vfs.h`)
