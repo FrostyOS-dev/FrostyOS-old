@@ -1,7 +1,7 @@
 #ifndef _KERNEL_ISR_H
 #define _KERNEL_ISR_H
 
-#include "wos-stdint.h"
+#include "stdint.h"
 
 #include "IDT.h"
 

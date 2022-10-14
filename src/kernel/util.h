@@ -5,8 +5,8 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "wos-stdint.h"
-#include "wos-stddef.h"
+#include "stdint.h"
+#include "stddef.h"
 
 static inline void* memset(void* dst, const uint8_t value, const size_t n) {
     uint8_t* d = (uint8_t*) dst;

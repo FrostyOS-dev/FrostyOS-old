@@ -1,7 +1,7 @@
 #ifndef _X86_64_GRAPHICS_DEFINITIONS_H
 #define _X86_64_GRAPHICS_DEFINITIONS_H
 
-#include <wos-stdint.h>
+#include <stdint.h>
 
 namespace WorldOS {
     struct Position {

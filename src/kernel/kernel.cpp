@@ -28,26 +28,6 @@ namespace WorldOS {
         VGA_ClearScreen(m_bgcolour);
 
         fprintf(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
-
-
-
-        x86_64_debug_putc('M');
-        
-
-        /* Following code is temperary */
-
-        /*m_BasicRenderer.Print("Displaying Memory Map!\n");
-
-        for (uint64_t i = 0; i < params.MemoryMapEntryCount; i++) {
-            MemoryMapEntry* entry = params.MemoryMap[i];
-            m_BasicRenderer.Print("Address: 0x");
-            m_BasicRenderer.Print(to_hstring(entry->Address));
-            m_BasicRenderer.Print("   Length: ");
-            m_BasicRenderer.Print(to_string(entry->length));
-            m_BasicRenderer.Print("   Type: ");
-            m_BasicRenderer.Print(to_string(entry->type));
-            m_BasicRenderer.NewLine(); // same as printing \n
-        }*/
         
         while (true) {
             

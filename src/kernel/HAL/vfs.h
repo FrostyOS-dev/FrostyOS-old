@@ -1,8 +1,8 @@
 #ifndef _KERNEL_HAL_VFS_H
 #define _KERNEL_HAL_VFS_H
 
-#include <wos-stdint.h>
-#include <wos-stddef.h>
+#include <stdint.h>
+#include <stddef.h>
 
 typedef uint8_t fd_t;
 

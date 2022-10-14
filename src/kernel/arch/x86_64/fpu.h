@@ -1,7 +1,7 @@
 #ifndef _KERNEL_X86_64_FPU_H
 #define _KERNEL_X86_64_FPU_H
 
-#include <wos-stdint.h>
+#include <stdint.h>
 
 inline void x86_64_FPU_Initialize() {
     uint64_t t;

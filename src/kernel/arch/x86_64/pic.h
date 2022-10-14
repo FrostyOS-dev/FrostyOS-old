@@ -1,8 +1,8 @@
 #ifndef _KERNEL_X86_64_PIC_H
 #define _KERNEL_X86_64_PIC_H
 
-#include <wos-stdint.h>
-#include <wos-stddef.h>
+#include <stdint.h>
+#include <stddef.h>
 
 void x86_64_PIC_SetMask(uint16_t newMask);
 uint16_t x86_64_PIC_GetMask();

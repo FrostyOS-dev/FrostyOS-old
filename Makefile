@@ -32,7 +32,8 @@ $(kernel_asm_object_files): bin-int/kernel/%_asm.o : src/kernel/%.asm
 
 dependencies:
 	mkdir -p dist/boot/EFI/BOOT
-	curl -L -o dist/boot/EFI/BOOT/BOOTX64.EFI https://github.com/limine-bootloader/limine/raw/v4.20220928.0-binary/BOOTX64.EFI
+	curl -L -o dist/boot/EFI/BOOT/BOOTX64.EFI https://github.com/limine-bootloader/limine/raw/v4.x-branch-binary/BOOTX64.EFI
+	curl -o src/kernel/limine.h https://raw.githubusercontent.com/limine-bootloader/limine/v4.x-branch-binary/limine.h
 
 kernel: $(kernel_cxx_object_files) $(kernel_c_object_files) $(kernel_asm_object_files)
 	mkdir -p bin/kernel

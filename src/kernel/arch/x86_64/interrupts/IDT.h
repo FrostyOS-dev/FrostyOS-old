@@ -1,8 +1,8 @@
 #ifndef _KERNEL_IDT_H
 #define _KERNEL_IDT_H
 
-#include "wos-stddef.h"
-#include "wos-stdint.h"
+#include "stddef.h"
+#include "stdint.h"
 
 #include "util.h"
 

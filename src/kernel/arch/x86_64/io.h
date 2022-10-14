@@ -1,8 +1,8 @@
 #ifndef _WORLDOS_KERNEL_X86_64_IO_h
 #define _WORLDOS_KERNEL_X86_64_IO_h
 
-#include <wos-stddef.h>
-#include <wos-stdint.h>
+#include <stddef.h>
+#include <stdint.h>
 
 extern "C" inline void x86_64_outb(uint16_t port, uint8_t value) {
     asm volatile ("outb %0, %1" : : "a"(value), "Nd"(port));

@@ -1,8 +1,8 @@
 #ifndef _KERNEL_MEMORY_H
 #define _KERNEL_MEMORY_H
 
-#include "wos-stdint.h"
-#include "wos-stddef.h"
+#include "stdint.h"
+#include "stddef.h"
 
 #ifndef __cplusplus
 #error C++ only

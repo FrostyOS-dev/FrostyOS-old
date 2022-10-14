@@ -1,7 +1,7 @@
 #include "E9.h"
 
 #include "io.h"
-#include <wos-stdint.h>
+#include <stdint.h>
 
 void x86_64_debug_putc(const char c) {
     x86_64_outb(0xE9, c);

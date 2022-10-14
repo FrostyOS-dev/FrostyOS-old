@@ -1,8 +1,8 @@
 #ifndef _KERNEL_X86_64_VGA_FONT_H
 #define _KERNEL_X86_64_VGA_FONT_H
 
-#include <wos-stddef.h>
-#include <wos-stdint.h>
+#include <stddef.h>
+#include <stdint.h>
 
 const uint8_t letters[95][16] = {
 {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},// space :32

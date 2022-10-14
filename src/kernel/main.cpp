@@ -1,5 +1,5 @@
-#include "wos-stdint.h"
-#include "wos-stddef.h"
+#include "stdint.h"
+#include "stddef.h"
 #include "kernel.h"
 #include "Memory/Memory.h"
 #include "limine.h"

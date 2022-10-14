@@ -1,9 +1,9 @@
 #ifndef _KERNEL_STDIO_H
 #define _KERNEL_STDIO_H
 
-#include <wos-stddef.h>
-#include <wos-stdint.h>
-#include <wos-stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdarg.h>
 
 #include <HAL/vfs.h>
 

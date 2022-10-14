@@ -1,8 +1,8 @@
 #ifndef _KERNEL_H
 #define _KERNEL_H
 
-#include <wos-stdint.h>
-#include <wos-stddef.h>
+#include <stdint.h>
+#include <stddef.h>
 #include <Memory/Memory.h>
 #include <stdio.h>
 #include <HAL/hal.h>

@@ -1,8 +1,8 @@
 #ifndef _KERNEL_CSTR_H
 #define _KERNEL_CSTR_H
 
-#include "wos-stddef.h"
-#include "wos-stdint.h"
+#include "stddef.h"
+#include "stdint.h"
 #include "Memory/Memory.h"
 
 const char* to_string(uint64_t value);

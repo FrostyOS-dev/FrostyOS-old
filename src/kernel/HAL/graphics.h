@@ -1,7 +1,7 @@
 #ifndef _KERNEL_HAL_GRAPHICS_H
 #define _KERNEL_HAL_GRAPHICS_H
 
-#include <wos-stdint.h>
+#include <stdint.h>
 
 #include <arch/x86_64/Graphics/graphics-defs.h>
 

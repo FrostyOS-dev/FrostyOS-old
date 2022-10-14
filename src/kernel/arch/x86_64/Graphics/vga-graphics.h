@@ -1,8 +1,8 @@
 #ifndef _KERNEL_X86_64_VGA_GRAPHICS_H
 #define _KERNEL_X86_64_VGA_GRAPHICS_H
 
-#include <wos-stddef.h>
-#include <wos-stdint.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include <util.h>
 

@@ -1,8 +1,8 @@
 #ifndef _KERNEL_BITMAP_H
 #define _KERNEL_BITMAP_H
 
-#include "wos-stddef.h"
-#include "wos-stdint.h"
+#include "stddef.h"
+#include "stdint.h"
 
 namespace WorldOS {
 
