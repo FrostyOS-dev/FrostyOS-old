@@ -8,12 +8,12 @@ kernel_asm_source_files := $(shell find src/kernel -name *.asm)
 kernel_asm_object_files := $(patsubst src/kernel/%.asm, bin-int/kernel/%_asm.o, $(kernel_asm_source_files))
 
 KERNEL_CXXFLAGS = -m64 -mcmodel=kernel -std=c++20 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector -fno-builtin-function -fno-builtin -fno-exceptions -Isrc/kernel -mgeneral-regs-only -mno-red-zone -O2
-KERNEL_CXXC = g++-10
+KERNEL_CXXC = g++
 KERNEL_LD = ld
 KERNEL_LDFLAGS = -Tsrc/kernel.ld -static -Bsymbolic -nostdlib -Isrc/kernel
 KERNEL_ASMC = nasm
 KERNEL_ASMFLAGS = -f elf64
-KERNEL_CC = gcc-10
+KERNEL_CC = gcc
 KERNEL_CFLAGS = -m64 -mcmodel=kernel -std=c17 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector -fno-builtin-function -fno-builtin -fno-exceptions -Isrc/kernel -mgeneral-regs-only -mno-red-zone -O2
 
 $(kernel_cxx_object_files): bin-int/kernel/%.o : src/kernel/%.cpp
