@@ -4,6 +4,7 @@
 #include <arch/x86_64/interrupts/IDT.h>
 #include <arch/x86_64/interrupts/isr.h>
 #include <arch/x86_64/interrupts/IRQ.h>
+#include <arch/x86_64/interrupts/pic.h>
 #include <arch/x86_64/fpu.h>
 #include <arch/x86_64/E9.h>
 

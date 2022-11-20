@@ -22,5 +22,6 @@ uint32_t VGA_GetBackgroundColour();
 uint32_t VGA_GetForegroundColour();
 uint64_t VGA_GetAmountOfTextRows();
 uint64_t VGA_GetAmountOfTextColumns();
+uint64_t VGA_GetScreenSizeBytes();
 
 #endif /* _KERNEL_HAL_GRAPHICS_H */

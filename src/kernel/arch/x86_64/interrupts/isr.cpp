@@ -45,22 +45,23 @@ void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler handler) {
     x86_64_IDT_EnableGate(interrupt);
 }
 
-extern "C" void x86_64_ISR_Handler(x86_64_Registers aregs /* temp name */) {
-    /* Check if there is a designated handler */
-    /*if (g_ISRHandlers[regs->interrupt] != NULL)
-        g_ISRHandlers[regs->interrupt](regs);*/
+extern "C" void x86_64_ISR_Handler(x86_64_Registers regs) {
+    x86_64_Registers* p_regs = &regs;
 
-    x86_64_Registers* regs = &aregs; // temp
+    /* Check if there is a designated handler */
+    if (g_ISRHandlers[p_regs->interrupt] != nullptr)
+        g_ISRHandlers[p_regs->interrupt](p_regs);
+
 
     /* TEMP */
     char tempReason[64];
     memset(tempReason, 0, 64);
 
-    const size_t strLength = g_ExceptionsSTRLengths[regs->interrupt];
+    const size_t strLength = g_ExceptionsSTRLengths[p_regs->interrupt];
 
-    memcpy(tempReason, g_Exceptions[regs->interrupt], strLength);
+    memcpy(tempReason, g_Exceptions[p_regs->interrupt], strLength);
 
-    WorldOS::Panic(tempReason, regs, true);
+    WorldOS::Panic(tempReason, p_regs, true);
 
 
     while (true); // just hang

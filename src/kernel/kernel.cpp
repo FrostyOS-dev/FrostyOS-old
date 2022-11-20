@@ -2,8 +2,6 @@
 
 #include <HAL/graphics.h>
 
-#include <arch/x86_64/E9.h>
-
 namespace WorldOS {
 
     Kernel::Kernel(KernelParams params) {
@@ -13,7 +11,6 @@ namespace WorldOS {
         m_InitialFrameBuffer = params.frameBuffer;
 
         HAL_Init(m_InitialFrameBuffer);
-
 
         if (params.frameBuffer.bpp != 32) {
             Panic("Bootloader Frame Buffer Bits per Pixel is not 32", nullptr, false);
@@ -28,7 +25,12 @@ namespace WorldOS {
         VGA_ClearScreen(m_bgcolour);
 
         fprintf(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
+
+        // temp
+
         
+
+        // hang
         while (true) {
             
         }

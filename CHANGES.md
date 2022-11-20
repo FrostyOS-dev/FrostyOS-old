@@ -1,5 +1,19 @@
 # Changes
 
+## 20/11/2022
+
+- Updated boot partition to FAT32
+- Added physical memory manager
+- Graphics updates
+- Bitmap updates
+- Tweaked entry point
+- Moved main util into C++ file
+- IRQ updates
+- Moved PIC files to interrupts directory
+- Added full support for custom ISRs
+- Started adding paging support
+- Added self-building toolchain and nasm
+
 ## 19/10/2022
 
 - Renamed 'Readme.md' to 'README.md'

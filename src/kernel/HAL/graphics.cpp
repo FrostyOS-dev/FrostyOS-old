@@ -61,3 +61,7 @@ uint64_t VGA_GetAmountOfTextRows() {
 uint64_t VGA_GetAmountOfTextColumns() {
     return WorldOS::x86_64_VGA_Graphics_GetAmountOfColumns();
 }
+
+uint64_t VGA_GetScreenSizeBytes() {
+    return WorldOS::x86_64_VGA_Graphics_GetScreenSizeBytes();
+}

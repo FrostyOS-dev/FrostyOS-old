@@ -31,7 +31,7 @@ extern "C" volatile struct limine_kernel_address_request kernel_address_request 
  
 static volatile void done(void) {
     while (true) {
-        __asm__("hlt");
+        asm("hlt");
     }
 }
 

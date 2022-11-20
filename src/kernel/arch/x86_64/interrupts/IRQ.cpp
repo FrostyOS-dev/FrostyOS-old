@@ -1,5 +1,5 @@
 #include "IRQ.h"
-#include "../pic.h"
+#include "pic.h"
 #include "../io.h"
 #include <stdio.h>
 

@@ -161,7 +161,7 @@ namespace WorldOS {
         void* startAddress = (void*)((uint8_t*)g_FrameBuffer.FrameBufferAddress + 4 * g_FrameBuffer.FrameBufferWidth * 16);
 
         /* Copy everything up one row */
-        memcpy(g_FrameBuffer.FrameBufferAddress, startAddress, (x86_64_VGA_Graphics_GetScreenSizeBytes() - 4 * g_FrameBuffer.FrameBufferWidth * 16));
+        memcpy(g_FrameBuffer.FrameBufferAddress, startAddress, (x86_64_VGA_Graphics_GetScreenSizeBytes() - 4 * g_FrameBuffer.FrameBufferWidth * 16)); // potential ERROR point
 
         /* Get Address on the start of the last row */
         void* endAddress = (void*)((uint8_t*)g_FrameBuffer.FrameBufferAddress + 4 * g_FrameBuffer.FrameBufferWidth * 16 * (x86_64_VGA_Graphics_GetAmountOfRows() - 1));

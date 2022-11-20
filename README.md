@@ -1,23 +1,30 @@
 # WorldOS
 
-## Latest Changes - 19/10/2022
+## Latest Changes - 20/11/2022
 
-- Renamed 'Readme.md' to 'README.md'
-- Updated Makefile
-- Updated this file
-- Added `CHANGES.md`
+- Updated boot partition to FAT32
+- Added physical memory manager
+- Graphics updates
+- Bitmap updates
+- Tweaked entry point
+- Moved main util into C++ file
+- IRQ updates
+- Moved PIC files to interrupts directory
+- Added full support for custom ISRs
+- Started adding paging support
+- Added self-building toolchain and nasm
 
 ## Prerequisites
 
 ### Program Requirements
 
-- gcc/g++ version 10 or higher (any version thats supports C++20 and C17 should work)
-- nasm version 2 or higher
+- gcc/g++ version 9 or higher
 - mkgpt
 - mtools
 - qemu version 4 or higher
 - curl
 - make
+- others can be found in [Linux setup section.](#linux)
 
 See notes if your system cannot meet these requirements
 
@@ -33,49 +40,58 @@ If you cannot meet these requirements, see notes
 
 #### Windows 10 Method 1
 
-- install WSL2 and install a distro to it
-- follow the steps for Linux -> (distro you chose), except remove `qemu` from the install list (in WSL2)
+- install WSL2 and install a distribution to it
+- follow the steps for Linux -> (distribution you chose), except remove `qemu` from the install list (in WSL2)
 - install `qemu` from its website and add it to `PATH`
 
 #### Windows 10 Method 2
 
-- install WSL2 and install a distro to it
-- follow the steps for Linux -> (distro you chose)
+- install WSL2 and install a distribution to it
+- follow the steps for Linux -> (distribution you chose)
 - install an X-server on your Windows 10 host such as VcXsrv
-- in WSL2, run `export DISPLAY = :0` as non-root (I recommend adding this to your startup script in WSL2, otherwise you will have to run this everytime you open WSL2)
+- in WSL2, run `export DISPLAY = :0` as non-root (I recommend adding this to your startup script in WSL2, otherwise you will have to run this every time you open WSL2)
 
 #### Windows 11
 
-- install WSLg and install a distro to it
-- follow the steps for Linux -> (the distro you chose)
+- install WSLg and install a distribution to it
+- follow the steps for Linux -> (the distribution you chose)
 
-### **POSIX** - Linux
+### Linux
 
 #### Debian/Ubuntu/Linux mint/PopOS
 
-- run `sudo apt install build-essential mtools curl qemu nasm`
+- run `sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu`
 - install `mkgpt` from [its github](https://github.com/jncronin/mkgpt)
 
-#### Fedora
+#### Fedora/RHEL
 
-- run `sudo dnf install gcc gcc-c++ mtools curl qemu nasm make`
+- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu`
+- install `mkgpt` from [its github](https://github.com/jncronin/mkgpt)
+
+#### Arch
+
+- run `pacman -Syu base-devel gmp libpmc mpfr mtools curl qemu`
 - install `mkgpt` from [its github](https://github.com/jncronin/mkgpt)
 
 ---
 
 ## Building
 
-1. run `make boot-iso` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.)
+1. run `make boot-iso` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). NOTE: If the toolchain and NASM aren't built and installed to the correct location, they **will** be built and installed
 
-## Running
+## Running - Anything with bash (or similar)
+
+1. run `./run.sh [config]`. 'config' being either 'debug' or 'release'. If not provided, 'debug' is assumed.
+
+## Running - Other
 
 Run the following command(s) in the appropriate place for your OS (WSL2 for Windows 10 Method 2, cmd/powershell for Windows 10 Method 1, etc.) based on what configuration you want.
 
-### Debug:
+### Debug
 
 1. run `qemu-system-x86_64 -pflash ovmf/OVMF.fd -hda iso/hdimage.bin -m 256M -debugcon stdio`
 
-### Release:
+### Release
 
 1. run `qemu-system-x86_64 -pflash ovmf/OVMF.fd -hda iso/hdimage.bin -m 256M`
 
@@ -87,11 +103,10 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 - You might be able to run WorldOS with less RAM (by changing the '256M' to the amount of RAM you want), but I cannot guarantee that it would run on any less than 256MiB.
 - You computer **must** be capable of virtualization to run WorldOS in a VM.
-- You can use more than 1 core, but only 1 will be used.
+- You can allocate more than 1 core, but only 1 will be used.
 
 ### Program Requirement info
 
-- If the default `gcc/g++` version on your system is not 10 or higher, you might need to modify the `Makefile`.
 - You can use alternatives to `mkgpt`, as long as it creates GPT raw disks. You will have to modify the `Makefile` though.
 - You can use alternatives to `curl` (such as `wget`), but you will have to modify the `Makefile`.
 
