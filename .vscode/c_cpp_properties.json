@@ -5,10 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/src/kernel/*"
             ],
-            "defines": [
-                "F515_PLATFORM_LINUX"
-            ],
-            "compilerPath": "/usr/bin/g++",
+            "defines": [],
+            "compilerPath": "${HOME}/opt/cross/bin/x86_64-elf-gcc",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
@@ -18,7 +16,12 @@
                     "${workspaceFolder}/**"
                 ],
                 "limitSymbolsToIncludedHeaders": true
-            }
+            },
+            "compilerArgs": [
+                "-nostdinc",
+                "-m64",
+                "-nostdlib"
+            ]
         },
         {
             "name": "Win32",

@@ -1,4 +1,4 @@
-#include "gdt.h"
+#include "gdt.hpp"
 
 __attribute__((aligned(0x1000)))
 GDT DefaultGDT = {

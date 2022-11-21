@@ -4,7 +4,9 @@
 #include "stdint.h"
 #include "stddef.h"
 
-#include "stdio.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void* memset(void* dst, const uint8_t value, const size_t n);
 void* memcpy(void* dst, const void* src, const size_t n);
@@ -38,5 +40,9 @@ uint8_t memcmp(const void* s1, const void* s2, const size_t size);
 
 #define FLAG_SET(x, flag) x |= (flag)
 #define FLAG_UNSET(x, flag) x &= ~(flag)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /*_KERNEL_UTIL_H */

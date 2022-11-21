@@ -1,14 +1,13 @@
-#include "hal.h"
+#include "hal.hpp"
 
-#include <arch/x86_64/GDT/gdt.h>
-#include <arch/x86_64/interrupts/IDT.h>
-#include <arch/x86_64/interrupts/isr.h>
-#include <arch/x86_64/interrupts/IRQ.h>
-#include <arch/x86_64/interrupts/pic.h>
+#include <arch/x86_64/GDT/gdt.hpp>
+#include <arch/x86_64/interrupts/IDT.hpp>
+#include <arch/x86_64/interrupts/isr.hpp>
+#include <arch/x86_64/interrupts/IRQ.hpp>
+#include <arch/x86_64/interrupts/pic.hpp>
 #include <arch/x86_64/fpu.h>
-#include <arch/x86_64/E9.h>
 
-#include <arch/x86_64/Graphics/vga-graphics.h>
+#include <arch/x86_64/Graphics/vga-graphics.hpp>
 
 namespace WorldOS {
 
@@ -35,13 +34,5 @@ namespace WorldOS {
         x86_64_Panic(reason, regs, type);
     }
     */
-
-    void debug_putc(const char c) {
-        x86_64_debug_putc(c);
-    }
-
-    void debug_puts(const char* str) {
-        x86_64_debug_puts(str);
-    }
 
 }

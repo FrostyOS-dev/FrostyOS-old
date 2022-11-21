@@ -1,5 +1,5 @@
-#include "vga-graphics.h"
-#include "vga-font.h"
+#include "vga-graphics.hpp"
+#include "vga-font.hpp"
 
 namespace WorldOS {
 

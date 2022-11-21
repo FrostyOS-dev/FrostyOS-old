@@ -1,5 +1,5 @@
-#ifndef _KERNEL_X86_64_PIC_H
-#define _KERNEL_X86_64_PIC_H
+#ifndef _KERNEL_X86_64_PIC_HPP
+#define _KERNEL_X86_64_PIC_HPP
 
 #include <stdint.h>
 #include <stddef.h>
@@ -15,4 +15,4 @@ uint16_t x86_64_PIC_ReadIRQRequestRegister();
 uint16_t x86_64_PIC_ReadInServiceRegister();
 bool x86_64_PIC_Probe();
 
-#endif /* _KERNEL_X86_64_PIC_H */
+#endif /* _KERNEL_X86_64_PIC_HPP */

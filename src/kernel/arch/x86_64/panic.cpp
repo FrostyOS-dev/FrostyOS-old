@@ -1,14 +1,14 @@
-#include "panic.h"
+#include "panic.hpp"
 
-#include <stdio.h>
+#include <stdio.hpp>
 
-#include "HAL/graphics.h"
+#include <HAL/graphics.hpp>
 
 void x86_64_Panic(const char* reason, x86_64_Registers* regs, const bool type) {
 
     VGA_ClearScreen(0xFF1A00F7 /* blue */);
     VGA_SetBackgroundColour(0xFF1A00F7 /* blue */);
-    WorldOS::Position pos = {0,0};
+    Position pos = {0,0};
     VGA_SetCursorPosition(pos);
 
     fprintf(VFS_DEBUG_AND_STDOUT, "KERNEL PANIC!\nError Message:  %s", reason);

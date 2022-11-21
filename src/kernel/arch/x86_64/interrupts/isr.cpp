@@ -1,7 +1,5 @@
-#include "isr.h"
-#include <HAL/hal.h>
-
-#include <cstr.h>
+#include "isr.hpp"
+#include <HAL/hal.hpp>
 
 #define MODULE "ISR"
 

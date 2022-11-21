@@ -1,7 +1,7 @@
-#include "PageFrameAllocator.h"
+#include "PageFrameAllocator.hpp"
 
 #include <util.h>
-#include <stdio.h>
+#include <stdio.hpp>
 
 WorldOS::PageFrameAllocator* g_PFA = nullptr;
 

@@ -1,7 +1,7 @@
-#ifndef _GDT_H
-#define _GDT_H
+#ifndef _GDT_HPP
+#define _GDT_HPP
 
-#include "stdint.h"
+#include <stdint.h>
 
 struct GDTDescriptor {
     uint16_t Size;
@@ -30,4 +30,4 @@ extern GDT DefaultGDT;
 
 extern "C" void x86_64_LoadGDT(GDTDescriptor* gdtDescriptor);
 
-#endif /* _GDT_H */
+#endif /* _GDT_HPP */

@@ -1,4 +1,4 @@
-#include "pic.h"
+#include "pic.hpp"
 #include "../io.h"
 
 #define PIC_MASTER_COMMAND 0x20

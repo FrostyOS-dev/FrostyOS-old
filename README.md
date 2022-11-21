@@ -1,18 +1,9 @@
 # WorldOS
 
-## Latest Changes - 20/11/2022
+## Latest Changes - 21/11/2022
 
-- Updated boot partition to FAT32
-- Added physical memory manager
-- Graphics updates
-- Bitmap updates
-- Tweaked entry point
-- Moved main util into C++ file
-- IRQ updates
-- Moved PIC files to interrupts directory
-- Added full support for custom ISRs
-- Started adding paging support
-- Added self-building toolchain and nasm
+- Renamed all C source files to .c instead of .cpp
+- Renamed all C++ headers to .hpp instead of .h
 
 ## Prerequisites
 

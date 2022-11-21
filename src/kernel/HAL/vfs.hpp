@@ -1,5 +1,5 @@
-#ifndef _KERNEL_HAL_VFS_H
-#define _KERNEL_HAL_VFS_H
+#ifndef _KERNEL_HAL_VFS_HPP
+#define _KERNEL_HAL_VFS_HPP
 
 #include <stdint.h>
 #include <stddef.h>
@@ -16,4 +16,4 @@ enum OUT_TYPES {
 
 void VFS_write(const fd_t file, const uint8_t* bytes, const size_t length);
 
-#endif /* _KERNEL_HAL_VFS_H */
+#endif /* _KERNEL_HAL_VFS_HPP */

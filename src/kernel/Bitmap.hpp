@@ -1,5 +1,5 @@
-#ifndef _KERNEL_BITMAP_H
-#define _KERNEL_BITMAP_H
+#ifndef _KERNEL_BITMAP_HPP
+#define _KERNEL_BITMAP_HPP
 
 #include <stddef.h>
 #include <stdint.h>
@@ -38,4 +38,4 @@ namespace WorldOS {
 
 }
 
-#endif /* _KERNEL_BITMAP_H */
+#endif /* _KERNEL_BITMAP_HPP */

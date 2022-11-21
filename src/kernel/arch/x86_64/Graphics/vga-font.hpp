@@ -1,5 +1,5 @@
-#ifndef _KERNEL_X86_64_VGA_FONT_H
-#define _KERNEL_X86_64_VGA_FONT_H
+#ifndef _KERNEL_X86_64_VGA_FONT_HPP
+#define _KERNEL_X86_64_VGA_FONT_HPP
 
 #include <stddef.h>
 #include <stdint.h>
@@ -123,4 +123,4 @@ struct GetCharReturn {
 
 GetCharReturn getChar(const char in);
 
-#endif /* _KERNEL_X86_64_VGA_FONT_H */
+#endif /* _KERNEL_X86_64_VGA_FONT_HPP */

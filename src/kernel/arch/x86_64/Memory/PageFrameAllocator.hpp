@@ -1,11 +1,11 @@
-#ifndef _KERNEL_PAGE_FRAME_ALLOCATOR_H
-#define _KERNEL_PAGE_FRAME_ALLOCATOR_H
+#ifndef _KERNEL_PAGE_FRAME_ALLOCATOR_HPP
+#define _KERNEL_PAGE_FRAME_ALLOCATOR_HPP
 
 #include <stddef.h>
 #include <stdint.h>
-#include <Bitmap.h>
+#include <Bitmap.hpp>
 
-#include <Memory/Memory.h>
+#include <Memory/Memory.hpp>
 
 #define MEMORY_MAP_ENTRY_SIZE 24
 
@@ -45,4 +45,4 @@ namespace WorldOS {
 
 extern WorldOS::PageFrameAllocator* g_PFA;
 
-#endif /* _KERNEL_PAGE_FRAME_ALLOCATOR_H */
+#endif /* _KERNEL_PAGE_FRAME_ALLOCATOR_HPP */

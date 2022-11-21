@@ -1,5 +1,5 @@
-#ifndef _KERNEL_X86_64_VGA_GRAPHICS_H
-#define _KERNEL_X86_64_VGA_GRAPHICS_H
+#ifndef _KERNEL_X86_64_VGA_GRAPHICS_HPP
+#define _KERNEL_X86_64_VGA_GRAPHICS_HPP
 
 #include <stddef.h>
 #include <stdint.h>
@@ -35,4 +35,4 @@ namespace WorldOS {
     void x86_64_VGA_Graphics_SetBackgroundColour(const uint32_t colour);
 }
 
-#endif /* _KERNEL_X86_64_VGA_GRAPHICS_H */
+#endif /* _KERNEL_X86_64_VGA_GRAPHICS_HPP */

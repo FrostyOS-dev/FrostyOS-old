@@ -19,14 +19,17 @@ KERNEL_CFLAGS = -m64 -mcmodel=kernel -std=c17 -g -Wall -Wextra -Wpedantic -Wstri
 $(kernel_cxx_object_files): bin-int/kernel/%.o : src/kernel/%.cpp
 	@mkdir -p $(dir $@)
 	$(KERNEL_CXXC) -o $@ -c $(patsubst bin-int/kernel/%.o, src/kernel/%.cpp, $@) $(KERNEL_CXXFLAGS)
+	@echo 
 
 $(kernel_c_object_files): bin-int/kernel/%_c.o : src/kernel/%.c
 	@mkdir -p $(dir $@)
 	$(KERNEL_CC) -o $@ -c $(patsubst bin-int/kernel/%_c.o, src/kernel/%.c, $@) $(KERNEL_CFLAGS)
+	@echo 
 
 $(kernel_asm_object_files): bin-int/kernel/%_asm.o : src/kernel/%.asm
 	@mkdir -p $(dir $@)
 	$(KERNEL_ASMC) $(patsubst bin-int/kernel/%_asm.o, src/kernel/%.asm, $@) $(KERNEL_ASMFLAGS) -o $@
+	@echo 
 
 .PHONY: boot-iso
 
@@ -50,7 +53,7 @@ kernel: $(kernel_cxx_object_files) $(kernel_c_object_files) $(kernel_asm_object_
 	@echo --------------
 	@echo Linking Kernel
 	@echo --------------
-	$(KERNEL_LD) $(kernel_asm_object_files) $(kernel_cxx_object_files) $(kernel_c_object_files) -o bin/kernel/kernel.elf $(KERNEL_LDFLAGS)
+	$(KERNEL_LD) $(kernel_asm_object_files) $(kernel_c_object_files) $(kernel_cxx_object_files) -o bin/kernel/kernel.elf $(KERNEL_LDFLAGS)
 	@mkdir -p dist/boot/WorldOS
 	@cp bin/kernel/kernel.elf dist/boot/WorldOS
 

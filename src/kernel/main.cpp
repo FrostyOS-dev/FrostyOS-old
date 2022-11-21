@@ -1,7 +1,8 @@
-#include "stdint.h"
-#include "stddef.h"
-#include "kernel.h"
-#include "Memory/Memory.h"
+#include <stdint.h>
+#include <stddef.h>
+
+#include "kernel.hpp"
+#include "Memory/Memory.hpp"
 #include "limine.h"
 
 extern "C" volatile struct limine_framebuffer_request framebuffer_request {

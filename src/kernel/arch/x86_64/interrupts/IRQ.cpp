@@ -1,7 +1,7 @@
-#include "IRQ.h"
-#include "pic.h"
+#include "IRQ.hpp"
+#include "pic.hpp"
 #include "../io.h"
-#include <stdio.h>
+#include <stdio.hpp>
 
 #define PIC_REMAP_OFFSET 0x20
 

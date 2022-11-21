@@ -1,11 +1,12 @@
-#ifndef _KERNEL_H
-#define _KERNEL_H
+#ifndef _KERNEL_HPP
+#define _KERNEL_HPP
 
 #include <stdint.h>
 #include <stddef.h>
-#include <Memory/Memory.h>
-#include <stdio.h>
-#include <HAL/hal.h>
+
+#include <Memory/Memory.hpp>
+#include <stdio.hpp>
+#include <HAL/hal.hpp>
 
 namespace WorldOS {
 
@@ -36,4 +37,4 @@ namespace WorldOS {
     };
 }
 
-#endif /* _KERNEL_H */
+#endif /* _KERNEL_HPP */

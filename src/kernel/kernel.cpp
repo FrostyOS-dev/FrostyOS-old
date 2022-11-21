@@ -1,6 +1,6 @@
-#include "kernel.h"
+#include "kernel.hpp"
 
-#include <HAL/graphics.h>
+#include <HAL/graphics.hpp>
 
 namespace WorldOS {
 

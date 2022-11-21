@@ -1,4 +1,4 @@
-#include "IDT.h"
+#include "IDT.hpp"
 
 IDT idt = {};
 

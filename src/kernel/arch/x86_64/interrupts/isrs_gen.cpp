@@ -1,4 +1,4 @@
-#include "IDT.h"
+#include "IDT.hpp"
 
 extern "C" void x86_64_ISR0();
 extern "C" void x86_64_ISR1();

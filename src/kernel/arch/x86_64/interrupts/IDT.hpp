@@ -1,10 +1,10 @@
-#ifndef _KERNEL_IDT_H
-#define _KERNEL_IDT_H
+#ifndef _KERNEL_IDT_HPP
+#define _KERNEL_IDT_HPP
 
-#include "stddef.h"
-#include "stdint.h"
+#include <stddef.h>
+#include <stdint.h>
 
-#include "util.h"
+#include <util.h>
 
 enum IDT_FLAGS {
     IDT_FLAG_GATE_TASK              = 0x5,
@@ -79,4 +79,4 @@ IVT Offset | INT #     | Description
 
 */
 
-#endif /* _KERNEL_IDT_H */
+#endif /* _KERNEL_IDT_HPP */

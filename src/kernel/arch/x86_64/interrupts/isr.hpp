@@ -1,9 +1,9 @@
-#ifndef _KERNEL_ISR_H
-#define _KERNEL_ISR_H
+#ifndef _KERNEL_ISR_HPP
+#define _KERNEL_ISR_HPP
 
-#include "stdint.h"
+#include <stdint.h>
 
-#include "IDT.h"
+#include "IDT.hpp"
 
 struct x86_64_Registers {
     uint64_t ds;                                         // data segment pushed by us
@@ -21,4 +21,4 @@ extern "C" void x86_64_ISR_Handler(x86_64_Registers regs);
 
 void x86_64_ISR_InitializeGates();
 
-#endif /* _KERNEL_INTERRUPTS_H */
+#endif /* _KERNEL_INTERRUPTS_HPP */

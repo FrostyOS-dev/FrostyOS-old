@@ -2,5 +2,11 @@
     "files.associations": {
         "system_error": "cpp",
         "thread": "cpp"
-    }
+    },
+    "makefile.dryrunSwitches": [
+        "boot-iso"
+    ],
+    "makefile.makefilePath": "./Makefile",
+    "makefile.makePath": "make",
+    "makefile.phonyOnlyTargets": false
 }

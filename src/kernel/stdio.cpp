@@ -1,8 +1,8 @@
-#include "stdio.h"
+#include "stdio.hpp"
 
-#include <HAL/hal.h>
+#include <stdbool.h>
 
-#include "cstr.h" // just used for strlen function
+#include "cstring.h" // just used for strlen function
 
 void fputc(const fd_t file, const char c) {
     VFS_write(file, (uint8_t*)&c, 1);

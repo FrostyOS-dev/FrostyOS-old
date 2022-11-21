@@ -1,10 +1,10 @@
-#include "PagingUtil.h"
+#include "PagingUtil.hpp"
 
-#include "PageTables.h"
+#include "PageTables.hpp"
 
-#include "PageFrameAllocator.h"
+#include "PageFrameAllocator.hpp"
 
-#include "PageMapIndexer.h"
+#include "PageMapIndexer.hpp"
 
 void x86_64_GeneratePageLevel2Array(uint16_t PageLevel3Offset) {
     Level2Group* group = (Level2Group*)g_PFA->AllocatePage();

@@ -1,6 +1,6 @@
-#include "graphics.h"
+#include "graphics.hpp"
 
-#include <arch/x86_64/Graphics/vga-graphics.h>
+#include <arch/x86_64/Graphics/vga-graphics.hpp>
 
 void VGA_ClearScreen(const uint32_t colour) {
     WorldOS::x86_64_VGA_Graphics_ClearScreen(colour);
@@ -10,11 +10,11 @@ void VGA_PlotPixel(const uint64_t x, const uint64_t y, const uint32_t colour) {
     WorldOS::x86_64_VGA_Graphics_PlotPixel(x, y, colour);
 }
 
-void VGA_SetFrameBuffer(const WorldOS::FrameBuffer& fb) {
+void VGA_SetFrameBuffer(const FrameBuffer fb) {
     WorldOS::x86_64_VGA_Graphics_SetFrameBuffer(fb);
 }
 
-void VGA_SetCursorPosition(const WorldOS::Position& pos) {
+void VGA_SetCursorPosition(const Position pos) {
     WorldOS::x86_64_VGA_Graphics_SetCursorPosition(pos);
 }
 
@@ -38,11 +38,11 @@ void VGA_puts(const char* str) {
     WorldOS::x86_64_VGA_Graphics_puts(str);
 }
 
-WorldOS::FrameBuffer VGA_GetFrameBuffer() {
+FrameBuffer VGA_GetFrameBuffer() {
     return WorldOS::x86_64_VGA_Graphics_GetFrameBuffer();
 }
 
-WorldOS::Position VGA_GetCursorPosition() {
+Position VGA_GetCursorPosition() {
     return WorldOS::x86_64_VGA_Graphics_GetCursorPosition();
 }
 

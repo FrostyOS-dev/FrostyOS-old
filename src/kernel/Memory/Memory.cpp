@@ -1,4 +1,4 @@
-#include "Memory.h"
+#include "Memory.hpp"
 
 size_t GetMemorySize(const WorldOS::MemoryMapEntry** MemoryMap, const size_t EntryCount) {
     using namespace WorldOS;
