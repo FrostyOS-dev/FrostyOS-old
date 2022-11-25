@@ -24,17 +24,7 @@ namespace WorldOS {
         void* RSDP_table;
     };
 
-    class Kernel {
-    public:
-        Kernel(KernelParams params);
-        ~Kernel();
-
-    private:
-        FrameBuffer m_InitialFrameBuffer;
-        uint32_t m_fgcolour;
-        uint32_t m_bgcolour;
-        uint64_t m_Stage;
-    };
+    extern "C" void StartKernel(KernelParams params);
 }
 
 #endif /* _KERNEL_HPP */

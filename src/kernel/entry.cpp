@@ -86,7 +86,7 @@ extern "C" void _start(void) {
         .RSDP_table = rsdp_response->address
     };
 
-    WorldOS::Kernel kernel(kernelParams);
+    StartKernel(kernelParams);
  
     // We're done, just hang...
     done();

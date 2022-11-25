@@ -1,9 +1,11 @@
 # WorldOS
 
-## Latest Changes - 21/11/2022
+## Latest Changes - 25/11/2022
 
-- Renamed all C source files to .c instead of .cpp
-- Renamed all C++ headers to .hpp instead of .h
+- Switching to C style kernel main, instead of a class function
+- Renamed `main.cpp` to `entry.cpp`
+- Added Build and run tasks to VS Code config
+- Fixed a spelling mistake in `stdbool.h`
 
 ## Prerequisites
 

@@ -4,7 +4,12 @@
 
 namespace WorldOS {
 
-    Kernel::Kernel(KernelParams params) {
+    FrameBuffer m_InitialFrameBuffer;
+    uint32_t m_fgcolour;
+    uint32_t m_bgcolour;
+    uint64_t m_Stage;
+
+    extern "C" void StartKernel(KernelParams params) {
         m_fgcolour = 0xFFFFFFFF;
         m_bgcolour = 0;
         m_Stage = EARLY_STAGE;
@@ -34,9 +39,5 @@ namespace WorldOS {
         while (true) {
             
         }
-    }
-
-    Kernel::~Kernel() {
-
     }
 }

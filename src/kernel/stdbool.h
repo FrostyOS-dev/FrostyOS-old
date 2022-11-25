@@ -7,6 +7,6 @@
 #define true 1
 #define false 0
 
-#endif /* __cplusplus__ */
+#endif /* __cplusplus */
 
 #endif /* _KERNEL_STDBOOL_H */

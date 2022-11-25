@@ -1,0 +1,53 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build WorldOS boot iso",
+			"command": "make",
+			"args": [
+				"boot-iso"
+			],
+			"problemMatcher": [],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Run WorldOS Debug",
+			"command": "./run.sh",
+			"args": [
+				"debug"
+			],
+			"problemMatcher": [],
+			"group": {
+				"kind": "none",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Run WorldOS Release",
+			"command": "./run.sh",
+			"args": [
+				"release"
+			],
+			"problemMatcher": [],
+			"group": {
+				"kind": "none",
+				"isDefault": false
+			}
+		},
+		{
+			"label": "Remove all WorldOS build files",
+			"command": "make",
+			"args": [
+				"clean-all"
+			],
+			"problemMatcher": [],
+			"group": {
+				"kind": "none",
+				"isDefault": false
+			}
+		},
+	]
+}

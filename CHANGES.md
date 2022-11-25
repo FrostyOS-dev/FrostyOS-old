@@ -1,5 +1,12 @@
 # Changes
 
+## 25/11/2022
+
+- Switching to C style kernel main, instead of a class function
+- Renamed `main.cpp` to `entry.cpp`
+- Added Build and run tasks to VS Code config
+- Fixed a spelling mistake in `stdbool.h`
+
 ## 21/11/2022
 
 - Renamed all C source files to .c instead of .cpp
