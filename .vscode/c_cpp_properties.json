@@ -3,7 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/src/kernel/*"
+                "${workspaceFolder}/kernel/src/*"
             ],
             "defines": [],
             "compilerPath": "${HOME}/opt/cross/bin/x86_64-elf-gcc",
@@ -19,8 +19,23 @@
             },
             "compilerArgs": [
                 "-nostdinc",
-                "-m64",
-                "-nostdlib"
+                "-nostdlib",
+                "-zmax-page-size=0x1000",
+                "-mcmodel=kernel",
+                "-g",
+                "-Wall",
+                "-Wextra",
+                "-Wpedantic",
+                "-Wstrict-aliasing",
+                "-Wno-pointer-arith",
+                "-Wno-unused-parameter",
+                "-ffreestanding",
+                "-fno-pie",
+                "-fno-stack-protector",
+                "-fno-exceptions",
+                "-mgeneral-regs-only",
+                "-mno-red-zone",
+                "-O2"
             ]
         },
         {
@@ -30,15 +45,30 @@
             ],
             "defines": [],
             "windowsSdkVersion": "10.0.19041.0",
-            "compilerPath": "C:\\Program Files\\mingw32-w64\\bin\\g++.exe",
+            "compilerPath": "C:\\Program Files\\mingw32-w64\\bin\\gcc.exe",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "windows-gcc-x64",
             "compilerArgs": [
-                "-std=c++20",
                 "-nostdinc",
+                "-m64",
                 "-nostdlib",
-                "-m64"
+                "-zmax-page-size=0x1000",
+                "-mcmodel=kernel",
+                "-g",
+                "-Wall",
+                "-Wextra",
+                "-Wpedantic",
+                "-Wstrict-aliasing",
+                "-Wno-pointer-arith",
+                "-Wno-unused-parameter",
+                "-ffreestanding",
+                "-fno-pie",
+                "-fno-stack-protector",
+                "-fno-exceptions",
+                "-mgeneral-regs-only",
+                "-mno-red-zone",
+                "-O2"
             ]
         }
     ],

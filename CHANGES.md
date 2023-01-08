@@ -1,5 +1,13 @@
 # Changes
 
+## Latest Changes - 08/01/2023
+
+- re-arranged folder layout for kernel source code
+- Started adding AVL Trees for MM
+- adjusted folder structure for OVMF
+- Added temperary new/delete (doesn't actually do anything except make the compiler not complain)
+- added mkgpt building
+
 ## 25/11/2022
 
 - Switching to C style kernel main, instead of a class function
