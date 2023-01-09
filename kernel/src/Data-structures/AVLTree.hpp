@@ -5,6 +5,8 @@
 
 namespace AVLTree {
 
+	static constexpr uint64_t POOL_SIZE = 128;
+
 	struct Node {
 		// actual data
 		uint64_t key;
@@ -15,6 +17,11 @@ namespace AVLTree {
 		Node* right;
 		uint64_t height;
 	};
+
+	void NodePool_Init();
+	void NodePool_Destroy();
+	Node* NodePool_AllocateNode();
+	bool NodePool_FreeNode(Node* node);
 
 	// Get height of the AVL tree
 	uint64_t height(Node* root);

@@ -64,7 +64,7 @@ fi
 cd ..
 rm -fr $HOME/toolchain-build
 
-if (!(nasm --v | grep 2.15.05 > /dev/null)) then
+if (!($HOME/opt/nasm/bin/nasm --v | grep 2.15.05 > /dev/null)) then
     echo -------------
     echo Building nasm
     echo -------------

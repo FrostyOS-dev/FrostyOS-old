@@ -1,12 +1,12 @@
 # WorldOS
 
-## Latest Changes - 08/01/2023
+## Latest Changes - 09/01/2023
 
-- re-arranged folder layout for kernel source code
-- Started adding AVL Trees for MM
-- adjusted folder structure for OVMF
-- Added temperary new/delete (doesn't actually do anything except make the compiler not complain)
-- added mkgpt building
+- Added Node pool for AVL Tree in case MM isn't active
+- Added utility for new and delete
+- Improved new and delete so they can check what they should do
+- renamed `newdelete.h` to `newdelete.hpp`
+- make toolchain check for nasm correctly
 
 ## Prerequisites
 

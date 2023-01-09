@@ -1,12 +1,52 @@
 #include "AVLTree.hpp"
+#include "Bitmap.hpp"
 
 #include <stdio.hpp>
-
 #include <math.h>
-
-#include <Memory/newdelete.h> // required for creating and deleting nodes
+#include <Memory/newdelete.hpp> // required for creating and deleting nodes
+#include <util.h>
 
 namespace AVLTree {
+
+	Node nodePool[POOL_SIZE];
+	uint64_t nodePool_UsedCount;
+	uint8_t nodePool_BitmapData[POOL_SIZE / 8];
+	WorldOS::Bitmap nodePool_Bitmap;
+
+	void NodePool_Init() {
+		nodePool_UsedCount = 0;
+		memset(nodePool_BitmapData, 0, POOL_SIZE / 8);
+		nodePool_Bitmap.SetSize(POOL_SIZE);
+		nodePool_Bitmap.SetBuffer(&(nodePool_BitmapData[0]));
+	}
+
+	void NodePool_Destroy() {
+		nodePool_Bitmap.~Bitmap();
+	}
+
+	Node* NodePool_AllocateNode() {
+		if (nodePool_UsedCount == POOL_SIZE - 1) return nullptr;
+		for (uint64_t i = 0; i < POOL_SIZE; i++) {
+			if (nodePool_Bitmap[i] == 0) {
+				nodePool_Bitmap.Set(i, true);
+				nodePool_UsedCount++;
+				return &(nodePool[i]);
+			}
+		}
+		return nullptr;
+	}
+
+	bool NodePool_FreeNode(Node* node) {
+		for (uint64_t i = 0; i < POOL_SIZE; i++) {
+			if ((uint64_t)node == (uint64_t)(&(nodePool[i]))) {
+				nodePool_Bitmap.Set(i, false);
+				nodePool_UsedCount--;
+				return true;
+			}
+		}
+		return false;
+	}
+
 
 	uint64_t height(Node* root) {
 		if (root == nullptr)
@@ -15,7 +55,15 @@ namespace AVLTree {
 	}
 
 	Node* newNode(uint64_t key, void* extraData) {
-		Node* node = new Node(); /* TODO: fix this function */
+		Node* node = nullptr;
+		if (NewDeleteInitialised())
+			node = new Node();
+		else
+			node = NodePool_AllocateNode();
+
+		if (node == nullptr)
+			return nullptr; // protects against page faults
+
 		node->key = key;
 		node->extraData = extraData;
 		node->left = nullptr;
@@ -154,12 +202,18 @@ namespace AVLTree {
 			// Node with only one child or no child
 			if (root->left == nullptr) {
 				Node* temp = root->right;
-				delete root;
+				if (NewDeleteInitialised())
+					delete root;
+				else
+					NodePool_FreeNode(root);
 				root = temp;
 			}
 			else if (root->right == nullptr) {
 				Node* temp = root->left;
-				delete root;
+				if (NewDeleteInitialised())
+					delete root;
+				else
+					NodePool_FreeNode(root);
 				root = temp;
 			}
 

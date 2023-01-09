@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "newdelete.h"
+#include "newdelete.hpp"
 
 #ifndef __cplusplus
 #error C++ only
