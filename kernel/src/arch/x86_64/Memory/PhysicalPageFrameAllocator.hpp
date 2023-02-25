@@ -1,5 +1,5 @@
-#ifndef _KERNEL_PAGE_FRAME_ALLOCATOR_HPP
-#define _KERNEL_PAGE_FRAME_ALLOCATOR_HPP
+#ifndef _KERNEL_PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP
+#define _KERNEL_PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP
 
 #include <stddef.h>
 #include <stdint.h>
@@ -7,14 +7,14 @@
 
 #include <Memory/Memory.hpp>
 
-#define MEMORY_MAP_ENTRY_SIZE 24
+
 
 namespace x86_64_WorldOS {
 
-    class PageFrameAllocator {
+    class PhysicalPageFrameAllocator {
     public:
-        PageFrameAllocator();
-        ~PageFrameAllocator();
+        PhysicalPageFrameAllocator();
+        ~PhysicalPageFrameAllocator();
 
         // Set Memory Map and Initialize Page map
         void SetMemoryMap(const WorldOS::MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount);
@@ -43,6 +43,6 @@ namespace x86_64_WorldOS {
 
 }
 
-extern x86_64_WorldOS::PageFrameAllocator* g_PFA;
+extern x86_64_WorldOS::PhysicalPageFrameAllocator* g_PPFA;
 
-#endif /* _KERNEL_PAGE_FRAME_ALLOCATOR_HPP */
+#endif /* _KERNEL_PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP */

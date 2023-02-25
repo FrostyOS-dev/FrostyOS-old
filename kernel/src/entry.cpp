@@ -5,6 +5,8 @@
 #include "Memory/Memory.hpp"
 #include "limine.h"
 
+#include <arch/x86_64/Stack.h>
+
 extern "C" volatile struct limine_framebuffer_request framebuffer_request {
     .id = LIMINE_FRAMEBUFFER_REQUEST,
     .revision = 0
@@ -42,6 +44,7 @@ static volatile void done(void) {
 }
 
 extern "C" void _start(void) {
+    InitKernelStack(kernel_stack, KERNEL_STACK_SIZE);
 
     if (framebuffer_request.response == nullptr) {
         done();

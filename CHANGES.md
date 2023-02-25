@@ -1,6 +1,13 @@
 # Changes
 
-## Latest Changes - 09/01/2023
+## Latest Changes - 25/02/2023
+
+- Many Virtual Page Manager improvements (nearly done)
+- Added custom kernel stack
+- Various refactoring and cleanup
+- Added Linked List data structure with node pool (same as AVL tree)
+
+## 09/01/2023
 
 - Added Node pool for AVL Tree in case MM isn't active
 - Added utility for new and delete

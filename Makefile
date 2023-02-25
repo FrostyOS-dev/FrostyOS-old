@@ -16,7 +16,7 @@ KERNEL_ASMFLAGS = -f elf64
 KERNEL_CC = $(HOME)/opt/cross/bin/x86_64-elf-gcc
 KERNEL_CFLAGS = -mcmodel=kernel -std=c17 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector -fno-exceptions -Ikernel/src -mgeneral-regs-only -mno-red-zone -O2
 
-.PHONY: boot-iso all toolchain dependencies kernel clean-kernel clean-all mkgpt
+.PHONY: boot-iso all toolchain dependencies kernel clean-kernel clean-all mkgpt clean-os
 
 SHELL := /bin/bash
 
@@ -102,6 +102,7 @@ clean-all:
 	@rm -fr iso
 	@rm -fr dist
 	@rm -fr depend
+	@rm kernel/src/limine.h
 
 clean-os:
 	@echo ---------------------------

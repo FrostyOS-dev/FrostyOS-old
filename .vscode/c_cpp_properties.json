@@ -18,9 +18,6 @@
                 "limitSymbolsToIncludedHeaders": true
             },
             "compilerArgs": [
-                "-nostdinc",
-                "-nostdlib",
-                "-zmax-page-size=0x1000",
                 "-mcmodel=kernel",
                 "-g",
                 "-Wall",
@@ -29,19 +26,28 @@
                 "-Wstrict-aliasing",
                 "-Wno-pointer-arith",
                 "-Wno-unused-parameter",
+                "-nostdlib",
+                "-nostdinc",
                 "-ffreestanding",
                 "-fno-pie",
                 "-fno-stack-protector",
                 "-fno-exceptions",
+                "-Ikernel/src",
                 "-mgeneral-regs-only",
                 "-mno-red-zone",
-                "-O2"
+                "-O2",
+                "-fno-use-cxa-atexit",
+                "-fno-rtti",
+                "-Tkernel/kernel.ld",
+                "-static",
+                "-Bsymbolic",
+                "-zmax-page-size=0x1000"
             ]
         },
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/src/kernel/*"
+                "${workspaceFolder}/kernel/src/*"
             ],
             "defines": [],
             "windowsSdkVersion": "10.0.19041.0",
@@ -50,10 +56,6 @@
             "cppStandard": "c++20",
             "intelliSenseMode": "windows-gcc-x64",
             "compilerArgs": [
-                "-nostdinc",
-                "-m64",
-                "-nostdlib",
-                "-zmax-page-size=0x1000",
                 "-mcmodel=kernel",
                 "-g",
                 "-Wall",
@@ -62,13 +64,21 @@
                 "-Wstrict-aliasing",
                 "-Wno-pointer-arith",
                 "-Wno-unused-parameter",
-                "-ffreestanding",
-                "-fno-pie",
+                "-nostdlib",
+                "-nostdinc",
+                "-ffreestanding-fno-pie",
                 "-fno-stack-protector",
                 "-fno-exceptions",
+                "-Ikernel/src",
                 "-mgeneral-regs-only",
                 "-mno-red-zone",
-                "-O2"
+                "-O2",
+                "-fno-use-cxa-atexit",
+                "-fno-rtti",
+                "-Tkernel/kernel.ld",
+                "-static",
+                "-Bsymbolic",
+                "-zmax-page-size=0x1000"
             ]
         }
     ],

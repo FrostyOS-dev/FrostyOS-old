@@ -54,7 +54,7 @@ namespace AVLTree {
 		return root->height;
 	}
 
-	Node* newNode(uint64_t key, void* extraData) {
+	Node* newNode(uint64_t key, uint64_t extraData) {
 		Node* node = nullptr;
 		if (NewDeleteInitialised())
 			node = new Node();
@@ -110,7 +110,7 @@ namespace AVLTree {
 		return height(N->left) - height(N->right);
 	}
 
-	void insert(Node*& root, uint64_t key, void* extraData) {
+	void insert(Node*& root, uint64_t key, uint64_t extraData) {
 		/* 1. Perform the normal BST insertion */
 		if (root == nullptr) {
 			root = newNode(key, extraData);
@@ -160,6 +160,8 @@ namespace AVLTree {
 	}
 
 	Node* findNode(Node* root, uint64_t key) {
+		if (root == nullptr)
+			return nullptr;
 		if (root->left == nullptr || root->right == nullptr)
 			return nullptr;
 		else if (root->key < key)
@@ -171,6 +173,21 @@ namespace AVLTree {
 		else
 			return nullptr;
 	}
+
+	Node* findNodeOrHigher(Node* root, uint64_t key) {
+		if (root == nullptr)
+			return nullptr;
+		Node* temp = findNode(root, key);
+		if (temp != nullptr)
+			return temp;
+		else if (root->key >= key) {
+			Node* node = findNodeOrHigher(root->left, key);
+			return node == nullptr ? root : node;
+		} else {
+			return findNodeOrHigher(root->right, key);
+		}
+	}
+
 
 	Node* minValueNode(Node* root) {
 		Node* current = root;
@@ -265,6 +282,23 @@ namespace AVLTree {
 			preOrder(root->left);
 			preOrder(root->right);
 		}
+	}
+
+	Node* getParent(Node* root, uint64_t key) {
+		if (root == nullptr)
+			return nullptr;
+		else if (root->left == nullptr || root->right == nullptr)
+			return nullptr;
+		else if (root->left->key == key || root->right->key == key)
+			return root;
+		else if (root->key < key)
+			return getParent(root->right, key);
+		else if (root->key > key)
+			return getParent(root->left, key);
+		else if (root->key == key)
+			return nullptr;
+		else
+			return nullptr;
 	}
 
 }

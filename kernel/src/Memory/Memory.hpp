@@ -10,6 +10,7 @@
 #error C++ only
 #else
 
+#define MEMORY_MAP_ENTRY_SIZE 24
 
 namespace WorldOS {
     constexpr uint64_t WORLDOS_MEMORY_FREE                   =  0;

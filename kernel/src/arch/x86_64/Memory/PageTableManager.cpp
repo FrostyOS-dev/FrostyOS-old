@@ -1,5 +1,5 @@
 #include "PageTableManager.hpp"
-#include "PageFrameAllocator.hpp"
+#include "PhysicalPageFrameAllocator.hpp"
 #include "PageMapIndexer.hpp"
 
 #include "../ELFKernel.hpp"
@@ -10,7 +10,7 @@
 
 namespace x86_64_WorldOS {
 
-    PageFrameAllocator PFA;
+    PhysicalPageFrameAllocator PPFA;
 
     /* PageTableManager class */
 
@@ -66,9 +66,20 @@ namespace x86_64_WorldOS {
             WorldOS::Panic("PML4 is not page-aligned!", nullptr, false);
         }
 
+        /* 
+        TODO:
+        - Change this so only the necessary memory is mapped
+        - Identity map important memory map entries such as ACPI NVS and ACPI reclaimable
+        - Map any important framebuffers
+        */
+
         x86_64_LoadCR3((uint64_t)&g_PML4);
         
-        PFA.SetMemoryMap(MemoryMap[0], MMEntryCount);
+        // Initialise physical MM
+        PPFA.SetMemoryMap(MemoryMap[0], MMEntryCount);
+
+        // Setup virtual MM
+        
     }
 
     PageTableManager::~PageTableManager() {

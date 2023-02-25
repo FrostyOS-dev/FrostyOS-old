@@ -1,32 +1,33 @@
-#include "PageFrameAllocator.hpp"
+#include "PhysicalPageFrameAllocator.hpp"
 
 #include <util.h>
 #include <stdio.hpp>
+
 
 #include <HAL/hal.hpp>
 
 #include "PageMapIndexer.hpp"
 
-x86_64_WorldOS::PageFrameAllocator* g_PFA = nullptr;
+x86_64_WorldOS::PhysicalPageFrameAllocator* g_PPFA = nullptr;
 
 namespace x86_64_WorldOS {
 
-    /* PageFrameAllocator class */
+    /* PhysicalPageFrameAllocator class */
 
     /* Public Methods */
 
-    PageFrameAllocator::PageFrameAllocator() {
+    PhysicalPageFrameAllocator::PhysicalPageFrameAllocator() {
         m_FreeMem = 0;
         m_ReservedMem = 0;
         m_UsedMem = 0;
         m_MemSize = 0;
     }
 
-    PageFrameAllocator::~PageFrameAllocator() {
+    PhysicalPageFrameAllocator::~PhysicalPageFrameAllocator() {
         
     }
 
-    void PageFrameAllocator::SetMemoryMap(const WorldOS::MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount) {
+    void PhysicalPageFrameAllocator::SetMemoryMap(const WorldOS::MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount) {
         using namespace WorldOS;
         // Setup
         m_MemSize = GetMemorySize(&FirstMemoryMapEntry, MemoryMapEntryCount);
@@ -90,20 +91,20 @@ namespace x86_64_WorldOS {
         }
     }
 
-    void* PageFrameAllocator::AllocatePage() {
+    void* PhysicalPageFrameAllocator::AllocatePage() {
         uint64_t index = FindFreePage();
         LockPage((void*)(index * 4096));
         return (void*)(index * 4096);
     }
 
-    void PageFrameAllocator::ReservePage(void* page) {
+    void PhysicalPageFrameAllocator::ReservePage(void* page) {
         if (m_Bitmap[((uint64_t)page / 4096)]) return;
         m_Bitmap.Set(((uint64_t)page / 4096), true);
         m_FreeMem -= 4096;
         m_ReservedMem += 4096;
     }
 
-    void PageFrameAllocator::FreePage(void* page) {
+    void PhysicalPageFrameAllocator::FreePage(void* page) {
         if (!m_Bitmap[((uint64_t)page / 4096)]) return;
         m_Bitmap.Set(((uint64_t)page / 4096), false);
         m_FreeMem += 4096;
@@ -112,14 +113,14 @@ namespace x86_64_WorldOS {
 
     /* Private Methods */
 
-    void PageFrameAllocator::LockPage(void* page) {
+    void PhysicalPageFrameAllocator::LockPage(void* page) {
         if (m_Bitmap[((uint64_t)page / 4096)]) return;
         m_Bitmap.Set(((uint64_t)page / 4096), true);
         m_FreeMem -= 4096;
         m_UsedMem += 4096;
     }
 
-    void PageFrameAllocator::UnlockPage(void* page) {
+    void PhysicalPageFrameAllocator::UnlockPage(void* page) {
         if (!m_Bitmap[((uint64_t)page / 4096)]) return;
         m_Bitmap.Set(((uint64_t)page / 4096), false);
         m_FreeMem += 4096;
@@ -127,7 +128,7 @@ namespace x86_64_WorldOS {
     }
 
 
-    uint64_t PageFrameAllocator::FindFreePage() {
+    uint64_t PhysicalPageFrameAllocator::FindFreePage() {
         for (uint64_t i = 0; i < m_Bitmap.GetSize(); i++) {
             if (m_Bitmap[i] == false) {
                 return i * 8;

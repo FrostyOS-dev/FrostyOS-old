@@ -8,6 +8,11 @@
     ],
     "makefile.makefilePath": "./Makefile",
     "makefile.makePath": "make",
-    "makefile.phonyOnlyTargets": false,
-    "C_Cpp.errorSquiggles": "enabled"
+    "makefile.phonyOnlyTargets": true,
+    "C_Cpp.errorSquiggles": "enabled",
+    "cSpell.words": [
+        "Unallocate",
+        "Unreserve",
+        "WORLDOS"
+    ]
 }
