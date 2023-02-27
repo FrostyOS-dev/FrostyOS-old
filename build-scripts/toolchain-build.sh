@@ -63,33 +63,3 @@ fi
 # clean-up
 cd ..
 rm -fr $HOME/toolchain-build
-
-if (!($HOME/opt/nasm/bin/nasm --v | grep 2.15.05 > /dev/null)) then
-    echo -------------
-    echo Building nasm
-    echo -------------
-
-    # Prepare for nasm
-    cd $HOME
-    rm -fr nasm-build # attempt to remove nasm build dir. If it doesn't exist, it does nothing
-    mkdir nasm-build
-    cd nasm-build
-
-    # fetch nasm code
-    curl -OL https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-2.15.05.tar.gz
-    tar -xf nasm-2.15.05.tar.gz
-
-    # build nasm
-    cd nasm-nasm-2.15.05
-    sh autogen.sh
-    sh configure --prefix="$HOME/opt/nasm" --exec-prefix="$HOME/opt/nasm" --host=$TARGET
-    make -j6
-    make install
-    cd ..
-
-    # clean-up
-    cd ..
-    rm -fr $HOME/nasm-build
-else
-    echo NASM is up to date
-fi

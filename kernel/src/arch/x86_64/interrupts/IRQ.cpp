@@ -5,7 +5,7 @@
 
 #define PIC_REMAP_OFFSET 0x20
 
-x86_64_IRQHandler g_IRQHandlers[16];
+x86_64_IRQHandler_t g_IRQHandlers[16];
 
 void x86_64_IRQ_Handler(x86_64_Registers* regs) {
     uint8_t irq = regs->interrupt - PIC_REMAP_OFFSET;
@@ -29,6 +29,6 @@ void x86_64_IRQ_Initialize() {
     x86_64_EnableInterrupts();
 }
 
-void x86_64_IRQ_RegisterHandler(const uint8_t irq, x86_64_IRQHandler handler) {
+void x86_64_IRQ_RegisterHandler(const uint8_t irq, x86_64_IRQHandler_t handler) {
     g_IRQHandlers[irq] = handler;
 }

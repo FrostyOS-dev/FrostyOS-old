@@ -11,7 +11,7 @@ KERNEL_CXXFLAGS = -mcmodel=kernel -std=c++20 -g -Wall -Wextra -Wpedantic -Wstric
 KERNEL_CXXC = $(HOME)/opt/cross/bin/x86_64-elf-g++
 KERNEL_LD = $(HOME)/opt/cross/bin/x86_64-elf-ld
 KERNEL_LDFLAGS = -Tkernel/kernel.ld -static -Bsymbolic -nostdlib -Ikernel/src -zmax-page-size=0x1000
-KERNEL_ASMC = $(HOME)/opt/nasm/bin/nasm
+KERNEL_ASMC = nasm
 KERNEL_ASMFLAGS = -f elf64
 KERNEL_CC = $(HOME)/opt/cross/bin/x86_64-elf-gcc
 KERNEL_CFLAGS = -mcmodel=kernel -std=c17 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector -fno-exceptions -Ikernel/src -mgeneral-regs-only -mno-red-zone -O2

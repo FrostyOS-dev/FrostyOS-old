@@ -1,11 +1,10 @@
 # WorldOS
 
-## Latest Changes - 25/02/2023
+## Latest Changes - 27/02/2023
 
-- Many Virtual Page Manager improvements (nearly done)
-- Added custom kernel stack
-- Various refactoring and cleanup
-- Added Linked List data structure with node pool (same as AVL tree)
+- Fixed interrupt returning and ISR registering
+- Removed nasm building as it is unnecessary
+- Made `run-utils/addr2line.sh` executable (unix filesystems only)
 
 ## Prerequisites
 
@@ -22,8 +21,9 @@
 - curl
 - make
 - git
+- nasm
 
-#### Toolchain and nasm build
+#### Toolchain build
 
 - gcc/g++ version 9 or higher
 - make
@@ -32,7 +32,7 @@
 - gmp
 - libmpc
 - mpfr
-- binutils version 2 or higher (only for binutils and nasm builds)
+- binutils version 2 or higher (only for binutils builds)
 
 #### mkgpt build
 
@@ -74,23 +74,23 @@ If you cannot meet these requirements, see notes
 
 ### Linux
 
-#### Debian/Ubuntu/Linux mint/PopOS
+#### Debian
 
-- run `sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash`
+- run `sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm`
 
 #### Fedora/RHEL
 
-- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash`
+- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm`
 
 #### Arch
 
-- run `sudo pacman -Syu base-devel gmp libmpc mpfr mtools curl qemu git bash`
+- run `sudo pacman -Syu base-devel gmp libmpc mpfr mtools curl qemu git bash nasm`
 
 ---
 
 ## Building
 
-1. run `make` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). NOTE: If the toolchain and NASM aren't built and installed to the correct location, they **will** be built and installed
+1. run `make` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed
 
 ## Running - Anything with bash
 

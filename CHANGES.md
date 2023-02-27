@@ -1,6 +1,12 @@
 # Changes
 
-## Latest Changes - 25/02/2023
+## Latest Changes - 27/02/2023
+
+- Fixed interrupt returning and ISR registering
+- Removed nasm building as it is unnecessary
+- Made `run-utils/addr2line.sh` executable (unix filesystems only)
+
+## 25/02/2023
 
 - Many Virtual Page Manager improvements (nearly done)
 - Added custom kernel stack

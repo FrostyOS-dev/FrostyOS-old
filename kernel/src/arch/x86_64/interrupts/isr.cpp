@@ -3,7 +3,7 @@
 
 #define MODULE "ISR"
 
-x86_64_ISRHandler g_ISRHandlers[256];
+x86_64_ISRHandler_t g_ISRHandlers[256];
 
 static const char* const g_Exceptions[] = {
     "Divide by 0",
@@ -38,7 +38,7 @@ void x86_64_ISR_Initialize() {
         x86_64_IDT_EnableGate(i);
 }
 
-void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler handler) {
+void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler) {
     g_ISRHandlers[interrupt] = handler;
     x86_64_IDT_EnableGate(interrupt);
 }
@@ -48,7 +48,7 @@ extern "C" void x86_64_ISR_Handler(x86_64_Registers regs) {
 
     /* Check if there is a designated handler */
     if (g_ISRHandlers[p_regs->interrupt] != nullptr)
-        g_ISRHandlers[p_regs->interrupt](p_regs);
+        return g_ISRHandlers[p_regs->interrupt](p_regs);
 
 
     /* TEMP */

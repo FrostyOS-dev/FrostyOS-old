@@ -39,6 +39,8 @@ namespace WorldOS {
 
         //x86_64_WorldOS::PageTableManager manager(params.MemoryMap, params.MemoryMapEntryCount, PML4, params.kernel_virtual_addr, params.kernel_size);
 
+        
+
         // hang
         while (true) {
             

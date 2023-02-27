@@ -12,10 +12,10 @@ struct x86_64_Registers {
     uint64_t rip, cs, rflags, rsp, ss;                   // pushed automatically by CPU
 } __attribute__((packed));
 
-typedef void (*x86_64_ISRHandler)(x86_64_Registers* regs);
+typedef void (*x86_64_ISRHandler_t)(x86_64_Registers* regs);
 
 void x86_64_ISR_Initialize();
-void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler handler);
+void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler);
 
 extern "C" void x86_64_ISR_Handler(x86_64_Registers regs);
 
