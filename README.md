@@ -102,11 +102,11 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### Debug
 
-1. run `qemu-system-x86_64 -pflash ovmf/x86-64/OVMF.fd -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio`
+1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio`
 
 ### Release
 
-1. run `qemu-system-x86_64 -pflash ovmf/x86-64/OVMF.fd -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M`
+1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M`
 
 ---
 
