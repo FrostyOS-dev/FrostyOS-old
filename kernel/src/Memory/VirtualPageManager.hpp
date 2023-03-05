@@ -8,10 +8,12 @@
 #include <Data-structures/AVLTree.hpp>
 #include <Data-structures/LinkedList.hpp>
 
-namespace x86_64_WorldOS {
+namespace WorldOS {
     class VirtualPageManager {
     public:
-        void InitVPageMgr(WorldOS::MemoryMapEntry* MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size);
+        VirtualPageManager();
+        ~VirtualPageManager();
+        void InitVPageMgr(MemoryMapEntry* MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size, void* region_start, uint64_t region_length);
         void* FindFreePage();
         void* FindFreePages(uint64_t count);
         void cleanupRUTree(AVLTree::Node* node, AVLTree::Node* parent);
@@ -39,6 +41,8 @@ namespace x86_64_WorldOS {
         uint64_t m_ReservedPagesCount = 0;
         AVLTree::Node* m_FreePagesSizeTree = nullptr; // assigned to nullptr so it gets allocated a node from the node pool
         AVLTree::Node* m_ReservedANDUsedPages = nullptr; // highest bit in extra data determines if it reserved (1) or used (0)
+        void* m_RegionStart = nullptr;
+        uint64_t m_RegionLength = 0;
     };
 }
 

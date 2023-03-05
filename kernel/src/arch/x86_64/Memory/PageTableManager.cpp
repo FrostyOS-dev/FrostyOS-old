@@ -1,6 +1,7 @@
 #include "PageTableManager.hpp"
-#include "PhysicalPageFrameAllocator.hpp"
 #include "PageMapIndexer.hpp"
+
+#include <Memory/PhysicalPageFrameAllocator.hpp>
 
 #include "../ELFKernel.hpp"
 
@@ -10,7 +11,7 @@
 
 namespace x86_64_WorldOS {
 
-    PhysicalPageFrameAllocator PPFA;
+    WorldOS::PhysicalPageFrameAllocator PPFA;
 
     /* PageTableManager class */
 

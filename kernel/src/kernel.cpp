@@ -4,6 +4,8 @@
 
 #include <arch/x86_64/Memory/PageTableManager.hpp>
 
+#include <HAL/timer.hpp>
+
 namespace WorldOS {
 
     FrameBuffer m_InitialFrameBuffer;
@@ -34,10 +36,6 @@ namespace WorldOS {
         fprintf(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
 
         // temp
-
-        //PageMapLevel4Entry* PML4;
-
-        //x86_64_WorldOS::PageTableManager manager(params.MemoryMap, params.MemoryMapEntryCount, PML4, params.kernel_virtual_addr, params.kernel_size);
 
         
 

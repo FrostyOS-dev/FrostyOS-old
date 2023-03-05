@@ -1,7 +1,7 @@
 #include "VirtualPageManager.hpp"
 
 
-namespace x86_64_WorldOS {
+namespace WorldOS {
 
     /* Extra Internal Functions */
 
@@ -183,13 +183,13 @@ namespace x86_64_WorldOS {
         }
     }
 
-    void Internal_clearFreePagesTree(AVLTree::Node* root) {
+    void Internal_clearFreePagesSizeTree(AVLTree::Node* root) {
         if (root == nullptr)
             return;
         if (root->left != nullptr)
-            Internal_clearFreePagesTree(root->left);
+            Internal_clearFreePagesSizeTree(root->left);
         if (root->right != nullptr)
-            Internal_clearFreePagesTree(root->right);
+            Internal_clearFreePagesSizeTree(root->right);
         LinkedList::Node* list = (LinkedList::Node*)root->extraData;
         while (list != nullptr) {
             using namespace LinkedList;
@@ -198,7 +198,16 @@ namespace x86_64_WorldOS {
         AVLTree::deleteNode(root, root->key);
     }
 
-    // same as below, but you can choose the root
+    void Internal_clearUsedReservedPagesTree(AVLTree::Node* root) {
+        if (root == nullptr)
+            return;
+        if (root->left != nullptr)
+            Internal_clearUsedReservedPagesTree(root->left);
+        if (root->right != nullptr)
+            Internal_clearUsedReservedPagesTree(root->right);
+        AVLTree::deleteNode(root, root->key);
+    }
+
     void Internal_OrganiseNewAVLTreeIntoFPST(AVLTree::Node* new_root, AVLTree::Node* root) {
         if (root == nullptr)
             return;
@@ -216,15 +225,27 @@ namespace x86_64_WorldOS {
     }
 
 
+
     /* Virtual Page Manager Class */
 
     /* Public Methods */
 
-    void VirtualPageManager::InitVPageMgr(WorldOS::MemoryMapEntry* MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size) {
-        FreePages((void*)0x1000, 0xFFFFFFFFF);
+    VirtualPageManager::VirtualPageManager() {
+        // do nothing. just here so the compiler doesn't complain
+    }
+
+    VirtualPageManager::~VirtualPageManager() {
+        Internal_clearFreePagesSizeTree(m_FreePagesSizeTree);
+        Internal_clearUsedReservedPagesTree(m_ReservedANDUsedPages);
+    }
+
+    void VirtualPageManager::InitVPageMgr(MemoryMapEntry* MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size, void* region_start, uint64_t region_length) {
+        m_RegionStart = region_start;
+        m_RegionLength = region_length;
+        FreePages(m_RegionStart, m_RegionLength);
         for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
-            WorldOS::MemoryMapEntry* entry = (WorldOS::MemoryMapEntry*)((uint64_t)MemoryMap + (i * MEMORY_MAP_ENTRY_SIZE));
-            if (entry->type == WorldOS::WORLDOS_MEMORY_ACPI_NVS || entry->type == WorldOS::WORLDOS_MEMORY_ACPI_RECLAIMABLE) {
+            MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)MemoryMap + (i * MEMORY_MAP_ENTRY_SIZE));
+            if ((entry->type == WORLDOS_MEMORY_ACPI_NVS || entry->type == WORLDOS_MEMORY_ACPI_RECLAIMABLE) && (entry->Address >= (uint64_t)m_RegionStart && (entry->Address + entry->length) <= ((uint64_t)m_RegionStart + m_RegionLength))) {
                 uint64_t page_length = (((entry->length % 4096) > 0) ? ((entry->length / 4096) + 1) : (entry->length / 4096));
                 ReservePages((void*)entry->Address, page_length);
             }
@@ -283,7 +304,7 @@ namespace x86_64_WorldOS {
         Internal_OrganiseFPSTIntoNewAVLTree(FreePagesAddressTree, m_FreePagesSizeTree);
         Internal_cleanFreePagesTree(FreePagesAddressTree, FreePagesAddressTree, nullptr);
         // wipe old free pages tree
-        Internal_clearFreePagesTree(m_FreePagesSizeTree);
+        Internal_clearFreePagesSizeTree(m_FreePagesSizeTree);
         // rebuild tree
         Internal_OrganiseNewAVLTreeIntoFPST(m_FreePagesSizeTree, FreePagesAddressTree);
     }

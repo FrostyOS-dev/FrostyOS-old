@@ -8,8 +8,7 @@
 #include <Memory/Memory.hpp>
 
 
-
-namespace x86_64_WorldOS {
+namespace WorldOS {
 
     class PhysicalPageFrameAllocator {
     public:
@@ -17,7 +16,7 @@ namespace x86_64_WorldOS {
         ~PhysicalPageFrameAllocator();
 
         // Set Memory Map and Initialize Page map
-        void SetMemoryMap(const WorldOS::MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount);
+        void SetMemoryMap(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount);
 
         void* AllocatePage(); // Only for physical allocation, DO NOT use for virtual allocation.
 
@@ -34,7 +33,7 @@ namespace x86_64_WorldOS {
         uint64_t FindFreePage();
     
     private:
-        WorldOS::Bitmap m_Bitmap;
+        Bitmap m_Bitmap;
         size_t m_FreeMem;
         size_t m_ReservedMem;
         size_t m_UsedMem;
@@ -43,6 +42,6 @@ namespace x86_64_WorldOS {
 
 }
 
-extern x86_64_WorldOS::PhysicalPageFrameAllocator* g_PPFA;
+extern WorldOS::PhysicalPageFrameAllocator* g_PPFA;
 
 #endif /* _KERNEL_PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP */

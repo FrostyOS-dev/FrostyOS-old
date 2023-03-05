@@ -1,10 +1,10 @@
 # WorldOS
 
-## Latest Changes - 27/02/2023
+## Latest Changes - 05/03/2023
 
-- Fixed interrupt returning and ISR registering
-- Removed nasm building as it is unnecessary
-- Made `run-utils/addr2line.sh` executable (unix filesystems only)
+- Added PIT timer with full timer interface
+- Fixed qemu run command line.
+- Moved Virtual and physical page managers out of arch/x86_64 folder
 
 ## Prerequisites
 
@@ -102,11 +102,11 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### Debug
 
-1. run `qemu-system-x86_64 -pflash ovmf/x86-64/OVMF.fd -hda iso/hdimage.bin -m 256M -debugcon stdio`
+1. run `qemu-system-x86_64 -pflash ovmf/x86-64/OVMF.fd -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio`
 
 ### Release
 
-1. run `qemu-system-x86_64 -pflash ovmf/x86-64/OVMF.fd -hda iso/hdimage.bin -m 256M`
+1. run `qemu-system-x86_64 -pflash ovmf/x86-64/OVMF.fd -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M`
 
 ---
 

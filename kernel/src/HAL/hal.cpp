@@ -1,13 +1,18 @@
 #include "hal.hpp"
+#include "timer.hpp"
 
 #include <arch/x86_64/GDT/gdt.hpp>
+
 #include <arch/x86_64/interrupts/IDT.hpp>
 #include <arch/x86_64/interrupts/isr.hpp>
 #include <arch/x86_64/interrupts/IRQ.hpp>
 #include <arch/x86_64/interrupts/pic.hpp>
+
 #include <arch/x86_64/fpu.h>
+#include <arch/x86_64/io.h>
 
 #include <arch/x86_64/Graphics/vga-graphics.hpp>
+
 
 namespace WorldOS {
 
@@ -27,6 +32,10 @@ namespace WorldOS {
         x86_64_VGA_Graphics_ClearScreen(0);
 
         x86_64_IRQ_Initialize();
+
+        x86_64_DisableInterrupts();
+        HAL_TimerInit();
+        x86_64_EnableInterrupts();
     }
 
     /*

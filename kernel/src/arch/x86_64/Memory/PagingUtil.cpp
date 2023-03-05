@@ -2,7 +2,7 @@
 
 #include "PageTables.hpp"
 
-#include "PhysicalPageFrameAllocator.hpp"
+#include <Memory/PhysicalPageFrameAllocator.hpp>
 
 #include "PageMapIndexer.hpp"
 

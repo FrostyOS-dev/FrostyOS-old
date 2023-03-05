@@ -6,11 +6,11 @@
 
 #include <HAL/hal.hpp>
 
-#include "PageMapIndexer.hpp"
+#include "PagingUtil.hpp"
 
-x86_64_WorldOS::PhysicalPageFrameAllocator* g_PPFA = nullptr;
+WorldOS::PhysicalPageFrameAllocator* g_PPFA = nullptr;
 
-namespace x86_64_WorldOS {
+namespace WorldOS {
 
     /* PhysicalPageFrameAllocator class */
 
@@ -27,7 +27,7 @@ namespace x86_64_WorldOS {
         
     }
 
-    void PhysicalPageFrameAllocator::SetMemoryMap(const WorldOS::MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount) {
+    void PhysicalPageFrameAllocator::SetMemoryMap(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount) {
         using namespace WorldOS;
         // Setup
         m_MemSize = GetMemorySize(&FirstMemoryMapEntry, MemoryMapEntryCount);
@@ -49,7 +49,7 @@ namespace x86_64_WorldOS {
             if ((entry->type == WORLDOS_MEMORY_FREE) && (entry->length >= BitmapSize)) {
                 m_ReservedMem += BitmapSize;
                 m_Bitmap.SetBuffer((uint8_t*)entry->Address);
-                x86_64_map_page(m_Bitmap.GetBuffer(), m_Bitmap.GetBuffer(), 3);
+                MapPage(m_Bitmap.GetBuffer(), m_Bitmap.GetBuffer(), 3);
                 fast_memset(m_Bitmap.GetBuffer(), 0, BitmapSize/8);
                 for (uint64_t j = 0; j < (BitmapSize / 4096); j++) {
                     m_Bitmap.Set(((entry->Address / 4096) + j), true);
