@@ -97,6 +97,12 @@ namespace WorldOS {
         return (void*)(index * 4096);
     }
 
+    void* PhysicalPageFrameAllocator::AllocatePages(uint64_t count) {
+        uint64_t index = FindFreePages(count);
+        LockPages((void*)(index * 4096), count);
+        return (void*)(index * 4096);
+    }
+
     void PhysicalPageFrameAllocator::ReservePage(void* page) {
         if (m_Bitmap[((uint64_t)page / 4096)]) return;
         m_Bitmap.Set(((uint64_t)page / 4096), true);
@@ -104,11 +110,36 @@ namespace WorldOS {
         m_ReservedMem += 4096;
     }
 
-    void PhysicalPageFrameAllocator::FreePage(void* page) {
+    void PhysicalPageFrameAllocator::ReservePages(void* start, uint64_t count) {
+        for (uint64_t i = 0; i < count; i++) {
+            ReservePage((void*)(i * 4096 + (uint64_t)start));
+        }
+    }
+
+    void PhysicalPageFrameAllocator::UnreservePage(void* page) {
         if (!m_Bitmap[((uint64_t)page / 4096)]) return;
         m_Bitmap.Set(((uint64_t)page / 4096), false);
         m_FreeMem += 4096;
         m_ReservedMem -= 4096;
+    }
+
+    void PhysicalPageFrameAllocator::UnreservePages(void* start, uint64_t count) {
+        for (uint64_t i = 0; i < count; i++) {
+            UnreservePage((void*)(i * 4096 + (uint64_t)start));
+        }
+    }
+
+    void PhysicalPageFrameAllocator::FreePage(void* page) {
+        if (!m_Bitmap[((uint64_t)page / 4096)]) return;
+        m_Bitmap.Set(((uint64_t)page / 4096), false);
+        m_FreeMem += 4096;
+        m_UsedMem -= 4096;
+    }
+
+    void PhysicalPageFrameAllocator::FreePages(void* start, uint64_t count) {
+        for (uint64_t i = 0; i < count; i++) {
+            FreePage((void*)(i * 4096 + (uint64_t)start));
+        }
     }
 
     /* Private Methods */
@@ -120,6 +151,13 @@ namespace WorldOS {
         m_UsedMem += 4096;
     }
 
+    void PhysicalPageFrameAllocator::LockPages(void* start, uint64_t count) {
+        for (uint64_t i = 0; i < count; i++) {
+            LockPage((void*)(i * 4096 + (uint64_t)start));
+        }
+    }
+
+
     void PhysicalPageFrameAllocator::UnlockPage(void* page) {
         if (!m_Bitmap[((uint64_t)page / 4096)]) return;
         m_Bitmap.Set(((uint64_t)page / 4096), false);
@@ -127,11 +165,39 @@ namespace WorldOS {
         m_UsedMem -= 4096;
     }
 
+    void PhysicalPageFrameAllocator::UnlockPages(void* start, uint64_t count) {
+        for (uint64_t i = 0; i < count; i++) {
+            UnlockPage((void*)(i * 4096 + (uint64_t)start));
+        }
+    }
 
     uint64_t PhysicalPageFrameAllocator::FindFreePage() {
         for (uint64_t i = 0; i < m_Bitmap.GetSize(); i++) {
-            if (m_Bitmap[i] == false) {
+            if (m_Bitmap[i] == 0) {
                 return i * 8;
+            }
+        }
+        return 0;
+    }
+
+    uint64_t PhysicalPageFrameAllocator::FindFreePages(uint64_t count) {
+        uint64_t next = 0;
+        if (count == 0) return 0;
+        for (uint64_t i = 0; i < m_Bitmap.GetSize(); i+=next) {
+            next = 1;
+            if (m_Bitmap[i] == 0) {
+                if (count == 1) return i * 8;
+                bool found = true;
+                next = 1;
+                while (next <= count) {
+                    if (m_Bitmap[i + next] == 0) {
+                        found = false;
+                        break;
+                    }
+                    if (count <= next) break; // check if next > count on next iteration
+                    next++;
+                }
+                if (found) return (i - next) * 8; // return start page index of the block
             }
         }
         return 0;

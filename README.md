@@ -1,10 +1,9 @@
 # WorldOS
 
-## Latest Changes - 05/03/2023
+## Latest Changes - 08/03/2023
 
-- Added PIT timer with full timer interface
-- Fixed qemu run command line.
-- Moved Virtual and physical page managers out of arch/x86_64 folder
+- Added functions for interacting with multiple pages to PMM
+- Fixed up some PMM functions
 
 ## Prerequisites
 

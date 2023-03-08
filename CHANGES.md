@@ -1,6 +1,11 @@
 # Changes
 
-## Latest Changes - 05/03/2023
+## Latest Changes - 08/03/2023
+
+- Added functions for interacting with multiple pages to PMM
+- Fixed up some PMM functions
+
+## 05/03/2023
 
 - Added PIT timer with full timer interface
 - Fixed qemu run command line.

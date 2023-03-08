@@ -19,9 +19,15 @@ namespace WorldOS {
         void SetMemoryMap(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount);
 
         void* AllocatePage(); // Only for physical allocation, DO NOT use for virtual allocation.
+        void* AllocatePages(uint64_t count);
 
-        void  ReservePage(void* page);
-        void  FreePage(void* page);
+        void ReservePage(void* page);
+        void ReservePages(void* start, uint64_t count);
+        void UnreservePage(void* page);
+        void UnreservePages(void* start, uint64_t count);
+
+        void FreePage(void* page);
+        void FreePages(void* start, uint64_t count);
 
         inline size_t GetFreeMemory()     { return m_FreeMem;     };
         inline size_t GetUsedMemory()     { return m_UsedMem;     };
@@ -29,8 +35,11 @@ namespace WorldOS {
 
     private:
         void LockPage(void* page);
+        void LockPages(void* start, uint64_t count);
         void UnlockPage(void* page);
+        void UnlockPages(void* start, uint64_t count);
         uint64_t FindFreePage();
+        uint64_t FindFreePages(uint64_t count);
     
     private:
         Bitmap m_Bitmap;
