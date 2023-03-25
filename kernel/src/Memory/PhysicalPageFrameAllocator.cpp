@@ -58,6 +58,7 @@ namespace WorldOS {
             }
         }
         if (!BitmapAddressFound) {
+            fprintf(VFS_DEBUG, "Bitmap error!\n");
             Panic("Failed to find address for page bitmap", nullptr, false);
             return;
         }

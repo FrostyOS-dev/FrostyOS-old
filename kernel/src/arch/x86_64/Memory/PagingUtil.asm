@@ -19,3 +19,33 @@ global x86_64_GetCR3
 x86_64_GetCR3:
     mov rax, cr3
     ret
+
+global x86_64_GetCR2
+x86_64_GetCR2:
+    mov rax, cr2
+    ret
+
+global x86_64_EnsureNX
+x86_64_EnsureNX:
+    mov rcx, 0xC0000080 ; EFER MSR
+    rdmsr ; we can assume that the register exists or we would not be in long mode
+    and rax, 2048 ; get bit 11
+    shr rax, 11
+    cmp al, 1
+    jz .success
+    mov rax, 0x80000001 ; put value in rax for NX check
+    cpuid ; we can assume cpuid is supported or we would not be in long mode
+    and edx, 1048576 ; select NX check bit
+    shr edx, 20
+    cmp edx, 1
+    jnz .fail
+    mov rcx, 0xC0000080 ; EFER MSR
+    rdmsr
+    or eax, 2048 ; bit 11
+    wrmsr
+.success:
+    mov rax, 1
+    ret
+.fail:
+    xor rax, rax ; clear rax
+    ret

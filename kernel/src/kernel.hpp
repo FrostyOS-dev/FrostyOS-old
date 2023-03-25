@@ -23,6 +23,7 @@ namespace WorldOS {
         uint64_t kernel_virtual_addr;
         size_t kernel_size;
         void* RSDP_table;
+        void* hhdm_start_addr;
     };
 
     extern "C" void StartKernel(KernelParams params);

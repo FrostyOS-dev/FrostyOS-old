@@ -37,7 +37,7 @@ int abs(int n) {
 }
 
 unsigned uabs(unsigned n) {
-    return n < 0 ? (n * -1) : n;
+    return n;
 }
 
 long labs(long n) {
@@ -45,7 +45,7 @@ long labs(long n) {
 }
 
 unsigned long ulabs(unsigned long n) {
-    return n < 0 ? (n * -1) : n;
+    return n;
 }
 
 div_t div(int numer, int denom) {

@@ -74,6 +74,10 @@ struct CR3Layout {
     uint16_t Reserved : 12;
 } __attribute__((packed));
 
+struct Level4Group {
+    PageMapLevel4Entry entries[512];
+};
+
 struct Level3Group {
     PageMapLevel3Entry entries[512];
 };

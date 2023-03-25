@@ -6,6 +6,7 @@
 #include "limine.h"
 
 #include <arch/x86_64/Stack.h>
+#include <arch/x86_64/io.h>
 
 extern "C" volatile struct limine_framebuffer_request framebuffer_request {
     .id = LIMINE_FRAMEBUFFER_REQUEST,
@@ -36,15 +37,24 @@ extern "C" volatile struct limine_kernel_file_request kernel_file_request {
     .id = LIMINE_KERNEL_FILE_REQUEST,
     .revision = 0
 };
+
+
+extern "C" volatile struct limine_hhdm_request hhdm_request {
+    .id = LIMINE_HHDM_REQUEST,
+    .revision = 0
+};
  
 static volatile void done(void) {
     while (true) {
-        asm("hlt");
+        __asm__("hlt");
     }
 }
 
-extern "C" void _start(void) {
+WorldOS::KernelParams kernelParams;
+
+extern "C" volatile void _start(void) {
     InitKernelStack(kernel_stack, KERNEL_STACK_SIZE);
+    x86_64_DisableInterrupts();
 
     if (framebuffer_request.response == nullptr) {
         done();
@@ -76,6 +86,10 @@ extern "C" void _start(void) {
         done();
     }
 
+    if (hhdm_request.response == nullptr) {
+        done();
+    }
+
     limine_kernel_file_response* kernel_file_response = kernel_file_request.response;
 
     if (kernel_file_response->kernel_file == nullptr) {
@@ -94,13 +108,21 @@ extern "C" void _start(void) {
 
     limine_file* kernel_file = kernel_file_response->kernel_file;
 
+    limine_hhdm_response* hhdm_response = hhdm_request.response;
+
     if (kernel_file->size == 0) {
         done();
     }
 
+    /*
+    if (hhdm_response->offset & UINT32_MAX != 0 || hhdm_response->offset < 0xFFFF800000000000) {
+        done();
+    }
+    */
+
     WorldOS::MemoryMapEntry** memoryMap = (WorldOS::MemoryMapEntry**)memmap_response->entries;
 
-    WorldOS::KernelParams kernelParams = {
+    kernelParams = {
         .frameBuffer = {buffer->address, buffer->width, buffer->height, buffer->bpp},
         .MemoryMap = memoryMap,
         .MemoryMapEntryCount = memmap_response->entry_count,
@@ -108,7 +130,8 @@ extern "C" void _start(void) {
         .kernel_physical_addr = kernel_address_response->physical_base,
         .kernel_virtual_addr = kernel_address_response->virtual_base,
         .kernel_size = kernel_file->size,
-        .RSDP_table = rsdp_response->address
+        .RSDP_table = rsdp_response->address,
+        .hhdm_start_addr = (void*)(hhdm_response->offset)
     };
 
     StartKernel(kernelParams);

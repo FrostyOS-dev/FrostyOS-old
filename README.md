@@ -2,8 +2,21 @@
 
 ## Latest Changes - 08/03/2023
 
-- Added functions for interacting with multiple pages to PMM
-- Fixed up some PMM functions
+- Added PageObject system
+- Added Full kernel PageManager
+- Fixed up stack so it is page aligned
+- Fixed up PageTableManager so framebuffer, stack and ACPI stuff are mapped
+- Stopped PageTableManager from mapping entire first GiB of memory
+- Moved I/O implementations into separate NASM file
+- Added GetCR2 function
+- Added NX/XD check
+- stopped `InitKernelStack` from enabling/disabling interrupts
+- Now using QEMU64 CPU
+- Enabled KVM support in QEMU
+- Added a map page function that does not flush the TLB
+- Changed kernel mapping to not flush the TLB
+- Fixed page tables
+- Added HHDM address support in entry point and kernel main
 
 ## Prerequisites
 
@@ -48,6 +61,7 @@ See notes if your system cannot meet these requirements
 - At least 256MiB able to be allocated to QEMU.
 - Host that is capable of running x86_64 virtual machines in QEMU.
 - Host must be capable of allocating 1 core to a x86_64 QEMU virtual machine.
+- Host must have KVM support
 
 If you cannot meet these requirements, see notes
 
@@ -101,11 +115,11 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### Debug
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio`
+1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -cpu qemu64`
 
 ### Release
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M`
+1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -cpu qemu64`
 
 ---
 
@@ -116,6 +130,7 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 - You might be able to run WorldOS with less RAM (by changing the '256M' to the amount of RAM you want), but I cannot guarantee that it would run on any less than 256MiB.
 - You computer **must** be capable of virtualization to run WorldOS in a VM.
 - You can allocate more than 1 core, but only 1 will be used.
+- KVM can be disabled, you will just need to remove `-machine accel=kvm` from the QEMU command line. It doesn't make much of a performance boost by using it, so it doesn't *have* to be enabled.
 
 ### Program Requirement info
 

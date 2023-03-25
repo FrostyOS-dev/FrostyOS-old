@@ -7,7 +7,7 @@
 namespace x86_64_WorldOS {
     class PageTableManager {
     public:
-        PageTableManager(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size);
+        PageTableManager(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, volatile uint64_t fb_phys, volatile uint64_t fb_virt, volatile uint64_t fb_size);
         ~PageTableManager();
     
     private:

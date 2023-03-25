@@ -9,7 +9,7 @@ extern "C" {
 
 void InitKernelStack(unsigned char* kernel_stack_addr, unsigned long stack_size);
 
-extern unsigned char kernel_stack[65536];
+extern unsigned char __attribute__((aligned(0x1000))) kernel_stack[65536];
 
 #ifdef __cplusplus
 }
