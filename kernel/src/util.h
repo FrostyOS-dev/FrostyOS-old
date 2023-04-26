@@ -4,9 +4,9 @@
 #include "stdint.h"
 #include "stddef.h"
 
-#define KiB(x) (x * 1024)
-#define MiB(x) (KiB(x) * 1024)
-#define GiB(x) (MiB(x) * 1024)
+#define KiB(x) ((uint64_t)x * (uint64_t)1024)
+#define MiB(x) (KiB(x) * (uint64_t)1024)
+#define GiB(x) (MiB(x) * (uint64_t)1024)
 
 #ifdef __cplusplus
 extern "C" {

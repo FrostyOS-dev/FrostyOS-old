@@ -36,24 +36,24 @@ namespace x86_64_WorldOS {
         kernel_size /= 4096;
 
         for (uint64_t i = 0; i < kernel_size; i++) {
-            x86_64_map_page((void*)((uint64_t)kernel_phys + (i * 4096)), (void*)((uint64_t)kernel_virt + (i * 4096)), 0x8000001);
+            x86_64_map_page_noflush((void*)((uint64_t)kernel_phys + (i * 4096)), (void*)((uint64_t)kernel_virt + (i * 4096)), 0x8000001);
         }
 
         // actually do the mapping
         for (uint64_t i = 0; i < text_size; i++) {
-            x86_64_map_page((void*)(text_start_addr + (i * 4096) - (uint64_t)kernel_virt + (uint64_t)kernel_phys), (void*)(text_start_addr + (i * 4096)), 0x1); // Present, Read-only, Execute
+            x86_64_map_page_noflush((void*)(text_start_addr + (i * 4096) - (uint64_t)kernel_virt + (uint64_t)kernel_phys), (void*)(text_start_addr + (i * 4096)), 0x1); // Present, Read-only, Execute
         }
 
         for (uint64_t i = 0; i < rodata_size; i++) {
-            x86_64_map_page((void*)(rodata_start_addr + (i * 4096) - (uint64_t)kernel_virt + (uint64_t)kernel_phys), (void*)(rodata_start_addr + (i * 4096)), 0x8000001); // Present, Read-only, Execute Disable
+            x86_64_map_page_noflush((void*)(rodata_start_addr + (i * 4096) - (uint64_t)kernel_virt + (uint64_t)kernel_phys), (void*)(rodata_start_addr + (i * 4096)), 0x8000001); // Present, Read-only, Execute Disable
         }
 
         for (uint64_t i = 0; i < data_size; i++) {
-            x86_64_map_page((void*)(data_start_addr + (i * 4096) - (uint64_t)kernel_virt + (uint64_t)kernel_phys), (void*)(data_start_addr + (i * 4096)), 0x8000003); // Present, Read-Write, Execute Disable
+            x86_64_map_page_noflush((void*)(data_start_addr + (i * 4096) - (uint64_t)kernel_virt + (uint64_t)kernel_phys), (void*)(data_start_addr + (i * 4096)), 0x8000003); // Present, Read-Write, Execute Disable
         }
 
         for (uint64_t i = 0; i < bss_size; i++) {
-            x86_64_map_page((void*)(bss_start_addr + (i * 4096) - (uint64_t)kernel_virt + (uint64_t)kernel_phys), (void*)(bss_start_addr + (i * 4096)), 0x8000003); // Present, Read-Write, Execute Disable
+            x86_64_map_page_noflush((void*)(bss_start_addr + (i * 4096) - (uint64_t)kernel_virt + (uint64_t)kernel_phys), (void*)(bss_start_addr + (i * 4096)), 0x8000003); // Present, Read-Write, Execute Disable
         }
 
         return true;

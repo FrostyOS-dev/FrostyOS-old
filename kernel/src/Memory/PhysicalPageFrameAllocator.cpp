@@ -9,6 +9,7 @@
 #include "PagingUtil.hpp"
 
 WorldOS::PhysicalPageFrameAllocator* g_PPFA = nullptr;
+uint8_t g_EarlyBitmap[128 * 1024] = {0};
 
 namespace WorldOS {
 
@@ -27,56 +28,46 @@ namespace WorldOS {
         
     }
 
-    void PhysicalPageFrameAllocator::SetMemoryMap(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount) {
+    void PhysicalPageFrameAllocator::EarlyInit(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount, uint64_t MemorySize) {
         using namespace WorldOS;
         // Setup
-        m_MemSize = GetMemorySize(&FirstMemoryMapEntry, MemoryMapEntryCount);
+        m_MemSize = (size_t)MemorySize;
+        if (m_MemSize > GiB(4))
+            m_MemSize = GiB(4);
         m_FreeMem = 0;
         m_ReservedMem = 0;
         m_UsedMem = 0;
 
-        size_t BitmapSize = m_MemSize / 4096 / 8;
-        if ((m_MemSize / 4096) % 8 != 0) {
+        size_t BitmapSize = m_MemSize >> 15; // divide by (4096 * 8)
+        if (((m_MemSize >> 12) & 7) != 0) {
             BitmapSize++;
         }
-
         m_Bitmap.SetSize(BitmapSize);
-        // Get Location for Bitmap
-        bool BitmapAddressFound = false;
-        for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
-            MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)FirstMemoryMapEntry + (i * MEMORY_MAP_ENTRY_SIZE));
-            if ((entry->Address + entry->length) > GiB(1)) break; // bitmap must be under 1 GiB
-            if ((entry->type == WORLDOS_MEMORY_FREE) && (entry->length >= BitmapSize)) {
-                m_ReservedMem += BitmapSize;
-                m_Bitmap.SetBuffer((uint8_t*)entry->Address);
-                MapPage(m_Bitmap.GetBuffer(), m_Bitmap.GetBuffer(), 3);
-                fast_memset(m_Bitmap.GetBuffer(), 0, BitmapSize/8);
-                for (uint64_t j = 0; j < (BitmapSize / 4096); j++) {
-                    m_Bitmap.Set(((entry->Address / 4096) + j), true);
-                }
-                BitmapAddressFound = true;
-            }
-        }
-        if (!BitmapAddressFound) {
-            Panic("Failed to find address for page bitmap", nullptr, false);
-            return;
-        }
+        m_Bitmap.SetBuffer(g_EarlyBitmap);
+
         // Fill bitmap
         for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
             MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)FirstMemoryMapEntry + (i * MEMORY_MAP_ENTRY_SIZE));
+            // We don't need to check if the address is in bitmap range because the bitmap has protections
             if (entry->type == WORLDOS_MEMORY_FREE) {
                 m_FreeMem += entry->length;
                 if (entry->length > 4096) {
-                    for (uint64_t j = 0; j < (entry->length / 4096); j += 4096) {
-                        m_Bitmap.Set(j + entry->Address, false);
+                    for (uint64_t j = 0; j < entry->length; j += 4096) {
+                        m_Bitmap.Set(entry->Address + j, false);
                     }
                 } else {
                     m_Bitmap.Set(entry->Address, false);
                 }
             } else {
                 m_ReservedMem += entry->length;
-                if (entry->length > 4096) {
-                    for (uint64_t j = 0; j < (entry->length / 4096); j += 4096) {
+                uint64_t length = entry->length;
+                // round up
+                if ((entry->length & 4095) != 0) {
+                    length &= ~4095;
+                    length += 4096;
+                } 
+                if (length > 4096) {
+                    for (uint64_t j = 0; j < length; j += 4096) {
                         m_Bitmap.Set(j + entry->Address, true);
                     }
                 } else {
@@ -85,7 +76,91 @@ namespace WorldOS {
             }
         }
 
-        if (!m_Bitmap[0]) {
+        if (m_Bitmap[0] == 0) {
+            m_ReservedMem += 0x1000;
+            m_Bitmap.Set(0, true);
+        }
+    }
+
+    void PhysicalPageFrameAllocator::FullInit(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount, uint64_t MemorySize) {
+        using namespace WorldOS;
+        // Setup
+        m_MemSize = MemorySize;
+
+        size_t BitmapSize = m_MemSize >> 15;
+        if (((m_MemSize >> 12) & 7) != 0) {
+            BitmapSize++;
+        }
+
+        m_Bitmap.SetSize(BitmapSize);
+        // Get Location for Bitmap
+        if (m_MemSize > GiB(4)) {
+            bool BitmapAddressFound = false;
+            for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
+                MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)FirstMemoryMapEntry + (i * MEMORY_MAP_ENTRY_SIZE));
+                if ((entry->type == WORLDOS_MEMORY_FREE) && (entry->length >= BitmapSize)) {
+                    m_ReservedMem += BitmapSize;
+                    m_Bitmap.SetBuffer((uint8_t*)entry->Address);
+                    MapPage(m_Bitmap.GetBuffer(), m_Bitmap.GetBuffer(), 0x8000003); // Read/Write, Present, Execute Disable
+                    fast_memset(m_Bitmap.GetBuffer(), 0, BitmapSize >> 3); // Avoid divide
+                    for (uint64_t j = 0; j < (BitmapSize >> 12); j++) {
+                        m_Bitmap.Set(((entry->Address >> 12) + j), true);
+                    }
+                    BitmapAddressFound = true;
+                }
+            }
+            if (!BitmapAddressFound) {
+                fprintf(VFS_DEBUG, "Bitmap error!\n");
+                Panic("Failed to find address for page bitmap", nullptr, false);
+                return;
+            }
+        }
+
+        // Copy old bitmap
+        if (m_Bitmap.GetBuffer() != g_EarlyBitmap)
+            fast_memcpy(m_Bitmap.GetBuffer(), g_EarlyBitmap, KiB(128));
+
+        // Fill bitmap
+        for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
+            MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)FirstMemoryMapEntry + (i * MEMORY_MAP_ENTRY_SIZE));
+            if ((entry->Address + entry->length) <= GiB(4))
+                continue; // ignore entries below 4GiB
+            if (entry->type == WORLDOS_MEMORY_FREE) {
+                m_FreeMem += entry->length;
+                if (entry->length > 4096) {
+                    for (uint64_t j = 0; j < (entry->length >> 12 /* avoid divide as it is very slow */); j += 4096) {
+                        if ((entry->Address + j) < GiB(4))
+                            continue; // skip entries below 4GiB
+                        m_Bitmap.Set(j + entry->Address, false);
+                    }
+                } else {
+                    if (!(entry->Address < GiB(4)))
+                        m_Bitmap.Set(entry->Address, false);
+                }
+            } else {
+                // Address and length must be made page aligned because they might not be
+                m_ReservedMem += entry->length;
+                uint64_t length = entry->length;
+                if ((length & 0xFFF) != 0) { // avoid divide as it is very slow
+                    length &= ~0xFFF;
+                    length += 0x1000;
+                }
+                uint64_t addr = entry->Address & ~0xFFF;
+                if (length > 4096) {
+                    length >>= 12; // avoid divide as it is very slow
+                    for (uint64_t j = 0; j < length; j += 4096) {
+                        if ((addr + j) < GiB(4))
+                            continue; // skip entries below 4GiB
+                        m_Bitmap.Set(j + addr, true);
+                    }
+                } else {
+                    if (!(addr < GiB(4)))
+                        m_Bitmap.Set(addr, true);
+                }
+            }
+        }
+
+        if (m_Bitmap[0] == 0) {
             m_ReservedMem += 0x1000;
             m_Bitmap.Set(0, true);
         }
@@ -93,19 +168,23 @@ namespace WorldOS {
 
     void* PhysicalPageFrameAllocator::AllocatePage() {
         uint64_t index = FindFreePage();
+        if (index == UINT64_MAX)
+            return nullptr;
         LockPage((void*)(index * 4096));
         return (void*)(index * 4096);
     }
 
     void* PhysicalPageFrameAllocator::AllocatePages(uint64_t count) {
         uint64_t index = FindFreePages(count);
+        if (index == UINT64_MAX)
+            return nullptr;
         LockPages((void*)(index * 4096), count);
         return (void*)(index * 4096);
     }
 
     void PhysicalPageFrameAllocator::ReservePage(void* page) {
-        if (m_Bitmap[((uint64_t)page / 4096)]) return;
-        m_Bitmap.Set(((uint64_t)page / 4096), true);
+        if (m_Bitmap[((uint64_t)page >> 12)]) return;
+        m_Bitmap.Set(((uint64_t)page >> 12), true);
         m_FreeMem -= 4096;
         m_ReservedMem += 4096;
     }
@@ -117,8 +196,8 @@ namespace WorldOS {
     }
 
     void PhysicalPageFrameAllocator::UnreservePage(void* page) {
-        if (!m_Bitmap[((uint64_t)page / 4096)]) return;
-        m_Bitmap.Set(((uint64_t)page / 4096), false);
+        if (!m_Bitmap[((uint64_t)page >> 12)]) return;
+        m_Bitmap.Set(((uint64_t)page >> 12), false);
         m_FreeMem += 4096;
         m_ReservedMem -= 4096;
     }
@@ -130,8 +209,8 @@ namespace WorldOS {
     }
 
     void PhysicalPageFrameAllocator::FreePage(void* page) {
-        if (!m_Bitmap[((uint64_t)page / 4096)]) return;
-        m_Bitmap.Set(((uint64_t)page / 4096), false);
+        if (!m_Bitmap[((uint64_t)page >> 12)]) return;
+        m_Bitmap.Set(((uint64_t)page >> 12), false);
         m_FreeMem += 4096;
         m_UsedMem -= 4096;
     }
@@ -145,8 +224,8 @@ namespace WorldOS {
     /* Private Methods */
 
     void PhysicalPageFrameAllocator::LockPage(void* page) {
-        if (m_Bitmap[((uint64_t)page / 4096)]) return;
-        m_Bitmap.Set(((uint64_t)page / 4096), true);
+        if (m_Bitmap[((uint64_t)page >> 12)]) return;
+        m_Bitmap.Set(((uint64_t)page >> 12), true);
         m_FreeMem -= 4096;
         m_UsedMem += 4096;
     }
@@ -159,8 +238,8 @@ namespace WorldOS {
 
 
     void PhysicalPageFrameAllocator::UnlockPage(void* page) {
-        if (!m_Bitmap[((uint64_t)page / 4096)]) return;
-        m_Bitmap.Set(((uint64_t)page / 4096), false);
+        if (!m_Bitmap[((uint64_t)page >> 12)]) return;
+        m_Bitmap.Set(((uint64_t)page >> 12), false);
         m_FreeMem += 4096;
         m_UsedMem -= 4096;
     }
@@ -174,15 +253,15 @@ namespace WorldOS {
     uint64_t PhysicalPageFrameAllocator::FindFreePage() {
         for (uint64_t i = 0; i < m_Bitmap.GetSize(); i++) {
             if (m_Bitmap[i] == 0) {
-                return i * 8;
+                return i;
             }
         }
-        return 0;
+        return UINT64_MAX; // impossible offset into bitmap, so good for errors
     }
 
     uint64_t PhysicalPageFrameAllocator::FindFreePages(uint64_t count) {
         uint64_t next = 0;
-        if (count == 0) return 0;
+        if (count == 0) return UINT64_MAX; // impossible offset into bitmap, so good for errors
         for (uint64_t i = 0; i < m_Bitmap.GetSize(); i+=next) {
             next = 1;
             if (m_Bitmap[i] == 0) {
@@ -190,17 +269,17 @@ namespace WorldOS {
                 bool found = true;
                 next = 1;
                 while (next <= count) {
-                    if (m_Bitmap[i + next] == 0) {
+                    if (m_Bitmap[i + next] == 1) {
                         found = false;
                         break;
                     }
                     if (count <= next) break; // check if next > count on next iteration
                     next++;
                 }
-                if (found) return (i - next) * 8; // return start page index of the block
+                if (found) return (i - next); // return start page index of the block
             }
         }
-        return 0;
+        return UINT64_MAX; // impossible offset into bitmap, so good for errors
     }
 
 }

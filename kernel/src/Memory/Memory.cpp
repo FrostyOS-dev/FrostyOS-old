@@ -1,18 +1,19 @@
 #include "Memory.hpp"
 
+volatile uint64_t g_memorySizeBytes = 0;
+
 size_t GetMemorySize(const WorldOS::MemoryMapEntry** MemoryMap, const size_t EntryCount) {
     using namespace WorldOS;
 
-    static size_t memorySizeBytes = 0;
-    if (memorySizeBytes > 0) {
-        return memorySizeBytes;
+    if (g_memorySizeBytes > 0) {
+        return g_memorySizeBytes;
     }
 
     for (size_t i = 0; i < EntryCount; i++) {
         const MemoryMapEntry* entry = MemoryMap[i];
-        if (entry->Address >= memorySizeBytes) continue; // prevents invalid entries from being counted
-        memorySizeBytes += entry->length;
+        //if (entry->Address >= g_memorySizeBytes) continue; // prevents invalid entries from being counted
+        g_memorySizeBytes += entry->length;
     }
 
-    return memorySizeBytes;
+    return g_memorySizeBytes;
 }

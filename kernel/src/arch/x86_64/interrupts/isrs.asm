@@ -321,6 +321,10 @@ ISR_NOERRORCODE 255
 isr_common:
     pushaq
 
+    xor rax, rax        ; push CR2
+    mov rax, cr2
+    push rax
+
     xor rax, rax        ; push ds
     mov ax, ds
     push rax
@@ -338,6 +342,8 @@ isr_common:
     mov es, ax
     mov fs, ax
     mov gs, ax
+
+    pop rax             ; remove cr2
 
     popaq
     add rsp, 16         ; remove error code and interrupt number

@@ -7,9 +7,9 @@ extern "C" {
 
 #define KERNEL_STACK_SIZE 65536
 
-void InitKernelStack(unsigned char* kernel_stack_addr, unsigned long stack_size);
+extern unsigned char __attribute__((aligned(0x1000))) kernel_stack[KERNEL_STACK_SIZE];
 
-extern unsigned char kernel_stack[65536];
+extern unsigned long int kernel_stack_size;
 
 #ifdef __cplusplus
 }

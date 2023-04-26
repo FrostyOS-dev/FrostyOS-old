@@ -1,6 +1,33 @@
 # Changes
 
-## Latest Changes - 08/03/2023
+## Latest Changes - 26/04/2023
+
+- Added PageObject system
+- Added Full kernel PageManager
+- Fixed up stack so it is page aligned
+- Fixed up PageTableManager so framebuffer, stack and ACPI stuff are mapped
+- Stopped PageTableManager from mapping entire first GiB of memory
+- Moved I/O implementations into separate NASM file
+- Added GetCR2 function
+- Added NX/XD check
+- stopped `InitKernelStack` from enabling/disabling interrupts
+- Now using QEMU64 CPU
+- Enabled KVM support in QEMU
+- Added a map page function that does not flush the TLB
+- Changed kernel mapping to not flush the TLB
+- Fixed page tables
+- Added HHDM address support in entry point and kernel main
+- Added kernel end ELF symbol
+- Fixed VirtualPageManager
+- Moved paging init into its own file
+- Removed PageTableManager
+- Added x86_64_cpuid function which supports setting and returning eax, ebx, ecx and edx
+- Added early entry file for setting up the stack
+- Added `uint64_t` casts to `KiB`, `MiB` and `GiB` macros
+- Added relevant casts to `UINT64_MAX`, `INT64_MAX`, `INT64_MIN` and `UINT32_MAX` macros
+- Fixed objdump script so it dumps in Intel syntax
+
+## 08/03/2023
 
 - Added functions for interacting with multiple pages to PMM
 - Fixed up some PMM functions

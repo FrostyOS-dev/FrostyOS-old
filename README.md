@@ -1,9 +1,41 @@
 # WorldOS
 
-## Latest Changes - 08/03/2023
+## Latest Changes - 26/04/2023
 
-- Added functions for interacting with multiple pages to PMM
-- Fixed up some PMM functions
+- Added PageObject system
+- Added Full kernel PageManager
+- Fixed up stack so it is page aligned
+- Fixed up PageTableManager so framebuffer, stack and ACPI stuff are mapped
+- Stopped PageTableManager from mapping entire first GiB of memory
+- Moved I/O implementations into separate NASM file
+- Added GetCR2 function
+- Added NX/XD check
+- stopped `InitKernelStack` from enabling/disabling interrupts
+- Now using QEMU64 CPU
+- Enabled KVM support in QEMU
+- Added a map page function that does not flush the TLB
+- Changed kernel mapping to not flush the TLB
+- Fixed page tables
+- Added HHDM address support in entry point and kernel main
+- Added kernel end ELF symbol
+- Fixed VirtualPageManager
+- Moved paging init into its own file
+- Removed PageTableManager
+- Added x86_64_cpuid function which supports setting and returning eax, ebx, ecx and edx
+- Added early entry file for setting up the stack
+- Added `uint64_t` casts to `KiB`, `MiB` and `GiB` macros
+- Added relevant casts to `UINT64_MAX`, `INT64_MAX`, `INT64_MIN` and `UINT32_MAX` macros
+- Fixed objdump script so it dumps in Intel syntax
+
+## Known issues
+
+### Issues
+
+1. Page mapping isn't working properly due to page tables using physical addresses
+
+### Potential fixes
+
+1. Map first 4GiB+ to HHDM as Read/Write, Supervisor, NX
 
 ## Prerequisites
 
@@ -48,6 +80,7 @@ See notes if your system cannot meet these requirements
 - At least 256MiB able to be allocated to QEMU.
 - Host that is capable of running x86_64 virtual machines in QEMU.
 - Host must be capable of allocating 1 core to a x86_64 QEMU virtual machine.
+- Host must have KVM support
 
 If you cannot meet these requirements, see notes
 
@@ -75,7 +108,7 @@ If you cannot meet these requirements, see notes
 
 #### Debian
 
-- run `sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm`
+- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm`
 
 #### Fedora/RHEL
 
@@ -84,6 +117,10 @@ If you cannot meet these requirements, see notes
 #### Arch
 
 - run `sudo pacman -Syu base-devel gmp libmpc mpfr mtools curl qemu git bash nasm`
+
+#### Gentoo
+
+- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm`
 
 ---
 
@@ -101,11 +138,11 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### Debug
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio`
+1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -cpu qemu64`
 
 ### Release
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M`
+1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -cpu qemu64`
 
 ---
 
@@ -116,6 +153,7 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 - You might be able to run WorldOS with less RAM (by changing the '256M' to the amount of RAM you want), but I cannot guarantee that it would run on any less than 256MiB.
 - You computer **must** be capable of virtualization to run WorldOS in a VM.
 - You can allocate more than 1 core, but only 1 will be used.
+- KVM can be disabled, you will just need to remove `-machine accel=kvm` from the QEMU command line. It doesn't make much of a performance boost by using it, so it doesn't *have* to be enabled.
 
 ### Program Requirement info
 

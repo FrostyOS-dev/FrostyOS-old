@@ -1,5 +1,5 @@
-#ifndef _KERNEL_PAGE_TABLES_HPP
-#define _KERNEL_PAGE_TABLES_HPP
+#ifndef _KERNEL_X86_64_PAGE_TABLES_HPP
+#define _KERNEL_X86_64_PAGE_TABLES_HPP
 
 #include <stdint.h>
 
@@ -74,6 +74,10 @@ struct CR3Layout {
     uint16_t Reserved : 12;
 } __attribute__((packed));
 
+struct Level4Group {
+    PageMapLevel4Entry entries[512];
+};
+
 struct Level3Group {
     PageMapLevel3Entry entries[512];
 };
@@ -86,4 +90,4 @@ struct Level1Group {
     PageMapLevel1Entry entries[512];
 };
 
-#endif /* _KERNEL_PAGE_TABLES_HPP */
+#endif /* _KERNEL_X86_64_PAGE_TABLES_HPP */

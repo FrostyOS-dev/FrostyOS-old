@@ -13,7 +13,7 @@ namespace WorldOS {
     public:
         VirtualPageManager();
         ~VirtualPageManager();
-        void InitVPageMgr(MemoryMapEntry* MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size, void* region_start, uint64_t region_length);
+        void InitVPageMgr(MemoryMapEntry** MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size, void* region_start, uint64_t region_length);
         void* FindFreePage();
         void* FindFreePages(uint64_t count);
         void cleanupRUTree(AVLTree::Node* node, AVLTree::Node* parent);
@@ -36,14 +36,16 @@ namespace WorldOS {
         void UnfreePage(void* addr);
         void UnfreePages(void* addr, uint64_t count);
     private:
-        uint64_t m_FreePagesCount = 0;
-        uint64_t m_UsedPagesCount = 0;
-        uint64_t m_ReservedPagesCount = 0;
-        AVLTree::Node* m_FreePagesSizeTree = nullptr; // assigned to nullptr so it gets allocated a node from the node pool
-        AVLTree::Node* m_ReservedANDUsedPages = nullptr; // highest bit in extra data determines if it reserved (1) or used (0)
-        void* m_RegionStart = nullptr;
-        uint64_t m_RegionLength = 0;
+        uint64_t m_FreePagesCount;
+        uint64_t m_UsedPagesCount;
+        uint64_t m_ReservedPagesCount;
+        AVLTree::Node* m_FreePagesSizeTree;
+        AVLTree::Node* m_ReservedANDUsedPages; // highest bit in extra data determines if it reserved (1) or used (0)
+        void* m_RegionStart;
+        uint64_t m_RegionLength;
     };
+
+    extern VirtualPageManager* g_KVPM; // this is probably not the best place for this, but there are no other options
 }
 
 #endif /* _X86_64_VIRTUAL_PAGE_MGR_HPP */

@@ -69,8 +69,8 @@ dependencies:
 	@echo Fetching dependencies
 	@echo ---------------------
 	@mkdir -p dist/boot/EFI/BOOT
-	@curl -L -o dist/boot/EFI/BOOT/BOOTX64.EFI https://github.com/limine-bootloader/limine/raw/v4.x-branch-binary/BOOTX64.EFI
 	@curl -o kernel/src/limine.h https://raw.githubusercontent.com/limine-bootloader/limine/v4.x-branch-binary/limine.h
+	@curl -o dist/boot/EFI/BOOT/BOOTX64.EFI https://raw.githubusercontent.com/limine-bootloader/limine/v4.x-branch-binary/BOOTX64.EFI
 	@mkdir -p depend/tools/bin
 ifeq ("$(wildcard depend/tools/bin/mkgpt)","")
 	@$(MAKE) mkgpt

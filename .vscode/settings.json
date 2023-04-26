@@ -11,6 +11,10 @@
     "makefile.phonyOnlyTargets": true,
     "C_Cpp.errorSquiggles": "enabled",
     "cSpell.words": [
+        "framebuffer",
+        "HHDM",
+        "KVPM",
+        "PPFA",
         "Unallocate",
         "Unreserve",
         "WORLDOS"

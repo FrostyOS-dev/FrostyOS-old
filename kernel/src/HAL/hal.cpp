@@ -1,4 +1,3 @@
-#include "hal.hpp"
 #include "timer.hpp"
 
 #include <arch/x86_64/GDT/gdt.hpp>
@@ -13,10 +12,13 @@
 
 #include <arch/x86_64/Graphics/vga-graphics.hpp>
 
+#include <arch/x86_64/Memory/PagingInit.hpp>
+
+#include "hal.hpp"
 
 namespace WorldOS {
 
-    void HAL_Init(const FrameBuffer& fb) {
+    void HAL_Init(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb) {
         GDT* gdt = &DefaultGDT;
         GDTDescriptor gdtDescriptor = {(sizeof(GDT) - 1), ((uint64_t)gdt)};
         x86_64_LoadGDT(&gdtDescriptor);
@@ -35,6 +37,9 @@ namespace WorldOS {
 
         x86_64_DisableInterrupts();
         HAL_TimerInit();
+
+        x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ((fb.bpp >> 3) * fb.FrameBufferHeight * fb.FrameBufferWidth), HHDM_start);
+
         x86_64_EnableInterrupts();
     }
 

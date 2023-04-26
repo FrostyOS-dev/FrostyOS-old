@@ -5,6 +5,8 @@
 
 x86_64_ISRHandler_t g_ISRHandlers[256];
 
+#include <stdio.hpp>
+
 static const char* const g_Exceptions[] = {
     "Divide by 0",
     "Reserved",
@@ -43,6 +45,8 @@ void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler) 
     x86_64_IDT_EnableGate(interrupt);
 }
 
+bool in_interrupt = false;
+
 extern "C" void x86_64_ISR_Handler(x86_64_Registers regs) {
     x86_64_Registers* p_regs = &regs;
 
@@ -50,6 +54,14 @@ extern "C" void x86_64_ISR_Handler(x86_64_Registers regs) {
     if (g_ISRHandlers[p_regs->interrupt] != nullptr)
         return g_ISRHandlers[p_regs->interrupt](p_regs);
 
+    fprintf(VFS_DEBUG, "Interrupt occurred. RIP: %lx Interrupt number: %hhx\n", regs.rip, regs.interrupt);
+
+    // prevent spam panic messages
+    if (in_interrupt) {
+        __asm__ volatile ("cli");
+        while (true)
+            __asm__ volatile ("hlt");
+    }
 
     /* TEMP */
     char tempReason[64];
@@ -59,6 +71,7 @@ extern "C" void x86_64_ISR_Handler(x86_64_Registers regs) {
 
     memcpy(tempReason, g_Exceptions[p_regs->interrupt], strLength);
 
+    in_interrupt = true;
     WorldOS::Panic(tempReason, p_regs, true);
 
 
