@@ -11,7 +11,7 @@ namespace WorldOS {
         uint64_t page_count;
         uint64_t flags;
 
-        void* next;
+        PageObject* next;
     };
 
     enum PageObjectFlags {
@@ -24,6 +24,7 @@ namespace WorldOS {
 
     void PageObject_SetFlag(PageObject*& obj, uint64_t flag);
     void PageObject_UnsetFlag(PageObject*& obj, uint64_t flag);
+    PageObject* PageObject_GetPrevious(PageObject* root, PageObject* current);
 
 
     /* Page Object Pool stuff */

@@ -8,3 +8,4 @@ const void* _data_start_addr   = &__data_start;
 const void* _data_end_addr     = &__data_end;
 const void* _bss_start_addr    = &__bss_start;
 const void* _bss_end_addr      = &__bss_end;
+const void* _kernel_end_addr   = &__kernel_end;

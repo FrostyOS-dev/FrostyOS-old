@@ -15,16 +15,19 @@ namespace LinkedList {
 	uint64_t nodePool_UsedCount;
 	uint8_t nodePool_BitmapData[POOL_SIZE / 8];
 	WorldOS::Bitmap nodePool_Bitmap;
+	bool nodePoolHasBeenInitialised = false;
 
 	void NodePool_Init() {
 		nodePool_UsedCount = 0;
 		memset(nodePool_BitmapData, 0, POOL_SIZE / 8);
 		nodePool_Bitmap.SetSize(POOL_SIZE);
 		nodePool_Bitmap.SetBuffer(&(nodePool_BitmapData[0]));
+		nodePoolHasBeenInitialised = true;
 	}
 
 	void NodePool_Destroy() {
 		nodePool_Bitmap.~Bitmap();
+		nodePoolHasBeenInitialised = false;
 	}
 
 	Node* NodePool_AllocateNode() {
@@ -48,6 +51,10 @@ namespace LinkedList {
 			}
 		}
 		return false;
+	}
+
+	bool NodePool_HasBeenInitialised() {
+		return nodePoolHasBeenInitialised;
 	}
 
 
@@ -123,7 +130,8 @@ namespace LinkedList {
 		Node* temp = head;
 		if (temp != nullptr && temp->data == data) {
 			head = temp->next;
-			head->previous = nullptr;
+			if (head != nullptr)
+				head->previous = nullptr;
 			if (NewDeleteInitialised())
 				delete temp;
 			else

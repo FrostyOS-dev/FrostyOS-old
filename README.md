@@ -1,6 +1,6 @@
 # WorldOS
 
-## Latest Changes - 08/03/2023
+## Latest Changes - 26/04/2023
 
 - Added PageObject system
 - Added Full kernel PageManager
@@ -17,6 +17,25 @@
 - Changed kernel mapping to not flush the TLB
 - Fixed page tables
 - Added HHDM address support in entry point and kernel main
+- Added kernel end ELF symbol
+- Fixed VirtualPageManager
+- Moved paging init into its own file
+- Removed PageTableManager
+- Added x86_64_cpuid function which supports setting and returning eax, ebx, ecx and edx
+- Added early entry file for setting up the stack
+- Added `uint64_t` casts to `KiB`, `MiB` and `GiB` macros
+- Added relevant casts to `UINT64_MAX`, `INT64_MAX`, `INT64_MIN` and `UINT32_MAX` macros
+- Fixed objdump script so it dumps in Intel syntax
+
+## Known issues
+
+### Issues
+
+1. Page mapping isn't working properly due to page tables using physical addresses
+
+### Potential fixes
+
+1. Map first 4GiB+ to HHDM as Read/Write, Supervisor, NX
 
 ## Prerequisites
 
@@ -89,7 +108,7 @@ If you cannot meet these requirements, see notes
 
 #### Debian
 
-- run `sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm`
+- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm`
 
 #### Fedora/RHEL
 
@@ -98,6 +117,10 @@ If you cannot meet these requirements, see notes
 #### Arch
 
 - run `sudo pacman -Syu base-devel gmp libmpc mpfr mtools curl qemu git bash nasm`
+
+#### Gentoo
+
+- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm`
 
 ---
 

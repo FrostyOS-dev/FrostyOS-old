@@ -15,6 +15,7 @@ namespace WorldOS {
         bool operator[](uint64_t index);
         void Set(uint64_t index, bool value);
 
+        // Set size in bytes
         inline void SetSize(size_t size) {
             m_Size = size;
         }
@@ -23,6 +24,7 @@ namespace WorldOS {
             m_Buffer = buffer;
         }
 
+        // Get size in bytes
         inline size_t GetSize() {
             return m_Size;
         }

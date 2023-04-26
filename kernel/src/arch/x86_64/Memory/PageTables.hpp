@@ -1,5 +1,5 @@
-#ifndef _KERNEL_PAGE_TABLES_HPP
-#define _KERNEL_PAGE_TABLES_HPP
+#ifndef _KERNEL_X86_64_PAGE_TABLES_HPP
+#define _KERNEL_X86_64_PAGE_TABLES_HPP
 
 #include <stdint.h>
 
@@ -90,4 +90,4 @@ struct Level1Group {
     PageMapLevel1Entry entries[512];
 };
 
-#endif /* _KERNEL_PAGE_TABLES_HPP */
+#endif /* _KERNEL_X86_64_PAGE_TABLES_HPP */

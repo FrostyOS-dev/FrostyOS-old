@@ -15,8 +15,11 @@ namespace WorldOS {
         PhysicalPageFrameAllocator();
         ~PhysicalPageFrameAllocator();
 
-        // Set Memory Map and Initialize Page map
-        void SetMemoryMap(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount);
+        // Early initialise the first 4GiB using builtin bitmap
+        void EarlyInit(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount, uint64_t MemorySize);
+
+        // Fully initialise with full memory map and bitmap
+        void FullInit(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount, uint64_t MemorySize);
 
         void* AllocatePage(); // Only for physical allocation, DO NOT use for virtual allocation.
         void* AllocatePages(uint64_t count);
@@ -52,5 +55,6 @@ namespace WorldOS {
 }
 
 extern WorldOS::PhysicalPageFrameAllocator* g_PPFA;
+extern uint8_t g_EarlyBitmap[128 * 1024];
 
 #endif /* _KERNEL_PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP */

@@ -13,8 +13,14 @@ void* x86_64_get_physaddr(void* virtualaddr);
 // Map a page. physaddr and virtualaddr must be page aligned. Can potentially map 512 pages instead of just 1 due to x86_64 limitations.
 void x86_64_map_page(void* physaddr, void* virtualaddr, uint32_t flags);
 
-// Map a page with no TLB flush. physaddr and virtualaddr must be page aligned. Can potentially map 512 pages instead of just 1 due to x86_64 limitations.
+// Map a page with no TLB flush. physaddr and virtualaddr must be page aligned.
 void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags);
+
+// Unmap a page. virtualaddr must be page aligned.
+void x86_64_unmap_page(void* virtualaddr);
+
+// Unmap a page with no TLB flush
+void x86_64_unmap_page_noflush(void* virtualaddr);
 
 // Identity map memory. If length and/or start_phys aren't page aligned, the values used are rounded down to the nearest page boundary.
 void x86_64_identity_map(void* start_phys, uint64_t length, uint32_t flags);

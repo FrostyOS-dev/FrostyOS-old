@@ -3,12 +3,6 @@
 
 #include <stdint.h>
 
-// Defined in C++ Source file
-
-void x86_64_GeneratePageLevel3Array(uint16_t PageLevel4Offset);
-void x86_64_GeneratePageLevel2Array(uint16_t PageLevel4Offset, uint16_t PageLevel3Offset);
-void x86_64_GeneratePageLevel1Array(uint16_t PageLevel4Offset, uint16_t PageLevel3Offset, uint16_t PageLevel2Offset);
-
 // Defined in NASM Source file
 
 extern "C" void x86_64_FlushTLB();

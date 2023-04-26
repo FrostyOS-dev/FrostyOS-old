@@ -14,6 +14,16 @@ namespace WorldOS {
         obj->flags &= ~flag;
     }
 
+    PageObject* PageObject_GetPrevious(PageObject* root, PageObject* current) {
+        if (root == nullptr || root == current)
+            return nullptr;
+        if (root->next == nullptr)
+            return nullptr;
+        if (root->next == current)
+            return root;
+        return PageObject_GetPrevious(root->next, current);
+    }
+
 
     PageObject g_PageObjectPool[PAGE_OBJECT_POOL_SIZE];
 

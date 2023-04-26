@@ -12,16 +12,19 @@ namespace AVLTree {
 	uint64_t nodePool_UsedCount;
 	uint8_t nodePool_BitmapData[POOL_SIZE / 8];
 	WorldOS::Bitmap nodePool_Bitmap;
+	bool nodePoolHasBeenInitialised = false;
 
 	void NodePool_Init() {
 		nodePool_UsedCount = 0;
 		memset(nodePool_BitmapData, 0, POOL_SIZE / 8);
 		nodePool_Bitmap.SetSize(POOL_SIZE);
 		nodePool_Bitmap.SetBuffer(&(nodePool_BitmapData[0]));
+		nodePoolHasBeenInitialised = true;
 	}
 
 	void NodePool_Destroy() {
 		nodePool_Bitmap.~Bitmap();
+		nodePoolHasBeenInitialised = false;
 	}
 
 	Node* NodePool_AllocateNode() {
@@ -45,6 +48,10 @@ namespace AVLTree {
 			}
 		}
 		return false;
+	}
+
+	bool NodePool_HasBeenInitialised() {
+		return nodePoolHasBeenInitialised;
 	}
 
 
@@ -162,14 +169,12 @@ namespace AVLTree {
 	Node* findNode(Node* root, uint64_t key) {
 		if (root == nullptr)
 			return nullptr;
-		if (root->left == nullptr || root->right == nullptr)
-			return nullptr;
-		else if (root->key < key)
-			return findNode(root->right, key);
-		else if (root->key > key)
-			return findNode(root->left, key);
-		else if (root->key == key)
+		if (root->key == key)
 			return root;
+		else if (root->right != nullptr && root->key < key)
+			return findNode(root->right, key);
+		else if (root->left != nullptr && root->key > key)
+			return findNode(root->left, key);
 		else
 			return nullptr;
 	}

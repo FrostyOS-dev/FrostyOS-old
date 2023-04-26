@@ -5,9 +5,6 @@
 #include "Memory/Memory.hpp"
 #include "limine.h"
 
-#include <arch/x86_64/Stack.h>
-#include <arch/x86_64/io.h>
-
 extern "C" volatile struct limine_framebuffer_request framebuffer_request {
     .id = LIMINE_FRAMEBUFFER_REQUEST,
     .revision = 0
@@ -52,10 +49,8 @@ static volatile void done(void) {
 
 WorldOS::KernelParams kernelParams;
 
+// called from asm
 extern "C" volatile void _start(void) {
-    InitKernelStack(kernel_stack, KERNEL_STACK_SIZE);
-    x86_64_DisableInterrupts();
-
     if (framebuffer_request.response == nullptr) {
         done();
     }
@@ -114,11 +109,9 @@ extern "C" volatile void _start(void) {
         done();
     }
 
-    /*
-    if (hhdm_response->offset & UINT32_MAX != 0 || hhdm_response->offset < 0xFFFF800000000000) {
+    if ((hhdm_response->offset & UINT32_MAX) != 0 || hhdm_response->offset < 0xFFFF800000000000) {
         done();
     }
-    */
 
     WorldOS::MemoryMapEntry** memoryMap = (WorldOS::MemoryMapEntry**)memmap_response->entries;
 
@@ -131,11 +124,11 @@ extern "C" volatile void _start(void) {
         .kernel_virtual_addr = kernel_address_response->virtual_base,
         .kernel_size = kernel_file->size,
         .RSDP_table = rsdp_response->address,
-        .hhdm_start_addr = (void*)(hhdm_response->offset)
+        .hhdm_start_addr = hhdm_response->offset
     };
 
-    StartKernel(kernelParams);
- 
+    StartKernel(&kernelParams);
+
     // We're done, just hang...
     done();
 }

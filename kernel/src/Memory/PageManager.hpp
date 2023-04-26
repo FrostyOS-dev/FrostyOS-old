@@ -17,8 +17,8 @@ namespace WorldOS {
 
         void InitPageManager(void* virtual_region_start, size_t virtual_region_size, bool mode = false); // Extra function for later initialisation. mode is false for supervisor and true for user
         
-        void AllocatePage();
-        void AllocatePages();
+        void* AllocatePage();
+        void* AllocatePages(uint64_t count);
 
         void FreePage(void* addr);
         void FreePages(void* addr);
