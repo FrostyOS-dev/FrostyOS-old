@@ -18,10 +18,13 @@ size_t g_MemorySize = 0;
 void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, uint64_t fb_virt, uint64_t fb_size, uint64_t HHDM_start) {
     if (!x86_64_EnsureNX())
         WorldOS::Panic("No execute is not available. It is required.", nullptr, false);
+    if (!x86_64_EnsureLargePages())
+        WorldOS::Panic("2MiB pages are not available. They are required.", nullptr, false);
     
     g_MemorySize = GetMemorySize((const WorldOS::MemoryMapEntry**)MemoryMap, MMEntryCount);
 
     x86_64_SetKernelAddress((void*)kernel_virtual, (void*)kernel_physical, kernel_size);
+    x86_64_SetHHDMStart((void*)HHDM_start);
 
     // prepare page tables
 
@@ -76,10 +79,22 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     PPFA.EarlyInit(MemoryMap[0], MMEntryCount, g_MemorySize);
     g_PPFA = &PPFA;
 
+    /*
 
+    // Map from end of 1st page until 2MiB
+    for (int i = 0x1000; i < 0x200000; i += 0x1000)
+        x86_64_map_page_noflush((void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+
+    // Map from 2MiB to 4GiB with 2MiB pages
+    for (uint64_t i = 0x200000; i < 0x100000000; i += 0x200000)
+        x86_64_map_large_page_noflush((void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+
+    */
+    
+    uint64_t address;
     for (uint64_t i = 0; i < MMEntryCount; i++) {
         // Map actual memory map entry
-        uint64_t address = (uint64_t)(MemoryMap[i]);
+        address = (uint64_t)(MemoryMap[i]);
         address &= ~(0xFFF);
         x86_64_map_page_noflush((void*)(address - HHDM_start), (void*)address, 0x8000003); // Read/Write, Present, Execute Disable
     }

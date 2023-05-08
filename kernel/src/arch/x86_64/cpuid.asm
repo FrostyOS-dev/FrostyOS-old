@@ -2,6 +2,9 @@
 
 global x86_64_cpuid
 x86_64_cpuid:
+    push rbp
+    mov rbp, rsp
+
     push rbx ; save rbx
     xor rax, rax
     xor rbx, rbx
@@ -20,4 +23,7 @@ x86_64_cpuid:
     shl rdx, 32 ; mov edx into upper 32-bits of rdx
     or rdx, rcx ; mov ecx into lower 32-bits of rdx
     pop rbx ; restore rbx
+
+    mov rsp, rbp
+    pop rbp
     ret

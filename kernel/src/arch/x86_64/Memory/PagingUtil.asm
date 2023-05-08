@@ -4,8 +4,8 @@ global x86_64_FlushTLB
 x86_64_FlushTLB:
     cli
     mov rax, cr3 ; save cr3
-    mov rcx, 0   ; use rcx to place a temperary value into cr3
-    mov cr3, rcx
+    ;mov rcx, 0   ; use rcx to place a temperary value into cr3
+    ;mov cr3, rcx
     mov cr3, rax ; restore cr3
     sti
     ret
@@ -48,4 +48,43 @@ x86_64_EnsureNX:
     ret
 .fail:
     xor rax, rax ; clear rax
+    ret
+
+global x86_64_EnsureLargePages
+x86_64_EnsureLargePages:
+    push rbp
+    mov rbp, rsp
+
+    mov rax, cr4
+    and rax, 16 ; get bit 4
+    shr rax, 4
+    cmp al, 1
+    jz .success
+
+    mov rax, 1
+    xor rcx, rcx
+    push rbx
+    xor rbx, rbx
+    xor rdx, rdx
+    cpuid
+    pop rbx
+    and rdx, 8
+    shr rdx, 3
+    cmp dl, 1
+    jnz .fail
+
+    mov rax, cr4
+    or rax, 16
+    mov cr4, rax
+
+.success:
+    mov rax, 1
+    jmp .end
+
+.fail:
+    mov rax, 0
+
+.end:
+    mov rsp, rbp
+    pop rbp
     ret
