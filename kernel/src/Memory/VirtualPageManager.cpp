@@ -61,20 +61,23 @@ namespace WorldOS {
     }
 
     // Split a Free block. addr is original block starting address, original_count is the original size of the block, new_count is the page count wanted for the first section
-    void Internal_SplitFreeBlock(AVLTree::Node* root, void* addr, uint64_t original_count, uint64_t new_count) {
+    AVLTree::Node* Internal_SplitFreeBlock(AVLTree::Node* root, void* addr, uint64_t original_count, uint64_t new_count) {
         if (original_count <= new_count)
-            return; // ignore invalid new_count
+            return root; // ignore invalid new_count
         AVLTree::Node* node = AVLTree::findNode(root, original_count);
         if (node == nullptr)
-            return; // ignore invalid size
+            return root; // ignore invalid size
         LinkedList::Node* list = (LinkedList::Node*)node->extraData;
         if (list == nullptr)
-            return; // this should **NEVER** happen, but is here just in case.
+            return root; // this should **NEVER** happen, but is here just in case.
         LinkedList::Node* item = LinkedList::findNode(list, (uint64_t)addr);
         if (item == nullptr || item->data != (uint64_t)addr)
-            return; // ignore invalid addr/size combo
-        LinkedList::deleteNode(list, item->data);
-        node->extraData = (uint64_t)list;
+            return root; // ignore invalid addr/size combo
+        LinkedList::deleteNode(list, item->data); // delete list entry
+        if (list == nullptr)
+            AVLTree::deleteNode(root, original_count); // delete old size entry as there are no list entries left
+        else
+            node->extraData = (uint64_t)list;
         // insert the first section of the block
         node = AVLTree::findNode(root, new_count);
         if (node == nullptr) {
@@ -90,13 +93,14 @@ namespace WorldOS {
         node = AVLTree::findNode(root, original_count - new_count);
         if (node == nullptr) {
             list = nullptr;
-            AVLTree::insert(root, new_count, (uint64_t)nullptr);
-            node = AVLTree::findNode(root, new_count);
+            AVLTree::insert(root, original_count - new_count, (uint64_t)nullptr);
+            node = AVLTree::findNode(root, original_count - new_count);
         }
         else
             list = (LinkedList::Node*)node->extraData;
-        LinkedList::insert(list, (uint64_t)addr + (original_count - new_count) * 4096);
+        LinkedList::insert(list, (uint64_t)addr + new_count * 4096);
         node->extraData = (uint64_t)list;
+        return root;
     }
 
     void Internal_mergeRUBlocks(AVLTree::Node* root, AVLTree::Node* parent, AVLTree::Node* node, AVLTree::Node* sibling) {
@@ -176,7 +180,6 @@ namespace WorldOS {
             AVLTree::Node* sibling = (parent->left == node) ? parent->right : parent->left;
             if (sibling != nullptr) {
                 uint64_t nodeEnd = Internal_getBlockEnd(node->key, node->extraData);
-                uint64_t siblingEnd = Internal_getBlockEnd(sibling->key, sibling->extraData);
                 if (nodeEnd == sibling->key) {
                     // merge adjacent blocks
                     Internal_mergeFreeBlocks(root, parent, node, sibling);
@@ -286,7 +289,6 @@ namespace WorldOS {
             AVLTree::Node* sibling = (parent->left == node) ? parent->right : parent->left;
             if (sibling != nullptr) {
                 uint64_t nodeEnd = Internal_getBlockEnd(node->key, node->extraData & ~(UINT64_C(1) << 63));
-                uint64_t siblingEnd = Internal_getBlockEnd(sibling->key, sibling->extraData & ~(UINT64_C(1) << 63));
                 bool nodeReserved = (node->extraData & (UINT64_C(1) << 63)) >> 63;
                 bool siblingReserved = (sibling->extraData & (UINT64_C(1) << 63)) >> 63;
                 if (nodeEnd == sibling->key && nodeReserved == siblingReserved) {
@@ -393,7 +395,7 @@ namespace WorldOS {
         // END FindFreePages code
         void* mem = (void*)list->data;
         if (node->key > count) {
-            Internal_SplitFreeBlock(m_FreePagesSizeTree, mem, node->key, count);
+            m_FreePagesSizeTree = Internal_SplitFreeBlock(m_FreePagesSizeTree, mem, node->key, count);
         }
         LockPages(mem, count);
         return mem;

@@ -1,6 +1,19 @@
 # Changes
 
-## Latest Changes - 26/04/2023
+## Latest Changes - 13/05/2023
+
+- Updated toolchain to Binutils 2.40 and GCC 13.1.0
+- Fixed issue with PIT IRQ handler
+- Removed unused variable in PIC driver
+- Fixed x86_64_IDT_SetGate function so it follows ISO C++
+- Fixed VirtualPageManager so it splits free blocks correctly
+- Fixed PageManager PageObject management
+- Fixed Initial page mapping so all physical memory is mapped to the HHDM
+- Added mapping of first 4GiB to HHDM
+- Added mapping for memory map entries above 4GiB
+- Added 2MiB page support
+
+## 26/04/2023
 
 - Added PageObject system
 - Added Full kernel PageManager

@@ -8,6 +8,8 @@
 
 namespace WorldOS {
 
+    PageManager* g_KPM = nullptr;
+
     PageManager::PageManager() {
         m_allocated_objects = nullptr;
         m_allocated_object_count = 0;
@@ -87,6 +89,8 @@ namespace WorldOS {
                 else
                     previous->next = po;
             }
+            else
+                m_allocated_objects = po;
             m_allocated_object_count++;
             MapPage(phys_addr, virt_addr, 0x8000003); // Read/Write, No execute, Present
             return virt_addr;
@@ -140,12 +144,15 @@ namespace WorldOS {
                 else
                     previous->next = po;
             }
+            else
+                m_allocated_objects = po;
             m_allocated_object_count++;
             for (uint64_t i = 0; i < count; i++)
                 MapPage(phys_addr + i * 4096, virt_addr + i * 4096, 0x8000003); // Read/Write, No execute, Present
             return virt_addr;
         }
         else {
+            g_PPFA->FreePages(phys_addr, count);
             return nullptr; // User mode, currently unsupported
         }
         return nullptr; // impossible position. only here to stop the compiler from complaining
@@ -160,11 +167,14 @@ namespace WorldOS {
                 UnmapPage(addr);
                 PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
                 if (previous != nullptr)
-                    previous->next = nullptr;
+                    previous->next = po->next;
+                else
+                    m_allocated_objects = po->next;
                 if (NewDeleteInitialised())
                     delete po;
                 else
                     PageObjectPool_Free(po);
+                m_allocated_object_count--;
                 return;
             }
             po = po->next;
@@ -182,11 +192,14 @@ namespace WorldOS {
                     UnmapPage((void*)((uint64_t)addr + i * 0x1000));
                 PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
                 if (previous != nullptr)
-                    previous->next = nullptr;
+                    previous->next = po->next;
+                else
+                    m_allocated_objects = po->next;
                 if (NewDeleteInitialised())
                     delete po;
                 else
                     PageObjectPool_Free(po);
+                m_allocated_object_count--;
                 return;
             }
             po = po->next;

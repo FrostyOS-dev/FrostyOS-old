@@ -14,8 +14,7 @@ uint64_t g_ticks = 0;
 
 #define BASE_FREQUENCY 1193182
 
-void x86_64_PIT_Handler(x86_64_Registers) {
-    //x86_64_outb(0xe9, 't');
+void x86_64_PIT_Handler(x86_64_Registers*) {
     g_ticks+=10;
 }
 

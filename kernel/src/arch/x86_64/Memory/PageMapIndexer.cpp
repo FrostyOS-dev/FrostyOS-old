@@ -7,6 +7,9 @@ Level1Group __attribute__((aligned(0x1000))) PML1_LowestArray;
 Level3Group __attribute__((aligned(0x1000))) PML3_KernelGroup; // only highest 2 entries are used
 Level2Group __attribute__((aligned(0x1000))) PML2_KernelLower;
 Level1Group __attribute__((aligned(0x1000))) PML1_KernelLowest;
+//Level3Group __attribute__((aligned(0x1000))) PML3_HHDMLowest;
+//Level2Group __attribute__((aligned(0x1000))) PML2_HHDMLowest;
+
 
 void* g_kernel_physical = nullptr;
 void* g_kernel_virtual  = nullptr;
@@ -134,14 +137,16 @@ void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags) 
         temp |= (uint64_t)(flags & 0xFFF0000) << 40;
        ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = *(PageMapLevel2Entry*)&temp;
     }
+    if (PML2.PageSize)
+        return; // Using 2MiB pages, stop
 
     uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40)));
     PageMapLevel1Entry PML1 = *(PageMapLevel1Entry*)(&temp);
     PML1.Address = (physical_addr >> 12);
 
     ((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2.Address) << 12)))[pt] = PML1;
-    fprintf(VFS_DEBUG, "x86_64_map_page_noflush: Successfully mapped page %u. Function args: physaddr=%lp virtaddr=%lp flags=%x\n", ((pml4 * 512 + pdptr) * 512 + pd) * 512 + pt, PML2.Address << 12, virtualaddr, flags);
 }
+
 
 void x86_64_map_page(void* physaddr, void* virtualaddr, uint32_t flags) {
     x86_64_map_page_noflush(physaddr, virtualaddr, flags);
@@ -237,7 +242,7 @@ void x86_64_map_large_page_noflush(void* physaddr, void* virtualaddr, uint32_t f
 
     uint64_t temp = ((uint64_t)((flags & 0x1FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40))); // allow extra flags bit for large page mappings
     PageMapLevel2Entry_LargePages PML2 = *(PageMapLevel2Entry_LargePages*)(&temp);
-    PML2.Address = (physical_addr >> 12);
+    PML2.Address = (physical_addr >> 21);
     PML2.PageSize = 1;
 
     ((PageMapLevel2Entry_LargePages*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = PML2;

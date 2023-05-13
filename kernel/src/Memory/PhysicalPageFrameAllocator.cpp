@@ -276,7 +276,7 @@ namespace WorldOS {
                     if (count <= next) break; // check if next > count on next iteration
                     next++;
                 }
-                if (found) return (i - next); // return start page index of the block
+                if (found) return i; // return start page index of the block
             }
         }
         return UINT64_MAX; // impossible offset into bitmap, so good for errors
