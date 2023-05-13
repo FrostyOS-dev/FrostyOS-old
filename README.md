@@ -1,41 +1,17 @@
 # WorldOS
 
-## Latest Changes - 26/04/2023
+## Latest Changes - 13/05/2023
 
-- Added PageObject system
-- Added Full kernel PageManager
-- Fixed up stack so it is page aligned
-- Fixed up PageTableManager so framebuffer, stack and ACPI stuff are mapped
-- Stopped PageTableManager from mapping entire first GiB of memory
-- Moved I/O implementations into separate NASM file
-- Added GetCR2 function
-- Added NX/XD check
-- stopped `InitKernelStack` from enabling/disabling interrupts
-- Now using QEMU64 CPU
-- Enabled KVM support in QEMU
-- Added a map page function that does not flush the TLB
-- Changed kernel mapping to not flush the TLB
-- Fixed page tables
-- Added HHDM address support in entry point and kernel main
-- Added kernel end ELF symbol
-- Fixed VirtualPageManager
-- Moved paging init into its own file
-- Removed PageTableManager
-- Added x86_64_cpuid function which supports setting and returning eax, ebx, ecx and edx
-- Added early entry file for setting up the stack
-- Added `uint64_t` casts to `KiB`, `MiB` and `GiB` macros
-- Added relevant casts to `UINT64_MAX`, `INT64_MAX`, `INT64_MIN` and `UINT32_MAX` macros
-- Fixed objdump script so it dumps in Intel syntax
-
-## Known issues
-
-### Issues
-
-1. Page mapping isn't working properly due to page tables using physical addresses
-
-### Potential fixes
-
-1. Map first 4GiB+ to HHDM as Read/Write, Supervisor, NX
+- Updated toolchain to Binutils 2.40 and GCC 13.1.0
+- Fixed issue with PIT IRQ handler
+- Removed unused variable in PIC driver
+- Fixed x86_64_IDT_SetGate function so it follows ISO C++
+- Fixed VirtualPageManager so it splits free blocks correctly
+- Fixed PageManager PageObject management
+- Fixed Initial page mapping so all physical memory is mapped to the HHDM
+- Added mapping of first 4GiB to HHDM
+- Added mapping for memory map entries above 4GiB
+- Added 2MiB page support
 
 ## Prerequisites
 

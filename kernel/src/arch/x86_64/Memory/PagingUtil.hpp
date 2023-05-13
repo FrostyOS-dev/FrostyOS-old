@@ -11,5 +11,6 @@ extern "C" uint64_t x86_64_GetCR3();
 extern "C" uint64_t x86_64_GetCR2();
 
 extern "C" bool x86_64_EnsureNX();
+extern "C" bool x86_64_EnsureLargePages();
 
 #endif /* _KERNEL_X86_64_PAGING_UTIL_HPP */

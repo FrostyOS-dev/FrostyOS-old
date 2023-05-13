@@ -35,13 +35,11 @@ void x86_64_IDT_EnableGate(uint8_t interrupt) {
 }
 
 void x86_64_IDT_SetGate(uint8_t interrupt, void* base, uint16_t segmentDescriptor, uint8_t flags) {
-    idt.entries[interrupt] = (IDTDescEntry) {
-        .offset0 = (uint16_t) (((uint64_t)base) & 0xffff),
-        .selector = segmentDescriptor,
-        .ist = 0,
-        .type_attr = flags,
-        .offset1 = (uint16_t)((((uint64_t)base) & 0xffff0000) >> 16),
-        .offset2 = (uint32_t)((((uint64_t)base) & 0xffffffff00000000) >> 32),
-        .ignore = 0
-    };
+    idt.entries[interrupt].offset0 = (uint16_t) (((uint64_t)base) & 0xffff);
+    idt.entries[interrupt].selector = segmentDescriptor;
+    idt.entries[interrupt].ist = 0;
+    idt.entries[interrupt].type_attr = flags;
+    idt.entries[interrupt].offset1 = (uint16_t)((((uint64_t)base) & 0xffff0000) >> 16);
+    idt.entries[interrupt].offset2 = (uint32_t)((((uint64_t)base) & 0xffffffff00000000) >> 32);
+    idt.entries[interrupt].ignore = 0;
 }

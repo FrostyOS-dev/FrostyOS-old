@@ -14,21 +14,21 @@ rm -fr $HOME/toolchain-build # attempt to remove toolchain directory. If it does
 mkdir -p $HOME/toolchain-build
 cd $HOME/toolchain-build
 
-if (!($PREFIX/bin/$TARGET-ld -v | grep 2.39 > /dev/null)) then
+if (!($PREFIX/bin/$TARGET-ld -v | grep 2.40 > /dev/null)) then
     echo -----------------
     echo Building binutils
     echo -----------------
 
     # fetch binutils code
-    curl -OL https://ftp.gnu.org/gnu/binutils/binutils-2.39.tar.gz
-    tar -xf binutils-2.39.tar.gz
+    curl -OL https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.gz
+    tar -xf binutils-2.40.tar.gz
 
     # build binutils
-    cd binutils-2.39
+    cd binutils-2.40
     mkdir build
     cd build
     ../configure --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror
-    make -j6
+    make -j4
     make install
     cd ../..
 else
@@ -36,7 +36,7 @@ else
 fi
 
 currentver="$($PREFIX/bin/$TARGET-gcc -dumpversion)"
-requiredver="12.2.0"
+requiredver="13.1.0"
 if [ "$(printf '%s\n' "$requiredver" "$currentver" | sort -V | head -n1)" = "$requiredver" ]; then 
     echo GCC is up to date.
 else
@@ -45,16 +45,16 @@ else
     echo ------------
 
     # fetch gcc code
-    curl -OL https://ftp.gnu.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.gz
-    tar -xf gcc-12.2.0.tar.gz
+    curl -OL https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.gz
+    tar -xf gcc-13.1.0.tar.gz
 
     # build gcc
-    cd gcc-12.2.0
+    cd gcc-13.1.0
     mkdir build
     cd build
     ../configure --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c,c++ --without-headers
-    make all-gcc -j6
-    make all-target-libgcc -j6
+    make all-gcc -j4
+    make all-target-libgcc -j4
     make install-gcc
     make install-target-libgcc
     cd ../..

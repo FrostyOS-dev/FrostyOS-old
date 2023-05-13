@@ -48,6 +48,25 @@ struct PageMapLevel2Entry {
     uint8_t ExecuteDisable : 1;
 } __attribute__((packed));
 
+struct PageMapLevel2Entry_LargePages {
+    uint8_t Present : 1;
+    uint8_t ReadWrite : 1;
+    uint8_t UserSuper : 1;
+    uint8_t WriteThrough : 1;
+    uint8_t CacheDisable : 1;
+    uint8_t Accessed : 1;
+    uint8_t Dirty : 1;
+    uint8_t PageSize : 1; // always 1
+    uint8_t Global : 1;
+    uint8_t Available0 : 3;
+    uint8_t PAT : 1;
+    uint8_t Reserved0 : 8;
+    uint32_t Address : 31;
+    uint8_t Available1 : 7;
+    uint8_t ProtKey : 4;
+    uint8_t ExecuteDisable : 1;
+} __attribute__((packed));
+
 struct PageMapLevel1Entry {
     uint8_t Present : 1;
     uint8_t ReadWrite : 1;
@@ -61,7 +80,7 @@ struct PageMapLevel1Entry {
     uint8_t Available0 : 3;
     uint64_t Address : 40;
     uint8_t Available1 : 7;
-    uint8_t ProctKey : 4;
+    uint8_t ProtKey : 4;
     uint8_t ExecuteDisable : 1;
 } __attribute__((packed));
 

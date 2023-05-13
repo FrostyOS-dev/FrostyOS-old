@@ -35,7 +35,7 @@ namespace WorldOS {
         bool m_page_object_pool_used;
     };
 
-    
+    extern PageManager* g_KPM;
 
 }
 

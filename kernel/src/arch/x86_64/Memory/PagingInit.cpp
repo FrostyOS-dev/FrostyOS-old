@@ -10,6 +10,8 @@
 #include "../Stack.h"
 #include "../io.h"
 
+#include <stdio.hpp>
+
 WorldOS::PhysicalPageFrameAllocator PPFA;
 WorldOS::VirtualPageManager KVPM;
 
@@ -18,10 +20,16 @@ size_t g_MemorySize = 0;
 void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, uint64_t fb_virt, uint64_t fb_size, uint64_t HHDM_start) {
     if (!x86_64_EnsureNX())
         WorldOS::Panic("No execute is not available. It is required.", nullptr, false);
-    
+    if (!x86_64_EnsureLargePages())
+        WorldOS::Panic("2MiB pages are not available. They are required.", nullptr, false);
+
+    if ((HHDM_start & ~0xffffff8000000000) > 0) // HHDM lower 39 bits have a value
+        WorldOS::Panic("HHDM must have PML3, PML2, PML1 and offset values of 0.", nullptr, false);
+
     g_MemorySize = GetMemorySize((const WorldOS::MemoryMapEntry**)MemoryMap, MMEntryCount);
 
     x86_64_SetKernelAddress((void*)kernel_virtual, (void*)kernel_physical, kernel_size);
+    x86_64_SetHHDMStart((void*)HHDM_start);
 
     // prepare page tables
 
@@ -42,6 +50,11 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     PML4_Array.entries[511].Present = 1;
     PML4_Array.entries[511].ReadWrite = 1;
     PML4_Array.entries[511].Address = (uint64_t)x86_64_get_physaddr(&PML3_KernelGroup) >> 12;
+
+    uint16_t HHDM_PML4_offset = (HHDM_start & 0x0000ff8000000000) >> 39;
+    PML4_Array.entries[HHDM_PML4_offset].Present = 1;
+    PML4_Array.entries[HHDM_PML4_offset].ReadWrite = 1;
+    PML4_Array.entries[HHDM_PML4_offset].Address = (uint64_t)x86_64_get_physaddr(&PML3_LowestArray) >> 12;
 
     PML3_LowestArray.entries[0].Present = 1;
     PML3_LowestArray.entries[0].ReadWrite = 1;
@@ -77,15 +90,25 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     g_PPFA = &PPFA;
 
 
-    for (uint64_t i = 0; i < MMEntryCount; i++) {
-        // Map actual memory map entry
-        uint64_t address = (uint64_t)(MemoryMap[i]);
-        address &= ~(0xFFF);
-        x86_64_map_page_noflush((void*)(address - HHDM_start), (void*)address, 0x8000003); // Read/Write, Present, Execute Disable
-    }
+    // Map from end of 1st page until 2MiB
+    for (uint64_t i = 0x1000; i < 0x200000; i += 0x1000)
+        x86_64_map_page_noflush((void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+    
+    
+    // Map from 2MiB to 4GiB with 2MiB pages
+    for (uint64_t i = 0x200000; i < 0x100000000; i += 0x200000)
+        x86_64_map_large_page_noflush((void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
 
-    // Map the page that the memory map base is in
-    x86_64_map_page_noflush((void*)((uint64_t)MemoryMap - HHDM_start), MemoryMap, 0x8000003); // Read/Write, Present, Execute Disable
+    for (uint64_t i = 0; i < MMEntryCount; i++) {
+        WorldOS::MemoryMapEntry* entry = MemoryMap[i];
+        if ((entry->Address + entry->length) < 0x100000000) continue; // skip entries that have already been mapped
+        uint64_t addr = entry->Address & ~0xfff;
+        uint64_t length = entry->length + 0xfff;
+        length &= ~0xfff;
+        
+        for (uint64_t j = 0; j < length; j+=0x1000)
+            x86_64_map_page_noflush((void*)(j + addr), (void*)(j + addr + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+    }
 
     // Map the framebuffer
     fb_size += 4095;
