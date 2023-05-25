@@ -17,8 +17,9 @@ namespace LinkedList {
 	void NodePool_Init();
 	void NodePool_Destroy();
 	Node* NodePool_AllocateNode();
-	bool NodePool_FreeNode(Node* node);
+	bool NodePool_FreeNode(Node*& node);
 	bool NodePool_HasBeenInitialised();
+	bool NodePool_IsInPool(Node* obj);
 
 	// Get length of the Linked list
 	uint64_t length(Node* head);

@@ -42,11 +42,12 @@ namespace LinkedList {
 		return nullptr;
 	}
 
-	bool NodePool_FreeNode(Node* node) {
+	bool NodePool_FreeNode(Node*& node) {
 		for (uint64_t i = 0; i < POOL_SIZE; i++) {
 			if ((uint64_t)node == (uint64_t)(&(nodePool[i]))) {
 				nodePool_Bitmap.Set(i, false);
 				nodePool_UsedCount--;
+				node = nullptr;
 				return true;
 			}
 		}
@@ -56,6 +57,10 @@ namespace LinkedList {
 	bool NodePool_HasBeenInitialised() {
 		return nodePoolHasBeenInitialised;
 	}
+
+	bool NodePool_IsInPool(Node* obj) {
+        return (((uint64_t)obj >= (uint64_t)nodePool) && ((uint64_t)obj < ((uint64_t)nodePool + POOL_SIZE * sizeof(Node))));
+    }
 
 
 	uint64_t length(Node* head) {
@@ -148,7 +153,7 @@ namespace LinkedList {
 			temp->previous->next = temp->next;
 		if (NewDeleteInitialised())
 			delete temp;
-		else
+		else if (NodePool_IsInPool(temp))
 			NodePool_FreeNode(temp);
 	}
 

@@ -80,7 +80,7 @@ namespace WorldOS {
                 if (previous == nullptr) {
                     if (NewDeleteInitialised())
                         delete po;
-                    else
+                    else if (PageObjectPool_IsInPool(po))
                         PageObjectPool_Free(po);
                     g_PPFA->FreePage(phys_addr);
                     g_KVPM->UnallocatePage(virt_addr);
@@ -135,7 +135,7 @@ namespace WorldOS {
                 if (previous == nullptr) {
                     if (NewDeleteInitialised())
                         delete po;
-                    else
+                    else if (PageObjectPool_IsInPool(po))
                         PageObjectPool_Free(po);
                     g_PPFA->FreePages(phys_addr, count);
                     g_KVPM->UnallocatePages(virt_addr, count);
@@ -172,7 +172,7 @@ namespace WorldOS {
                     m_allocated_objects = po->next;
                 if (NewDeleteInitialised())
                     delete po;
-                else
+                else if (PageObjectPool_IsInPool(po))
                     PageObjectPool_Free(po);
                 m_allocated_object_count--;
                 return;
@@ -197,7 +197,7 @@ namespace WorldOS {
                     m_allocated_objects = po->next;
                 if (NewDeleteInitialised())
                     delete po;
-                else
+                else if (PageObjectPool_IsInPool(po))
                     PageObjectPool_Free(po);
                 m_allocated_object_count--;
                 return;

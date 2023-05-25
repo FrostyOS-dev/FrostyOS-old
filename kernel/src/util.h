@@ -12,6 +12,12 @@
 extern "C" {
 #endif
 
+#define DIV_ROUNDUP(VALUE, DIV) (VALUE + (DIV - 1)) / DIV
+
+#define ALIGN_UP(VALUE, ALIGN) DIV_ROUNDUP(VALUE, ALIGN) * ALIGN
+
+#define ALIGN_DOWN(VALUE, ALIGN) (VALUE / ALIGN) * ALIGN
+
 void* memset(void* dst, const uint8_t value, const size_t n);
 void* memcpy(void* dst, const void* src, const size_t n);
 void* memmove(void* dst, const void* src, const size_t n);

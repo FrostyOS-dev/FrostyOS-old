@@ -1,17 +1,44 @@
 # WorldOS
 
-## Latest Changes - 13/05/2023
+## COPYING
 
-- Updated toolchain to Binutils 2.40 and GCC 13.1.0
-- Fixed issue with PIT IRQ handler
-- Removed unused variable in PIC driver
-- Fixed x86_64_IDT_SetGate function so it follows ISO C++
-- Fixed VirtualPageManager so it splits free blocks correctly
-- Fixed PageManager PageObject management
-- Fixed Initial page mapping so all physical memory is mapped to the HHDM
-- Added mapping of first 4GiB to HHDM
-- Added mapping for memory map entries above 4GiB
-- Added 2MiB page support
+Copyright (©) 2022-2023  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+## Latest Changes - 26/05/2023
+
+- Implemented LinkedListBucketHeap-based kmalloc (from the OSDev wiki)
+- Fixed new and delete functions so they now work
+- Fixed a bug where `LinkedList::NodePool_FreeNode` did not actually set the node passed to zero
+- Fixed bug in `WorldOS::PageObject_GetPrevious` where it would return `nullptr` if the root has no next
+- Fixed Bitmap constructors so they follow the C++ ABI
+- Made functions in Bitmap Class const if they do not modify the variables of the class
+- Added resources used
+- Added copyright notice and GNU General Public License overview to this file
+- Added basic assert
+- Added range check for all pool-based deletions
+- Added useful rounding macros to `util.h`
+
+## Resources used
+
+- [OSDev Wiki](https://wiki.osdev.org/Main_Page) - used for documentation on almost everything
+- [Intel x86_64 Software development manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) - used for instruction references and Page Tables
+- [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
+- [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful
+- [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
+- [PonchoOS S2](https://www.youtube.com/watch?v=mpPbKEeWIHU&list=PLxN4E629pPnJxCQCLy7E0SQY_zuumOVyZ) - used for GDT and some very early design choices
 
 ## Prerequisites
 

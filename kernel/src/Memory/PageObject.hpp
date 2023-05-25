@@ -37,6 +37,7 @@ namespace WorldOS {
     void PageObjectPool_Destroy();
 
     bool PageObjectPool_HasBeenInitialised();
+    bool PageObjectPool_IsInPool(PageObject* obj);
 
     PageObject* PageObjectPool_Allocate();
 

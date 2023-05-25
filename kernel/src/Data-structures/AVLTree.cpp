@@ -54,6 +54,10 @@ namespace AVLTree {
 		return nodePoolHasBeenInitialised;
 	}
 
+	bool NodePool_IsInPool(Node* obj) {
+        return (((uint64_t)obj >= (uint64_t)nodePool) && ((uint64_t)obj < ((uint64_t)nodePool + POOL_SIZE * sizeof(Node))));
+    }
+
 
 	uint64_t height(Node* root) {
 		if (root == nullptr)
@@ -226,7 +230,7 @@ namespace AVLTree {
 				Node* temp = root->right;
 				if (NewDeleteInitialised())
 					delete root;
-				else
+				else if (NodePool_IsInPool(temp))
 					NodePool_FreeNode(root);
 				root = temp;
 			}
@@ -234,7 +238,7 @@ namespace AVLTree {
 				Node* temp = root->left;
 				if (NewDeleteInitialised())
 					delete root;
-				else
+				else if (NodePool_IsInPool(temp))
 					NodePool_FreeNode(root);
 				root = temp;
 			}

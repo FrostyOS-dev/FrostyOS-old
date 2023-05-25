@@ -18,7 +18,7 @@ namespace WorldOS {
         if (root == nullptr || root == current)
             return nullptr;
         if (root->next == nullptr)
-            return nullptr;
+            return root;
         if (root->next == current)
             return root;
         return PageObject_GetPrevious(root->next, current);
@@ -56,6 +56,10 @@ namespace WorldOS {
 
     bool PageObjectPool_HasBeenInitialised() {
         return g_PageObjectPool_HasBeenInitialised;
+    }
+
+    bool PageObjectPool_IsInPool(PageObject* obj) {
+        return (((uint64_t)obj >= (uint64_t)g_PageObjectPool) && ((uint64_t)obj < ((uint64_t)g_PageObjectPool + PAGE_OBJECT_POOL_SIZE * sizeof(PageObject))));
     }
 
     PageObject* PageObjectPool_Allocate() {

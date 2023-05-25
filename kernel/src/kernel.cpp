@@ -6,6 +6,7 @@
 #include <arch/x86_64/ELFSymbols.h>
 
 #include <Memory/PageManager.hpp>
+#include <Memory/kmalloc.hpp>
 
 namespace WorldOS {
 
@@ -27,6 +28,7 @@ namespace WorldOS {
         HAL_Init(params->MemoryMap, params->MemoryMapEntryCount, params->kernel_virtual_addr, params->kernel_physical_addr, kernel_size, params->hhdm_start_addr, m_InitialFrameBuffer);
         KPM.InitPageManager((void*)(params->kernel_virtual_addr + kernel_size), UINT64_MAX - (params->kernel_virtual_addr + kernel_size), false);
         g_KPM = &KPM;
+        kmalloc_init();
 
         if (params->frameBuffer.bpp != 32) {
             Panic("Bootloader Frame Buffer Bits per Pixel is not 32", nullptr, false);

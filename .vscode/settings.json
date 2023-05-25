@@ -13,6 +13,9 @@
     "cSpell.words": [
         "framebuffer",
         "HHDM",
+        "kfree",
+        "kmalloc",
+        "krealloc",
         "KVPM",
         "PPFA",
         "Unallocate",

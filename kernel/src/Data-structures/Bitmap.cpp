@@ -6,14 +6,12 @@ namespace WorldOS {
 
     /* Public methods */
 
-    Bitmap::Bitmap() {
-        m_Size = 0;
-        m_Buffer = nullptr;
+    Bitmap::Bitmap() : m_Size(0), m_Buffer(nullptr) {
+
     }
 
-    Bitmap::Bitmap(uint8_t* buffer, size_t size) {
-        m_Size = size;
-        m_Buffer = buffer;
+    Bitmap::Bitmap(uint8_t* buffer, size_t size) : m_Size(size), m_Buffer(buffer) {
+        
     }
 
     Bitmap::~Bitmap() {
@@ -21,7 +19,7 @@ namespace WorldOS {
         m_Buffer = nullptr;
     }
 
-    bool Bitmap::operator[](uint64_t index) {
+    const bool Bitmap::operator[](uint64_t index) const {
         uint64_t byteIndex = index / 8;
         if (byteIndex >= m_Size)
             return false; // default is 0

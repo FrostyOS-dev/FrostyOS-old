@@ -23,6 +23,7 @@ namespace AVLTree {
 	Node* NodePool_AllocateNode();
 	bool NodePool_FreeNode(Node* node);
 	bool NodePool_HasBeenInitialised();
+	bool NodePool_IsInPool(Node* obj);
 
 	// Get height of the AVL tree
 	uint64_t height(Node* root);
