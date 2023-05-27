@@ -17,19 +17,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 26/05/2023
+## Latest Changes - 27/05/2023
 
-- Implemented LinkedListBucketHeap-based kmalloc (from the OSDev wiki)
-- Fixed new and delete functions so they now work
-- Fixed a bug where `LinkedList::NodePool_FreeNode` did not actually set the node passed to zero
-- Fixed bug in `WorldOS::PageObject_GetPrevious` where it would return `nullptr` if the root has no next
-- Fixed Bitmap constructors so they follow the C++ ABI
-- Made functions in Bitmap Class const if they do not modify the variables of the class
-- Added resources used
-- Added copyright notice and GNU General Public License overview to this file
-- Added basic assert
-- Added range check for all pool-based deletions
-- Added useful rounding macros to `util.h`
+- Tidied up `StartKernel`
+- Changed HAL to 2-stage initialisation
+- Added ACPI RSDP support
+- Added ACPI XSDT support
+- Fixed `x86_64_Panic` so it creates a new line before printing `No extra details are shown when type isn't Interrupt/Exception`
+- Fixed assert so it adds `"` around the function name
 
 ## Resources used
 

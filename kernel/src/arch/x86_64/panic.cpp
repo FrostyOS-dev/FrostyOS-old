@@ -19,7 +19,7 @@ void x86_64_Panic(const char* reason, x86_64_Registers* regs, const bool type) {
         if (regs->interrupt == 0xE /* Page Fault */)
             fprintf(VFS_DEBUG, "\nCR2=%lx\n", regs->CR2);
     } else {
-        fprintf(VFS_DEBUG, "No extra details are shown when type isn't Interrupt/Exception");
+        fprintf(VFS_DEBUG, "\nNo extra details are shown when type isn't Interrupt/Exception");
     }
 
     // Output all to stdout after in case framebuffer writes cause a page fault
@@ -40,7 +40,7 @@ void x86_64_Panic(const char* reason, x86_64_Registers* regs, const bool type) {
         if (regs->interrupt == 0xE /* Page Fault */)
             fprintf(VFS_STDOUT, "\nCR2=%lx\n", regs->CR2);
     } else {
-        fprintf(VFS_STDOUT, "No extra details are shown when type isn't Interrupt/Exception");
+        fprintf(VFS_STDOUT, "\nNo extra details are shown when type isn't Interrupt/Exception");
     }
 
     while (true) {

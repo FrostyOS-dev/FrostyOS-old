@@ -1,6 +1,15 @@
 # Changes
 
-## Latest Changes - 26/05/2023
+## Latest Changes - 27/05/2023
+
+- Tidied up `StartKernel`
+- Changed HAL to 2-stage initialisation
+- Added ACPI RSDP support
+- Added ACPI XSDT support
+- Fixed `x86_64_Panic` so it creates a new line before printing `No extra details are shown when type isn't Interrupt/Exception`
+- Fixed assert so it adds `"` around the function name
+
+## 26/05/2023
 
 - Implemented LinkedListBucketHeap-based kmalloc (from the OSDev wiki)
 - Fixed new and delete functions so they now work

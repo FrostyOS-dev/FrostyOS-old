@@ -18,8 +18,10 @@
         "krealloc",
         "KVPM",
         "PPFA",
+        "RSDP",
         "Unallocate",
         "Unreserve",
-        "WORLDOS"
+        "WORLDOS",
+        "XSDT"
     ]
 }
