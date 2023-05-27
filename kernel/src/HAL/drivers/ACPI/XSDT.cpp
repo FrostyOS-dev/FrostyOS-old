@@ -1,12 +1,14 @@
 #include "XSDT.hpp"
 
+#include <Memory/PagingUtil.hpp>
+
 ACPISDTHeader* g_XSDT;
 
 bool InitAndValidateXSDT(void* XSDT) {
     if (XSDT == nullptr)
         return false;
     if (doChecksum(reinterpret_cast<ACPISDTHeader*>(XSDT))) {
-        g_XSDT = reinterpret_cast<ACPISDTHeader*>(XSDT);
+        g_XSDT = (ACPISDTHeader*)to_HHDM(XSDT);
         return true;
     }
     return false;

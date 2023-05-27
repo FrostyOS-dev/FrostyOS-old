@@ -9,3 +9,7 @@ void MapPage(void* phys_addr, void* virt_addr, uint32_t flags) {
 void UnmapPage(void* virt_addr) {
     x86_64_unmap_page(virt_addr);
 }
+
+void* to_HHDM(void* phys_addr) {
+    return x86_64_to_HHDM(phys_addr);
+}
