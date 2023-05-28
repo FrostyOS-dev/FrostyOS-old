@@ -13,6 +13,30 @@ size_t strlen(const char* str) {
     return len;
 }
 
+char* strcpy(char* dst, const char* src) {
+    if (dst == NULL || src == NULL)
+        return dst;
+    size_t i = 0;
+    while (1) {
+        dst[i] = src[i];
+        if (src[i] == 0)
+            break; // still copy the terminating character
+        i++;
+    }
+    return dst;
+}
+
+char* strncpy(char* dst, const char* src, size_t n) {
+    if (dst == NULL || src == NULL)
+        return NULL;
+    for (size_t i = 0; i < n; i++) {
+        dst[i] = src[i];
+        if (src[i] == 0)
+            break; // still copy the terminating character
+    }
+    return dst;
+}
+
 int strcmp(const char* str1, const char* str2) {
     size_t i = 0;
     while (1) {

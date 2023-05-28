@@ -93,7 +93,6 @@ void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags) 
         x86_64_map_page_noflush((void*)(PML4.Address << 12), x86_64_to_HHDM((void*)(PML4.Address << 12)), 0x8000003); // Present, Read/Write, No execute
         fast_memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 512);
         PML4_Array.entries[pml4] = PML4;
-        fprintf(VFS_DEBUG, "x86_64_map_page_noflush: PML4 %u has been allocated an array at %lx. Function args: physaddr=%lp virtaddr=%lp flags=%x\n", pml4, PML4.Address << 12, virtualaddr, flags);
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML4);
@@ -111,7 +110,6 @@ void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags) 
         x86_64_map_page_noflush((void*)(PML3.Address << 12), x86_64_to_HHDM((void*)(PML3.Address << 12)), 0x8000003); // Present, Read/Write, No execute
         fast_memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 512);
         ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = PML3;
-        fprintf(VFS_DEBUG, "x86_64_map_page_noflush: PML3 %u has been allocated an array at %lx. Function args: physaddr=%lp virtaddr=%lp flags=%x\n", pml4 * 512 + pdptr, PML3.Address << 12, virtualaddr, flags);
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML3);
@@ -129,7 +127,6 @@ void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags) 
         x86_64_map_page_noflush((void*)(PML2.Address << 12), x86_64_to_HHDM((void*)(PML2.Address << 12)), 0x8000003); // Present, Read/Write, No execute
         fast_memset(x86_64_to_HHDM((void*)(PML2.Address << 12)), 0, 512);
         ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = PML2;
-        fprintf(VFS_DEBUG, "x86_64_map_page_noflush: PML2 %u has been allocated an array at %lx. Function args: physaddr=%lp virtaddr=%lp flags=%x\n", (pml4 * 512 + pdptr) * 512 + pd, PML2.Address << 12, virtualaddr, flags);
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML2);

@@ -54,11 +54,9 @@ bool NewDeleteInitialised() {
 
 void NewDeleteInit() {
     g_NewDeleteInitialised = true;
-    fprintf(VFS_DEBUG, "new and delete have been initialised!\n");
 }
 
 void NewDeleteDestroy() {
     // TODO: check if there are any active objects that could cause issues
-    g_NewDeleteInitialised = true;
-    fprintf(VFS_DEBUG, "new and delete have been un-initialised!\n");
+    g_NewDeleteInitialised = false;
 }

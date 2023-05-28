@@ -17,14 +17,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 27/05/2023
+## Latest Changes - 28/05/2023
 
-- Tidied up `StartKernel`
-- Changed HAL to 2-stage initialisation
-- Added ACPI RSDP support
-- Added ACPI XSDT support
-- Fixed `x86_64_Panic` so it creates a new line before printing `No extra details are shown when type isn't Interrupt/Exception`
-- Fixed assert so it adds `"` around the function name
+- Actually implemented `strcpy` and `strncpy`
+- Changed run command line so QEMU uses the `q35` chipset
+- removed unnecessary `fprintf` calls in `Memory/newdelete.cpp`
+- Added Simple PCIe device detection
+- Added basic `Device` and `PCIDevice` classes
+- Fixed `x86_64_map_page_noflush` so it doesn't print unnecessary information
+- Added `getSDTCount` function to ACPI SDT files
 
 ## Resources used
 
@@ -136,11 +137,11 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### Debug
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -cpu qemu64`
+1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64`
 
 ### Release
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -cpu qemu64`
+1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64`
 
 ---
 

@@ -9,4 +9,6 @@ bool InitAndValidateXSDT(void* XSDT);
 
 ACPISDTHeader* getOtherSDT(uint64_t index);
 
+uint64_t getSDTCount();
+
 #endif /* _HAL_ACPI_XSDT_HPP */

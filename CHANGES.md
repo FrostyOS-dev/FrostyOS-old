@@ -1,6 +1,16 @@
 # Changes
 
-## Latest Changes - 27/05/2023
+## Latest Changes - 28/05/2023
+
+- Actually implemented `strcpy` and `strncpy`
+- Changed run command line so QEMU uses the `q35` chipset
+- removed unnecessary `fprintf` calls in `Memory/newdelete.cpp`
+- Added Simple PCIe device detection
+- Added basic `Device` and `PCIDevice` classes
+- Fixed `x86_64_map_page_noflush` so it doesn't print unnecessary information
+- Added `getSDTCount` function to ACPI SDT files
+
+## 27/05/2023
 
 - Tidied up `StartKernel`
 - Changed HAL to 2-stage initialisation

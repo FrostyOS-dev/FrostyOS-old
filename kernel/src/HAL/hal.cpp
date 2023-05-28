@@ -14,11 +14,16 @@
 
 #include "drivers/ACPI/RSDP.hpp"
 #include "drivers/ACPI/XSDT.hpp"
+#include "drivers/ACPI/MCFG.hpp"
+
+#include "drivers/PCI.hpp"
 
 #include "timer.hpp"
 #include "hal.hpp"
 
 #include <assert.h>
+#include <stdio.hpp>
+#include <string.h>
 
 namespace WorldOS {
 
@@ -51,6 +56,24 @@ namespace WorldOS {
         assert(InitAndValidateRSDP(RSDP));
         assert(IsXSDTAvailable());
         assert(InitAndValidateXSDT(GetXSDT()));
+        bool MCFGFound = false;
+        for (uint64_t i = 0; i < getSDTCount(); i++) {
+            ACPISDTHeader* header = getOtherSDT(i);
+            if (strncmp(header->Signature, "MCFG", 4) == 0 && !MCFGFound) {
+                assert(InitAndValidateMCFG(header));
+                MCFGFound = true;
+            }
+        }
+        assert(MCFGFound); // it must be found or device detection won't work
+        for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
+            MCFGEntry* entry = GetMCFGEntry(i);
+            PCI::EnumerateBuses((void*)(entry->Address));
+        }
+        PCI::Header0* device = PCI::PCIDeviceList::GetPCIDevice(0);
+        for (uint64_t i = 1; device != nullptr; i++) {
+            fprintf(VFS_DEBUG, "PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
+            device = PCI::PCIDeviceList::GetPCIDevice(i);
+        }
     }
 
     /*
