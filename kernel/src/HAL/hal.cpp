@@ -18,12 +18,16 @@
 
 #include "drivers/PCI.hpp"
 
+#include "drivers/disk/NVMe.hpp"
+
 #include "timer.hpp"
 #include "hal.hpp"
 
 #include <assert.h>
 #include <stdio.hpp>
 #include <string.h>
+
+#include <Memory/newdelete.hpp>
 
 namespace WorldOS {
 
@@ -72,6 +76,11 @@ namespace WorldOS {
         PCI::Header0* device = PCI::PCIDeviceList::GetPCIDevice(0);
         for (uint64_t i = 1; device != nullptr; i++) {
             fprintf(VFS_DEBUG, "PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
+            if (device->ch.ClassCode == 0x1 && device->ch.SubClass == 0x8 && device->ch.ProgIF == 0x2) { // NVMe
+                fprintf(VFS_DEBUG, "Found NVMe controller. It uses INT Line %hhx. It uses INT Pin %hhx\n", device->INTLine, device->INTPIN);
+                NVMeDisk* disk = new NVMeDisk;
+                disk->InitPCIDevice(device);
+            }
             device = PCI::PCIDeviceList::GetPCIDevice(i);
         }
     }
