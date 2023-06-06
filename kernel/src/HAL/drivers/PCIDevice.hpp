@@ -6,20 +6,16 @@
 
 class PCIDevice : public Device {
 public:
-    PCIDevice();
-    virtual ~PCIDevice() override;
+    virtual ~PCIDevice() override {}
 
-    virtual void InitPCIDevice(PCI::Header0* device);
+    virtual void InitPCIDevice(PCI::Header0* device) = 0;
 
-    virtual const char* getVendorName() override;
-    virtual const char* getDeviceName() override;
-
-    virtual const char* getDeviceClass();
-    virtual const char* getDeviceSubClass();
-    virtual const char* getDeviceProgramInterface();
+    virtual const char* getDeviceClass() = 0;
+    virtual const char* getDeviceSubClass() = 0;
+    virtual const char* getDeviceProgramInterface() = 0;
 
 protected:
-    PCI::Header0* m_device;
+    PCI::Header0* p_device = nullptr;
 };
 
 #endif /* _HAL_PCI_DEVICE_HPP */

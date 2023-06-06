@@ -70,7 +70,7 @@ void* x86_64_get_physaddr(void* virtualaddr) {
 void* x86_64_to_HHDM(void* physaddr) {
     if (((uint64_t)physaddr < 0x1000))
         return nullptr;
-    else if ((uint64_t)physaddr > (GiB(4) - 1))
+    else if ((uint64_t)physaddr > (GiB(512) - 1))
         return physaddr;
     return (void*)((uint64_t)physaddr + (uint64_t)g_HHDM_start);
 }

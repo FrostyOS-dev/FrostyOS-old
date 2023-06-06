@@ -3,11 +3,10 @@
 
 class Device {
 public:
-    Device();
-    virtual ~Device();
+    virtual ~Device() {};
 
-    virtual const char* getVendorName();
-    virtual const char* getDeviceName();
+    virtual const char* getVendorName() = 0;
+    virtual const char* getDeviceName() = 0;
 };
 
 #endif /* _HAL_DEVICE_HPP */

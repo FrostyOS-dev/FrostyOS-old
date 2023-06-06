@@ -13,3 +13,7 @@ void UnmapPage(void* virt_addr) {
 void* to_HHDM(void* phys_addr) {
     return x86_64_to_HHDM(phys_addr);
 }
+
+void* get_physaddr(void* virtaddr) {
+    return x86_64_get_physaddr(virtaddr);
+}

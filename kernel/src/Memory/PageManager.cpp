@@ -78,10 +78,10 @@ namespace WorldOS {
             if (m_allocated_object_count > 0) {
                 PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
                 if (previous == nullptr) {
-                    if (NewDeleteInitialised())
-                        delete po;
-                    else if (PageObjectPool_IsInPool(po))
+                    if (PageObjectPool_IsInPool(po))
                         PageObjectPool_Free(po);
+                    else if (NewDeleteInitialised())
+                        delete po;
                     g_PPFA->FreePage(phys_addr);
                     g_KVPM->UnallocatePage(virt_addr);
                     return nullptr;
@@ -133,10 +133,10 @@ namespace WorldOS {
             if (m_allocated_object_count > 0) {
                 PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
                 if (previous == nullptr) {
-                    if (NewDeleteInitialised())
-                        delete po;
-                    else if (PageObjectPool_IsInPool(po))
+                    if (PageObjectPool_IsInPool(po))
                         PageObjectPool_Free(po);
+                    else if (NewDeleteInitialised())
+                        delete po;
                     g_PPFA->FreePages(phys_addr, count);
                     g_KVPM->UnallocatePages(virt_addr, count);
                     return nullptr;
@@ -170,10 +170,10 @@ namespace WorldOS {
                     previous->next = po->next;
                 else
                     m_allocated_objects = po->next;
-                if (NewDeleteInitialised())
-                    delete po;
-                else if (PageObjectPool_IsInPool(po))
+                if (PageObjectPool_IsInPool(po))
                     PageObjectPool_Free(po);
+                else if (NewDeleteInitialised())
+                    delete po;
                 m_allocated_object_count--;
                 return;
             }
@@ -195,10 +195,10 @@ namespace WorldOS {
                     previous->next = po->next;
                 else
                     m_allocated_objects = po->next;
-                if (NewDeleteInitialised())
-                    delete po;
-                else if (PageObjectPool_IsInPool(po))
+                if (PageObjectPool_IsInPool(po))
                     PageObjectPool_Free(po);
+                else if (NewDeleteInitialised())
+                    delete po;
                 m_allocated_object_count--;
                 return;
             }

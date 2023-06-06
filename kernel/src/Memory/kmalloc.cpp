@@ -200,10 +200,15 @@ static int memory_chunk_slot(size_t size) {
     }
     return n;
 }
+
+unsigned char* g_mem_start = nullptr;
+unsigned char* g_mem_end = nullptr;
  
 void mrvn_memory_init(void* mem, size_t size) {
-    char *mem_start = (char *)(((intptr_t)mem + ALIGN - 1) & (~(ALIGN - 1)));
-    char *mem_end = (char *)(((intptr_t)mem + size) & (~(ALIGN - 1)));
+    unsigned char* mem_start = (unsigned char*)(((intptr_t)mem + ALIGN - 1) & (~(ALIGN - 1)));
+    unsigned char* mem_end = (unsigned char*)(((intptr_t)mem + size) & (~(ALIGN - 1)));
+    g_mem_start = mem_start;
+    g_mem_end = mem_end;
     first = (Chunk*)mem_start;
     Chunk *second = first + 1;
     last = ((Chunk*)mem_end) - 1;
@@ -225,7 +230,7 @@ void mrvn_memory_init(void* mem, size_t size) {
 }
  
 void* mrvn_malloc(size_t size) {
-    //printf("%s(%#lx)\n", __FUNCTION__, size);
+    //fprintf(VFS_DEBUG, "%s(%lx)\n", __extension__ __PRETTY_FUNCTION__, size);
     size = (size + ALIGN - 1) & (~(ALIGN - 1));
  
 	if (size < MIN_SIZE) size = MIN_SIZE;
@@ -261,7 +266,7 @@ void* mrvn_malloc(size_t size) {
 	//printf("AAAA\n");
     mem_free -= size2;
     mem_used += size2 - len - HEADER_SIZE;
-    //printf("  = %p [%p]\n", chunk->data, chunk);
+    //fprintf(VFS_DEBUG, "  = %p [%p]\n", chunk->data, chunk);
     return chunk->data;
 }
  
@@ -282,11 +287,15 @@ static void push_free(Chunk *chunk) {
 }
  
 void mrvn_free(void *mem) {
+    /*if (mem < g_mem_start || mem > g_mem_end) {
+        fprintf(VFS_DEBUG, "%s(%p): WARNING: block to free is outside of range. Not freeing...\n", __extension__ __PRETTY_FUNCTION__, mem);
+        return;
+    }*/
     Chunk *chunk = (Chunk*)((char*)mem - HEADER_SIZE);
     Chunk *next = CONTAINER(Chunk, all, chunk->all.next);
     Chunk *prev = CONTAINER(Chunk, all, chunk->all.prev);
 
-	//printf("%s(%p): @%p %#lx [%d]\n", __FUNCTION__, mem, chunk, memory_chunk_size(chunk), memory_chunk_slot(memory_chunk_size(chunk)));
+	//fprintf(VFS_DEBUG, "%s(%p): @%p %lx [%d]\n", __extension__ __PRETTY_FUNCTION__, mem, chunk, memory_chunk_size(chunk), memory_chunk_slot(memory_chunk_size(chunk)));
     mem_used -= memory_chunk_size(chunk);
 
     if (next->used == 0) {
@@ -351,7 +360,16 @@ void kmalloc_init() {
 }
 
 void* kmalloc(size_t size) {
-    return mrvn_malloc(size);
+    return mrvn_malloc(ALIGN_UP(size, MIN_SIZE));
+}
+
+void* kcalloc(size_t size) {
+    ALIGN_UP(size, MIN_SIZE);
+    void* mem = mrvn_malloc(size);
+    if (mem == nullptr)
+        return nullptr;
+    fast_memset(mem, 0, size / 8);
+    return mem;
 }
 
 void kfree(void* addr) {

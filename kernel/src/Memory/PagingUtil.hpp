@@ -8,4 +8,6 @@ void UnmapPage(void* virt_addr);
 
 void* to_HHDM(void* phys_addr);
 
+void* get_physaddr(void* virtaddr);
+
 #endif /* _PAGING_UTIL_H */

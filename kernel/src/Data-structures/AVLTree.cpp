@@ -228,18 +228,18 @@ namespace AVLTree {
 			// Node with only one child or no child
 			if (root->left == nullptr) {
 				Node* temp = root->right;
-				if (NewDeleteInitialised())
-					delete root;
-				else if (NodePool_IsInPool(temp))
+				if (NodePool_IsInPool(root))
 					NodePool_FreeNode(root);
+				else if (NewDeleteInitialised())
+					delete root;
 				root = temp;
 			}
 			else if (root->right == nullptr) {
 				Node* temp = root->left;
-				if (NewDeleteInitialised())
-					delete root;
-				else if (NodePool_IsInPool(temp))
+				if (NodePool_IsInPool(root))
 					NodePool_FreeNode(root);
+				else if (NewDeleteInitialised())
+					delete root;
 				root = temp;
 			}
 

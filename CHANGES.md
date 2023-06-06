@@ -1,6 +1,15 @@
 # Changes
 
-## Latest Changes - 28/05/2023
+## Latest Changes - 06/06/2023
+
+- Implemented `kcalloc`
+- Changed `new` to use `kcalloc`
+- Changed all object pools so they check if an object is inside the pool before deleting it
+- Converted `Device` and `PCIDevice` classes to pure-virtual
+- Added architecture-independent version of `get_physaddr`
+- Fixed `x86_64_to_HHDM` so HHDM range is first 512GiB instead of 4GiB
+
+## 28/05/2023
 
 - Actually implemented `strcpy` and `strncpy`
 - Changed run command line so QEMU uses the `q35` chipset

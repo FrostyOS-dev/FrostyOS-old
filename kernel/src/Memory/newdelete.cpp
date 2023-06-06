@@ -5,7 +5,7 @@
 
 void* operator new(size_t size) {
     if (NewDeleteInitialised()) {
-        return kmalloc(size);
+        return kcalloc(size);
     }
     else {
         fprintf(VFS_DEBUG, "operator new attempted when unavailable. returning a null pointer.\n");
@@ -15,7 +15,7 @@ void* operator new(size_t size) {
 
 void* operator new[](size_t size) {
     if (NewDeleteInitialised()) {
-        return kmalloc(size);
+        return kcalloc(size);
     }
     else {
         fprintf(VFS_DEBUG, "operator new[] attempted when unavailable. returning a null pointer.\n");

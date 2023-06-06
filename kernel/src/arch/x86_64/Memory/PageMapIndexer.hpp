@@ -10,7 +10,7 @@
 // Get the page-aligned physical address from a page-aligned virtual address.
 void* x86_64_get_physaddr(void* virtualaddr);
 
-// Get the HHDM version of an address under 4GiB
+// Get the HHDM version of an address under 512GiB
 void* x86_64_to_HHDM(void* physaddr);
 
 // Map a page. physaddr and virtualaddr must be page aligned. Can potentially map 512 pages instead of just 1 due to x86_64 limitations.

@@ -137,10 +137,10 @@ namespace LinkedList {
 			head = temp->next;
 			if (head != nullptr)
 				head->previous = nullptr;
-			if (NewDeleteInitialised())
-				delete temp;
-			else
+			if (NodePool_IsInPool(temp))
 				NodePool_FreeNode(temp);
+			else if (NewDeleteInitialised())
+				delete temp;
 			return;
 		}
 		while (temp != nullptr && temp->data != data) {
@@ -151,10 +151,10 @@ namespace LinkedList {
 			temp->next->previous= temp->previous;
 		if (temp->previous!= nullptr)
 			temp->previous->next = temp->next;
-		if (NewDeleteInitialised())
-			delete temp;
-		else if (NodePool_IsInPool(temp))
+		if (NodePool_IsInPool(temp))
 			NodePool_FreeNode(temp);
+		else if (NewDeleteInitialised())
+			delete temp;
 	}
 
 	void print(Node* head) {
