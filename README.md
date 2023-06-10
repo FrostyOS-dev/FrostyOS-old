@@ -17,14 +17,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 06/06/2023
+## Latest Changes - 11/06/2023
 
-- Implemented `kcalloc`
-- Changed `new` to use `kcalloc`
-- Changed all object pools so they check if an object is inside the pool before deleting it
-- Converted `Device` and `PCIDevice` classes to pure-virtual
-- Added architecture-independent version of `get_physaddr`
-- Fixed `x86_64_to_HHDM` so HHDM range is first 512GiB instead of 4GiB
+- Fixed HAL timer code so the millisecond value is rounded up correctly
+- Renamed `x86_64_Registers` to `x86_64_Interrupt_Registers`
+- Changed `LinkedList::insert` to `LinkedList::insertNode`
+- Fixed `LinkedList::deleteNode` so it fixes the existing list correctly and so page faults are very rare
+- Implemented template `SimpleLinkedList` class
 
 ## Resources used
 

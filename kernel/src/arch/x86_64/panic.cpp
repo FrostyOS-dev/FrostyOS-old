@@ -4,7 +4,7 @@
 
 #include <HAL/graphics.hpp>
 
-void x86_64_Panic(const char* reason, x86_64_Registers* regs, const bool type) {
+void x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type) {
 
     // Output all to debug first
 

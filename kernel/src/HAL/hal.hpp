@@ -17,7 +17,7 @@ namespace WorldOS {
     void HAL_Stage2(void* RSDP);
 
     // reason = message to display, regs = registers at the time of error, type = the type of error (true for interrupt and false for other)
-    inline void Panic(const char* reason, x86_64_Registers* regs, const bool type = false) { x86_64_Panic(reason, regs, type); }
+    inline void Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type = false) { x86_64_Panic(reason, regs, type); }
 }
 
 #endif /* _KERNEL_HAL_HPP */

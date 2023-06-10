@@ -1,5 +1,6 @@
 #include "PIT.hpp"
 #include "io.h"
+
 #include "interrupts/pic.hpp"
 #include "interrupts/IRQ.hpp"
 
@@ -14,8 +15,8 @@ uint64_t g_ticks = 0;
 
 #define BASE_FREQUENCY 1193182
 
-void x86_64_PIT_Handler(x86_64_Registers*) {
-    g_ticks+=10;
+void x86_64_PIT_Handler(x86_64_Interrupt_Registers*) {
+    g_ticks += 10;
 }
 
 void x86_64_PIT_Init() {

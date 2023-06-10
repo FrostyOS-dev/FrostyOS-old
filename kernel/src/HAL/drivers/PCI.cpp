@@ -46,7 +46,7 @@ namespace PCI {
         }
 
         void AddPCIDevice(Header0* device) {
-            LinkedList::insert(g_deviceList, (uint64_t)device);
+            LinkedList::insertNode(g_deviceList, (uint64_t)device);
         }
 
         void RemovePCIDevice(uint64_t index) {

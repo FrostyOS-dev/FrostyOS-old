@@ -76,10 +76,4 @@ namespace WorldOS {
         }
     }
 
-    /*
-    void Panic(const char* reason, x86_64_Registers* regs, const bool type) {
-        x86_64_Panic(reason, regs, type);
-    }
-    */
-
 }

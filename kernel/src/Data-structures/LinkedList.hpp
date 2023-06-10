@@ -29,7 +29,7 @@ namespace LinkedList {
 	Node* newNode(uint64_t data);
 
 	// Recursive function to insert a node in the list with given data and returns the head node
-	void insert(Node*& head, uint64_t data);
+	void insertNode(Node*& head, uint64_t data);
 
 	// Get a pointer a node from its data
 	Node* findNode(Node* head, uint64_t data);
@@ -39,6 +39,58 @@ namespace LinkedList {
 
 	// print the Linked list
 	void print(Node* head);
+
+	template <typename T> class SimpleLinkedList {
+	public:
+		SimpleLinkedList() : m_count(0), m_start(nullptr) {}
+		~SimpleLinkedList() {
+			for (uint64_t i = 0; i < m_count; i++)
+				remove(i);
+		}
+
+		void insert(const T& obj) {
+			if (findNode(m_start, (uint64_t)&obj) != nullptr)
+				return; // object already exists
+			insertNode(m_start, (uint64_t)&obj);
+			m_count++;
+		}
+		T* get(uint64_t index) {
+			if (index >= m_count)
+				return nullptr;
+			Node* temp = m_start;
+			for (uint64_t i = 0; i < index; i++) {
+				if (temp == nullptr)
+					return nullptr;
+				temp = temp->next;
+			}
+			if (temp == nullptr)
+				return nullptr;
+			return (T*)(temp->data);
+		}
+		uint64_t getIndex(const T& obj) {
+			Node* temp = m_start;
+			for (uint64_t i = 0; i < m_count; i++) {
+				if (temp == nullptr)
+					return UINT64_MAX;
+				if (temp->data == (uint64_t)&obj)
+					return i;
+				temp = temp->next;
+			}
+			return UINT64_MAX;
+		}
+		void remove(uint64_t index) {
+			deleteNode(m_start, (uint64_t)get(index));
+			m_count--;
+		}
+		void remove(const T& obj) {
+			deleteNode(m_start, (uint64_t)&obj);
+			m_count--;
+		}
+
+	private:
+		Node* m_start;
+		uint64_t m_count;
+	};
 
 }
 

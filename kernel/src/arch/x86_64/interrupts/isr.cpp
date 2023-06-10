@@ -47,8 +47,8 @@ void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler) 
 
 bool in_interrupt = false;
 
-extern "C" void x86_64_ISR_Handler(x86_64_Registers regs) {
-    x86_64_Registers* p_regs = &regs;
+extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers regs) {
+    x86_64_Interrupt_Registers* p_regs = &regs;
 
     /* Check if there is a designated handler */
     if (g_ISRHandlers[p_regs->interrupt] != nullptr)

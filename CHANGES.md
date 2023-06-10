@@ -1,6 +1,14 @@
 # Changes
 
-## Latest Changes - 06/06/2023
+## Latest Changes - 11/06/2023
+
+- Fixed HAL timer code so the millisecond value is rounded up correctly
+- Renamed `x86_64_Registers` to `x86_64_Interrupt_Registers`
+- Changed `LinkedList::insert` to `LinkedList::insertNode`
+- Fixed `LinkedList::deleteNode` so it fixes the existing list correctly and so page faults are very rare
+- Implemented template `SimpleLinkedList` class
+
+## 06/06/2023
 
 - Implemented `kcalloc`
 - Changed `new` to use `kcalloc`
