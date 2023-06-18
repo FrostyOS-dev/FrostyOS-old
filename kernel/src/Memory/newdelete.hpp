@@ -6,7 +6,7 @@
 // standard new/delete functions
 
 void* operator new(size_t size) throw();
-void* operator new[](size_t size);
+void* operator new[](size_t size) throw();
 
 void operator delete(void* p);
 void operator delete[](void* p);
@@ -15,6 +15,7 @@ void operator delete[](void* p);
 // following functions aren't part of the C++ ABI, but are required to fix linker errors
 
 void operator delete(void* p, size_t);
+void operator delete[](void* p, size_t);
 
 
 // utility functions

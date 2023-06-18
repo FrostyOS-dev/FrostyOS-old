@@ -126,8 +126,6 @@ namespace LinkedList {
 			if (current->data == data) return current;
 			current = current->next;
 		}
-
-		current = nullptr; // protects the node that current points to from potential deletion
 		return nullptr;
 	}
 

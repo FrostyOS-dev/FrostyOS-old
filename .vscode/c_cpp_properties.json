@@ -42,7 +42,8 @@
                 "-static",
                 "-Bsymbolic",
                 "-zmax-page-size=0x1000"
-            ]
+            ],
+            "configurationProvider": "ms-vscode.makefile-tools"
         },
         {
             "name": "Win32",

@@ -19,11 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ## Latest Changes - 11/06/2023
 
-- Fixed HAL timer code so the millisecond value is rounded up correctly
-- Renamed `x86_64_Registers` to `x86_64_Interrupt_Registers`
-- Changed `LinkedList::insert` to `LinkedList::insertNode`
-- Fixed `LinkedList::deleteNode` so it fixes the existing list correctly and so page faults are very rare
-- Implemented template `SimpleLinkedList` class
+- Implemented basic Process and Thread classes
+- Added x86_64 task switch code
+- Implemented basic Priority-based round-robin scheduler
+- Updated PIT driver so it calls `Scheduler::TimerTick()`
 
 ## Resources used
 

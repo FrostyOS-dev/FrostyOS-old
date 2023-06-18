@@ -41,7 +41,7 @@ extern "C" volatile struct limine_hhdm_request hhdm_request {
     .revision = 0
 };
  
-static volatile void done(void) {
+static void done(void) {
     while (true) {
         __asm__("hlt");
     }
@@ -50,7 +50,7 @@ static volatile void done(void) {
 WorldOS::KernelParams kernelParams;
 
 // called from asm
-extern "C" volatile void _start(void) {
+extern "C" void _start(void) {
     if (framebuffer_request.response == nullptr) {
         done();
     }

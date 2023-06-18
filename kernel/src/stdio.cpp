@@ -232,6 +232,4 @@ void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t f
     for (uint64_t i = 0; i < count; i+=size) {
         VFS_write(file, (uint8_t*)((uint64_t)out * i), size);
     }
-
-    out = nullptr; /* just in case contents of out (which points to ptr) wants to be cleared */
 }
