@@ -23,5 +23,8 @@
         "Unreserve",
         "WORLDOS",
         "XSDT"
+    ],
+    "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
+        "clang-diagnostic-implicit-exception-spec-mismatch"
     ]
 }
