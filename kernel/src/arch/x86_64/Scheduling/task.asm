@@ -25,10 +25,6 @@ x86_64_kernel_switch:
     mov gs, ax ; load gs
     mov ss, ax ; load ss
 
-    mov rax, QWORD [rdi+140]
-    push rax
-    popf ; load RFLAGS
-
     mov rax, QWORD [rdi+148]
     mov cr3, rax ; load CR3
 
@@ -40,11 +36,14 @@ x86_64_kernel_switch:
 
     mov rax, QWORD [rdi+128]
     push rax ; prepare RIP
+
+    mov rax, QWORD [rdi+140]
+    push rax
+    popf ; load RFLAGS
     
     mov rax, QWORD [rdi] ; load rax
     mov rdi, QWORD [rdi+40] ; load rdi
 
-    sti ; enable interrupts
     retfq ; return to cs:RIP
 
 global x86_64_kernel_save_main
