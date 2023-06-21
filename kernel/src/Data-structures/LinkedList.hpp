@@ -49,12 +49,12 @@ namespace LinkedList {
 				remove(i);
 		}
 
-		void insert(const T& obj) {
+		void insert(const T* obj) {
 			/*if (findNode(m_start, (uint64_t)&obj) != nullptr) {
 				fprintf(VFS_DEBUG, "[%s] WARN: object already exists. Not inserting.\n", __extension__ __PRETTY_FUNCTION__);
 				return; // object already exists
 			}*/
-			insertNode(m_start, (uint64_t)&obj);
+			insertNode(m_start, (uint64_t)obj);
 			m_count++;
 		}
 		T* get(uint64_t index) const {
@@ -70,12 +70,12 @@ namespace LinkedList {
 				return nullptr;
 			return (T*)(temp->data);
 		}
-		uint64_t getIndex(const T& obj) const {
+		uint64_t getIndex(const T* obj) const {
 			Node* temp = m_start;
 			for (uint64_t i = 0; i < m_count; i++) {
 				if (temp == nullptr)
 					return UINT64_MAX;
-				if (temp->data == (uint64_t)&obj)
+				if (temp->data == (uint64_t)obj)
 					return i;
 				temp = temp->next;
 			}
@@ -85,8 +85,8 @@ namespace LinkedList {
 			deleteNode(m_start, (uint64_t)get(index));
 			m_count--;
 		}
-		void remove(const T& obj) {
-			deleteNode(m_start, (uint64_t)&obj);
+		void remove(const T* obj) {
+			deleteNode(m_start, (uint64_t)obj);
 			m_count--;
 		}
 		void rotateLeft() {
@@ -123,15 +123,15 @@ namespace LinkedList {
 				return nullptr;
 			return (T*)(m_start->data);
 		}
-		void fprint(fd_t file) {
-			fprintf(file, "Linked list order: ");
-
-			Node* current = m_start;
-			while (current != nullptr) {
-				fprintf(file, " %lu ", current->data);
-				current = current->next;
+		void fprint(const fd_t file) {
+			fprintf(file, "LinkedList order: ");
+			Node* node = m_start;
+			for (uint64_t i = 0; i < m_count; i++) {
+				if (node == nullptr)
+					break;
+				fprintf(file, "%lx ", node->data);
+				node = node->next;
 			}
-
 			fprintf(file, "\n");
 		}
 
