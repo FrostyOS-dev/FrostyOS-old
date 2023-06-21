@@ -20,13 +20,14 @@ namespace Scheduling {
         void SetEntry(ThreadEntry_t entry, void* entry_data);
         void SetFlags(uint8_t flags);
         void SetParent(Process* parent);
-        void UpdateCPURegisters(CPU_Registers* regs);
+        void SetStack(uint64_t stack);
 
         ThreadEntry_t GetEntry() const;
         void* GetEntryData() const;
         uint8_t GetFlags() const;
         Process* GetParent() const;
         CPU_Registers* GetCPURegisters() const;
+        uint64_t GetStack() const;
 
         void Start();
 
@@ -35,7 +36,8 @@ namespace Scheduling {
         ThreadEntry_t m_entry;
         void* m_entry_data;
         uint8_t m_flags;
-        CPU_Registers* m_regs;
+        uint64_t m_stack;
+        mutable CPU_Registers m_regs;
     };
 }
 

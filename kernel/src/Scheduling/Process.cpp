@@ -57,7 +57,7 @@ namespace Scheduling {
     void Process::Start() {
         if (m_main_thread_initialised)
             return;
-        g_Scheduler->AddProcess(this);
+        Scheduler::AddProcess(this);
         m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags);
         m_threads.insert(m_main_thread);
         m_main_thread_initialised = true;

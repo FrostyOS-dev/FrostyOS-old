@@ -28,7 +28,7 @@ void x86_64_PIT_Handler(x86_64_Interrupt_Registers* iregs) {
     x86_64_Registers* regs = new x86_64_Registers;
     if (regs != nullptr)
         x86_64_ConvertToStandardRegisters(regs, iregs);
-    x86_64_Registers* rregs = Scheduling::TimerTick(regs);
+    x86_64_Registers* rregs = Scheduling::Scheduler::TimerTick(regs);
     if (rregs != nullptr)
         x86_64_PrepareNewRegisters(iregs, rregs);
     if (regs != nullptr)

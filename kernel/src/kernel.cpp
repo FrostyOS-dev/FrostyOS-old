@@ -4,6 +4,7 @@
 #include <HAL/timer.hpp>
 
 #include <arch/x86_64/ELFSymbols.h>
+#include <arch/x86_64/io.h>
 
 #include <Memory/PageManager.hpp>
 #include <Memory/kmalloc.hpp>
@@ -52,8 +53,6 @@ namespace WorldOS {
             Panic("Bootloader Frame Buffer Bits per Pixel is not 32", nullptr, false);
         }
 
-        Scheduling::g_Scheduler = new Scheduling::Scheduler;
-
         // Do any early initialisation
 
         KProcess = new Scheduling::Process(Kernel_Stage2, params->RSDP_table, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
@@ -62,7 +61,7 @@ namespace WorldOS {
         thread2 = new Scheduling::Thread(KProcess, Test, nullptr, Scheduling::KERNEL_DEFAULT);
         KProcess->ScheduleThread(thread2);
 
-        Scheduling::g_Scheduler->Start();
+        Scheduling::Scheduler::Start();
 
         Panic("Scheduler Start returned!\n", nullptr, false);
     }
@@ -74,10 +73,5 @@ namespace WorldOS {
         m_Stage = STAGE2;
 
         HAL_Stage2(RSDP_table);
-
-        // hang
-        while (true) {
-            
-        }
     }
 }

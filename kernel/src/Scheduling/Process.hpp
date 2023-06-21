@@ -53,7 +53,7 @@ namespace Scheduling {
         Priority m_Priority;
         WorldOS::PageManager* m_pm;
         bool m_main_thread_initialised;
-        LinkedList::SimpleLinkedList<Thread*> m_threads;
+        LinkedList::SimpleLinkedList<Thread> m_threads;
         Thread* m_main_thread;
     };
 }

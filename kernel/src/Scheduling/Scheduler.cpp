@@ -9,100 +9,132 @@
 #include <arch/x86_64/Scheduling/taskutil.hpp>
 #include <arch/x86_64/Stack.h>
 #include <arch/x86_64/Memory/PagingUtil.hpp>
+#include <arch/x86_64/io.h>
 #endif
 
 namespace Scheduling {
 
     size_t g_ticks = 0;
-
-    Scheduler* g_Scheduler = nullptr;
-
-    Scheduler::Scheduler() : m_running(false) {
-
-    }
     
-    Scheduler::~Scheduler() {
+    namespace Scheduler {
 
-    }
+        LinkedList::SimpleLinkedList<Process> g_processes;
+        LinkedList::SimpleLinkedList<Thread> g_kernel_threads;
+        bool g_running = false;
 
-    void Scheduler::AddProcess(Process* process) {
-        assert(process->GetPriority() == Priority::KERNEL); // only kernel priority is supported
-        m_processes.insert(process);
-    }
+        void AddProcess(Process* process) {
+            assert(process->GetPriority() == Priority::KERNEL); // only kernel priority is supported
+            g_processes.insert(process);
+        }
 
-    void Scheduler::ScheduleThread(Thread* thread) {
-        assert(thread != nullptr);
-        assert(thread->GetParent()->GetPriority() == Priority::KERNEL); // only kernel priority is supported
-        if (m_processes.getIndex(thread->GetParent()) == UINT64_MAX)
-            AddProcess(thread->GetParent());
-        CPU_Registers* regs = new CPU_Registers;
-        fast_memset(regs, 0, DIV_ROUNDUP(sizeof(CPU_Registers), 8));
+        void ScheduleThread(Thread* thread) {
+            fprintf(VFS_DEBUG, "[%s] INFO: thread=%lp\n", __extension__ __PRETTY_FUNCTION__, thread);
+            assert(thread != nullptr);
+            assert(thread->GetParent()->GetPriority() == Priority::KERNEL); // only kernel priority is supported
+            if (g_processes.getIndex(thread->GetParent()) == UINT64_MAX)
+                AddProcess(thread->GetParent());
+            CPU_Registers* regs = thread->GetCPURegisters();
+            fast_memset(regs, 0, DIV_ROUNDUP(sizeof(CPU_Registers), 8));
 #ifdef __x86_64__
-        if ((thread->GetFlags() & CREATE_STACK))
-            x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64));
-        else
-            regs->RSP = (uint64_t)x86_64_get_stack_ptr();
-        regs->RIP = (uint64_t)thread->GetEntry();
-        regs->RDI = (uint64_t)thread->GetEntryData();
-        regs->CR3 = x86_64_GetCR3();
-        regs->CS = 0x08; // Kernel Code Segment
-        regs->DS = 0x10; // Kernel Data Segment
-        regs->RFLAGS = 1 << 9; // IF Flag
+            if ((thread->GetFlags() & CREATE_STACK))
+                x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64));
+            else
+                regs->RSP = (uint64_t)x86_64_get_stack_ptr();
+            thread->SetStack(regs->RSP);
+            regs->RSP -= 8;
+            *(uint64_t*)(regs->RSP) = (uint64_t)(void*)&Scheduling::Scheduler::End;
+            regs->RIP = (uint64_t)thread->GetEntry();
+            regs->RDI = (uint64_t)thread->GetEntryData();
+            regs->CR3 = x86_64_GetCR3();
+            regs->CS = 0x08; // Kernel Code Segment
+            regs->DS = 0x10; // Kernel Data Segment
+            regs->RFLAGS = 1 << 9; // IF Flag
 #else
 #error Unkown Architecture
 #endif
-        thread->UpdateCPURegisters(regs);
-        m_kernel_threads.insert(thread);
-    }
+            g_kernel_threads.insert(thread);
+        }
 
-    void __attribute__((noreturn)) Scheduler::Start() {
-        Thread** thread_ptr = m_kernel_threads.getHead();
-        assert(thread_ptr != nullptr);
-        Thread* thread = *thread_ptr;
-        assert(thread != nullptr);
-        assert(thread->GetCPURegisters() != nullptr);
-        m_running = true;
+        void __attribute__((noreturn)) Start() {
 #ifdef __x86_64__
-        x86_64_kernel_switch(thread->GetCPURegisters());
+            x86_64_DisableInterrupts(); // task switch code re-enables them
 #endif
-        WorldOS::Panic("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
-    }
-
-    CPU_Registers* Scheduler::Next(CPU_Registers* regs) {
-        if (!m_running) {
-            fprintf(VFS_DEBUG, "[Scheduler] WARN: Scheduler not running.\n");
-            return nullptr;
-        }
-        if (m_kernel_threads.getCount() < 2) {
-            fprintf(VFS_DEBUG, "[Scheduler] WARN: Nothing to switch to. %ld\n", m_kernel_threads.getCount());
-            return nullptr; // Nothing to switch to
-        }
-        assert(m_processes.getCount() > 0);
-        assert(m_kernel_threads.getCount() > 0); // temporary until more priority levels are implemented
-        Thread** first_ptr = m_kernel_threads.getHead();
-        assert(first_ptr != nullptr);
-        Thread* first = *first_ptr;
-        //fprintf(VFS_DEBUG, "%lp:%lp ", first_ptr, first);
-        assert(regs != nullptr);
-        fast_memcpy(first->GetCPURegisters(), regs, sizeof(CPU_Registers) / 8);
-        m_kernel_threads.rotateLeft();
-        first_ptr = m_kernel_threads.getHead();
-        assert(first_ptr != nullptr);
-        first = *first_ptr;
-        //fprintf(VFS_DEBUG, "%lp:%lp\n", first_ptr, first);
-        fprintf(VFS_DEBUG, "Switching to %lp...\n", first->GetCPURegisters()->RIP);
-        return first->GetCPURegisters();
-    }
-
-    CPU_Registers* TimerTick(CPU_Registers* regs) {
-        g_ticks++;
-        if (g_ticks == TICKS_PER_SCHEDULER_CYCLE) {
-            if (g_Scheduler != nullptr)
-                regs = g_Scheduler->Next(regs);
-            else
-                fprintf(VFS_DEBUG, "Switch failed.\n");
+            g_kernel_threads.fprint(VFS_DEBUG);
+            Thread* thread = g_kernel_threads.get(0);
+            assert(thread != nullptr);
+            assert(thread->GetCPURegisters() != nullptr);
             g_ticks = 0;
+            g_running = true;
+#ifdef __x86_64__
+            x86_64_kernel_switch(thread->GetCPURegisters());
+#endif
+            WorldOS::Panic("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
         }
-        return regs;
+
+        void __attribute__((noreturn)) Next() {
+            Thread* thread = g_kernel_threads.get(0);
+            assert(thread != nullptr);
+            assert(thread->GetCPURegisters() != nullptr);
+            g_ticks = 0;
+#ifdef __x86_64__
+            x86_64_kernel_switch(thread->GetCPURegisters());
+#endif
+            WorldOS::Panic("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
+        }
+
+        void __attribute__((noreturn)) Next(Thread* thread) {
+#ifdef __x86_64__
+            x86_64_DisableInterrupts();
+#endif
+            assert(thread != nullptr);
+            assert(thread->GetCPURegisters() != nullptr);
+            g_ticks = 0;
+#ifdef __x86_64__
+            x86_64_kernel_switch(thread->GetCPURegisters());
+#endif
+            WorldOS::Panic("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
+        }
+
+        CPU_Registers* Next(CPU_Registers* regs) {
+            if (!g_running) {
+                fprintf(VFS_DEBUG, "[Scheduler] WARN: Scheduler not running.\n");
+                return nullptr;
+            }
+            if (g_kernel_threads.getCount() < 2) {
+                fprintf(VFS_DEBUG, "[Scheduler] WARN: Nothing to switch to. %ld\n", g_kernel_threads.getCount());
+                return nullptr; // Nothing to switch to
+            }
+            assert(g_processes.getCount() > 0);
+            assert(g_kernel_threads.getCount() > 0); // temporary until more priority levels are implemented
+            Thread* first = g_kernel_threads.get(0);
+            assert(regs != nullptr);
+            fast_memcpy(first->GetCPURegisters(), regs, sizeof(CPU_Registers) / 8);
+            g_kernel_threads.rotateLeft();
+            first = g_kernel_threads.get(0);
+            fprintf(VFS_DEBUG, "Switching to %lp...\n", first->GetCPURegisters()->RIP);
+            return first->GetCPURegisters();
+        }
+
+        void End() {
+#ifdef __x86_64__
+            x86_64_DisableInterrupts();
+#endif
+            // TODO: call any destructors or other destruction function
+            Thread* thread = g_kernel_threads.get(0);
+            if (thread->GetFlags() & CREATE_STACK)
+                thread->GetParent()->GetPageManager()->FreePages((void*)(thread->GetStack()));
+            g_kernel_threads.remove(thread);
+            Next();
+        }
+
+
+        CPU_Registers* TimerTick(CPU_Registers* regs) {
+            g_ticks++;
+            if (g_ticks == TICKS_PER_SCHEDULER_CYCLE) {
+                regs = Next(regs);
+                g_ticks = 0;
+            }
+            return regs;
+        }
     }
 }
