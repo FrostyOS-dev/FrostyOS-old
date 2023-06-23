@@ -1,8 +1,14 @@
 #include "PIT.hpp"
 #include "io.h"
 
+#include <stdio.hpp>
+
+#include <Scheduling/Scheduler.hpp>
+
 #include "interrupts/pic.hpp"
 #include "interrupts/IRQ.hpp"
+
+#include "Scheduling/taskutil.hpp"
 
 uint64_t g_Divisor = 0;
 uint64_t g_Frequency = 0;
@@ -15,8 +21,18 @@ uint64_t g_ticks = 0;
 
 #define BASE_FREQUENCY 1193182
 
-void x86_64_PIT_Handler(x86_64_Interrupt_Registers*) {
+void x86_64_PIT_Handler(x86_64_Interrupt_Registers* iregs) {
     g_ticks += 10;
+    if (!NewDeleteInitialised())
+        return;
+    x86_64_Registers* regs = new x86_64_Registers;
+    if (regs != nullptr)
+        x86_64_ConvertToStandardRegisters(regs, iregs);
+    x86_64_Registers* rregs = Scheduling::Scheduler::TimerTick(regs);
+    if (rregs != nullptr)
+        x86_64_PrepareNewRegisters(iregs, rregs);
+    if (regs != nullptr)
+        delete regs;
 }
 
 void x86_64_PIT_Init() {
