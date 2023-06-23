@@ -5,12 +5,8 @@
 
 #include <arch/x86_64/Graphics/graphics-defs.h>
 
-#include <arch/x86_64/Scheduling/task.h>
-
 #include <stdint.h>
 #include <Memory/Memory.hpp>
-
-typedef x86_64_Registers CPU_Registers;
 
 namespace WorldOS {
 

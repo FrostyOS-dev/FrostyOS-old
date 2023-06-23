@@ -11,7 +11,7 @@
 namespace WorldOS {
 
     constexpr uint64_t EARLY_STAGE = 0x5354414745000000;
-    constexpr uint64_t STAGE2      = 0x5354414745000001;
+    constexpr uint64_t LATE_STAGE  = 0x5354414745000001;
     constexpr uint64_t USER_STAGE  = 0x5354414745000002;
 
     struct KernelParams {
@@ -27,7 +27,6 @@ namespace WorldOS {
     };
 
     extern "C" void StartKernel(KernelParams* params);
-    void Kernel_Stage2(void*);
 }
 
 #endif /* _KERNEL_HPP */

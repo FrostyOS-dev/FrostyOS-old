@@ -17,12 +17,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 11/06/2023
+## Latest Changes - 23/06/2023
 
-- Implemented basic Process and Thread classes
-- Added x86_64 task switch code
-- Implemented basic Priority-based round-robin scheduler
-- Updated PIT driver so it calls `Scheduler::TimerTick()`
+- Moved kernel-related parts of `Makefile` into its own `Makefile`
+- Moved toolchain build into `Makefile`
+- Added a patch for building a `-mno-red-zone` variant of `libgcc`
+- Tidied up both `Makefile`s
+- Various small code refactoring to remove most compiler warnings
 
 ## Resources used
 

@@ -4,15 +4,12 @@
 #include <HAL/timer.hpp>
 
 #include <arch/x86_64/ELFSymbols.h>
-#include <arch/x86_64/io.h>
 
 #include <Memory/PageManager.hpp>
 #include <Memory/kmalloc.hpp>
 
 #include <HAL/drivers/ACPI/RSDP.hpp>
 #include <HAL/drivers/ACPI/XSDT.hpp>
-
-#include <Scheduling/Scheduler.hpp>
 
 #include <assert.h>
 
@@ -24,17 +21,6 @@ namespace WorldOS {
     uint64_t m_Stage;
 
     PageManager KPM;
-
-    Scheduling::Process* KProcess;
-    Scheduling::Thread* thread2;
-
-    void Test(void*) {
-        for (uint64_t i = 0; true; i++) {
-            if ((i % 100) == 0)
-                fprintf(VFS_DEBUG, "%ld\n", i);
-            sleep(10);
-        }
-    }
 
     extern "C" void StartKernel(KernelParams* params) {
         m_fgcolour = 0xFFFFFFFF;
@@ -53,25 +39,14 @@ namespace WorldOS {
             Panic("Bootloader Frame Buffer Bits per Pixel is not 32", nullptr, false);
         }
 
-        // Do any early initialisation
+        HAL_Stage2(params->RSDP_table);
 
-        KProcess = new Scheduling::Process(Kernel_Stage2, params->RSDP_table, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
-        KProcess->Start();
-
-        thread2 = new Scheduling::Thread(KProcess, Test, nullptr, Scheduling::KERNEL_DEFAULT);
-        KProcess->ScheduleThread(thread2);
-
-        Scheduling::Scheduler::Start();
-
-        Panic("Scheduler Start returned!\n", nullptr, false);
-    }
-
-    void Kernel_Stage2(void* RSDP_table) {
-        fprintf(VFS_DEBUG, "Kernel Stage2 has started!!!\n");
         fprintf(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
 
-        m_Stage = STAGE2;
 
-        HAL_Stage2(RSDP_table);
+        // hang
+        while (true) {
+            
+        }
     }
 }
