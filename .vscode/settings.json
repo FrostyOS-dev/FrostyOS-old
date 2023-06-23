@@ -17,11 +17,13 @@
         "kmalloc",
         "krealloc",
         "KVPM",
+        "libgcc",
         "PPFA",
         "RSDP",
         "Unallocate",
         "Unreserve",
         "WORLDOS",
         "XSDT"
-    ]
+    ],
+    "git.ignoreLimitWarning": true
 }

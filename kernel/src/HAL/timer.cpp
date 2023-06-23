@@ -11,7 +11,7 @@ void HAL_TimerInit() {
 
 void sleep(uint64_t ms) {
     x86_64_PIT_SetTicks(0);
-    ALIGN_UP(ms, 10);
+    ms = ALIGN_UP(ms, 10);
 
     while (x86_64_PIT_GetTicks() < ms)
         __asm__ volatile ("hlt"); // does the same as having an empty loop except the CPU uses less power

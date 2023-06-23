@@ -17,13 +17,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 11/06/2023
+## Latest Changes - 23/06/2023
 
-- Fixed HAL timer code so the millisecond value is rounded up correctly
-- Renamed `x86_64_Registers` to `x86_64_Interrupt_Registers`
-- Changed `LinkedList::insert` to `LinkedList::insertNode`
-- Fixed `LinkedList::deleteNode` so it fixes the existing list correctly and so page faults are very rare
-- Implemented template `SimpleLinkedList` class
+- Moved kernel-related parts of `Makefile` into its own `Makefile`
+- Moved toolchain build into `Makefile`
+- Added a patch for building a `-mno-red-zone` variant of `libgcc`
+- Tidied up both `Makefile`s
+- Various small code refactoring to remove most compiler warnings
 
 ## Resources used
 

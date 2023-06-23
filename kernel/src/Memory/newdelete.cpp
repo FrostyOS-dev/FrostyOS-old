@@ -3,7 +3,7 @@
 
 #include <stdio.hpp>
 
-void* operator new(size_t size) {
+void* operator new(size_t size) throw() {
     if (NewDeleteInitialised()) {
         return kcalloc(size);
     }
@@ -13,7 +13,7 @@ void* operator new(size_t size) {
     return nullptr;
 }
 
-void* operator new[](size_t size) {
+void* operator new[](size_t size) throw() {
     if (NewDeleteInitialised()) {
         return kcalloc(size);
     }
@@ -42,7 +42,21 @@ void operator delete[](void* p) {
 }
 
 void operator delete(void* p, size_t) {
-    delete p;
+    if (NewDeleteInitialised()) {
+        return kfree(p);
+    }
+    else {
+        fprintf(VFS_DEBUG, "operator delete attempted when unavailable. doing nothing.\n");
+    }
+}
+
+void operator delete[](void* p, size_t) {
+    if (NewDeleteInitialised()) {
+        return kfree(p);
+    }
+    else {
+        fprintf(VFS_DEBUG, "operator delete[] attempted when unavailable. doing nothing.\n");
+    }
 }
 
 
