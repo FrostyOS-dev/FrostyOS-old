@@ -1,10 +1,12 @@
 #include "panic.hpp"
+#include "io.h"
 
 #include <stdio.hpp>
 
 #include <HAL/graphics.hpp>
 
-void x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type) {
+void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type) {
+    x86_64_DisableInterrupts();
 
     // Output all to debug first
 
@@ -17,7 +19,7 @@ void x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bo
             fprintf(VFS_DEBUG, "    ERROR CODE=%x", regs->error);
         }
         if (regs->interrupt == 0xE /* Page Fault */)
-            fprintf(VFS_DEBUG, "\nCR2=%lx\n", regs->CR2);
+            fprintf(VFS_DEBUG, "\nCR2=%lx    CR3=%lx\n", regs->CR2, regs->CR3);
     } else {
         fprintf(VFS_DEBUG, "\nNo extra details are shown when type isn't Interrupt/Exception");
     }
@@ -38,7 +40,7 @@ void x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bo
             fprintf(VFS_STDOUT, "    ERROR CODE=%x", regs->error);
         }
         if (regs->interrupt == 0xE /* Page Fault */)
-            fprintf(VFS_STDOUT, "\nCR2=%lx\n", regs->CR2);
+            fprintf(VFS_STDOUT, "\nCR2=%lx    CR3=%lx\n", regs->CR2, regs->CR3);
     } else {
         fprintf(VFS_STDOUT, "\nNo extra details are shown when type isn't Interrupt/Exception");
     }

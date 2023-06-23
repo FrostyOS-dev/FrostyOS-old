@@ -7,7 +7,7 @@
 
 struct x86_64_Interrupt_Registers {
     uint64_t ds;                                         // data segment pushed by us
-    uint64_t CR2;                                        // CR2 pushed by us. useful for page faults
+    uint64_t CR3, CR2;                                   // CR3 and CR2 pushed by us. useful for memory related exceptions
     uint64_t R15, R14, R13, R12, R11, R10, R9, R8, RDI, RSI, RBP, RSP, RDX, RBX, RCX, RAX; // pushaq macro
     uint64_t interrupt, error;                           // we push interrupt, error is pushed automatically
     uint64_t rip, cs, rflags, rsp, ss;                   // pushed automatically by CPU

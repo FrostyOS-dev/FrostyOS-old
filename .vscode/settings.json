@@ -25,5 +25,8 @@
         "WORLDOS",
         "XSDT"
     ],
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
+        "clang-diagnostic-implicit-exception-spec-mismatch"
+    ]
 }
