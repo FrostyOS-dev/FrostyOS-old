@@ -130,7 +130,7 @@
 
 - Many Virtual Page Manager improvements (nearly done)
 - Added custom kernel stack
-- Various refactoring and cleanup
+- Various refactoring and clean-up
 - Added Linked List data structure with node pool (same as AVL tree)
 
 ## 09/01/2023
@@ -146,7 +146,7 @@
 - re-arranged folder layout for kernel source code
 - Started adding AVL Trees for MM
 - adjusted folder structure for OVMF
-- Added temperary new/delete (doesn't actually do anything except make the compiler not complain)
+- Added temporary new/delete (doesn't actually do anything except make the compiler not complain)
 - added mkgpt building
 
 ## 25/11/2022
@@ -197,7 +197,7 @@
 - Added debug printing for QEMU
 - Added variable argument support
 - Refactored graphics into HAL
-- Added basic VFS for `fprintf` & etc funtions (the VFS only supports 5 modes which can be found in `src/kernel/HAL/vfs.h`)
+- Added basic VFS for `fprintf` & etc functions (the VFS only supports 5 modes which can be found in `src/kernel/HAL/vfs.h`)
 - Removed SSE instructions from kernel
 - Turned on optimizations for kernel
 - fixed IO operations
