@@ -106,3 +106,19 @@ global x86_64_get_stack_ptr
 x86_64_get_stack_ptr:
     mov rax, rsp
     ret
+
+extern kernel_stack
+extern kernel_stack_size
+
+global x86_64_kernel_thread_end
+x86_64_kernel_thread_end:
+    cli
+    pop rax
+    mov rsp, kernel_stack
+    add rsp, [kernel_stack_size]
+    xor rbp, rbp
+    push rax
+    mov dx, 0xe9
+    mov al, 'e'
+    out dx, al
+    ret

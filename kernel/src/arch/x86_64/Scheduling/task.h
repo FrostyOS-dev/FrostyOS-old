@@ -42,6 +42,8 @@ void x86_64_kernel_save_main();
 
 void* x86_64_get_stack_ptr();
 
+void __attribute__((noreturn)) x86_64_kernel_thread_end();
+
 #ifdef __cplusplus
 }
 #endif
