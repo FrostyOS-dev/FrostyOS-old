@@ -40,7 +40,7 @@ namespace WorldOS {
                 list = nullptr;
             else
                 list = (LinkedList::Node*)node->extraData;
-            LinkedList::insert(list, (uint64_t)mem + (sizeFound - count) * 4096);
+            LinkedList::insertNode(list, (uint64_t)mem + (sizeFound - count) * 4096);
             node->extraData = (uint64_t)list;
         }
         return mem;
@@ -87,7 +87,7 @@ namespace WorldOS {
         }
         else
             list = (LinkedList::Node*)node->extraData;
-        LinkedList::insert(list, (uint64_t)addr);
+        LinkedList::insertNode(list, (uint64_t)addr);
         node->extraData = (uint64_t)list;
         // insert the second section of the block
         node = AVLTree::findNode(root, original_count - new_count);
@@ -98,7 +98,7 @@ namespace WorldOS {
         }
         else
             list = (LinkedList::Node*)node->extraData;
-        LinkedList::insert(list, (uint64_t)addr + new_count * 4096);
+        LinkedList::insertNode(list, (uint64_t)addr + new_count * 4096);
         node->extraData = (uint64_t)list;
         return root;
     }
@@ -226,7 +226,7 @@ namespace WorldOS {
             node = AVLTree::findNode(new_root, root->extraData);
         }
         LinkedList::Node* list = (LinkedList::Node*)new_root->extraData;
-        LinkedList::insert(list, root->key);
+        LinkedList::insertNode(list, root->key);
     }
 
 
@@ -494,7 +494,7 @@ namespace WorldOS {
             node = AVLTree::findNode(m_FreePagesSizeTree, count);
         }
         LinkedList::Node* list = (LinkedList::Node*)(node->extraData);
-        LinkedList::insert(list, addr_i);
+        LinkedList::insertNode(list, addr_i);
         node->extraData = (uint64_t)list;
         m_FreePagesCount += count;
     }

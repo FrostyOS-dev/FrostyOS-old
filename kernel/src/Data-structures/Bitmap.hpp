@@ -12,7 +12,7 @@ namespace WorldOS {
         Bitmap(uint8_t* buffer, size_t size);
         ~Bitmap();
 
-        const bool operator[](uint64_t index) const;
+        bool operator[](uint64_t index) const;
         void Set(uint64_t index, bool value);
 
         // Set size in bytes

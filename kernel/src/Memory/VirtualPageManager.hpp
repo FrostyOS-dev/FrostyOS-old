@@ -37,12 +37,12 @@ namespace WorldOS {
         void UnfreePages(void* addr, uint64_t count);
     private:
         uint64_t m_FreePagesCount;
-        uint64_t m_UsedPagesCount;
-        uint64_t m_ReservedPagesCount;
         AVLTree::Node* m_FreePagesSizeTree;
-        AVLTree::Node* m_ReservedANDUsedPages; // highest bit in extra data determines if it reserved (1) or used (0)
-        void* m_RegionStart;
         uint64_t m_RegionLength;
+        void* m_RegionStart;
+        AVLTree::Node* m_ReservedANDUsedPages; // highest bit in extra data determines if it reserved (1) or used (0)
+        uint64_t m_ReservedPagesCount;
+        uint64_t m_UsedPagesCount;
     };
 
     extern VirtualPageManager* g_KVPM; // this is probably not the best place for this, but there are no other options

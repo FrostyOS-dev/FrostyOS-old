@@ -1,6 +1,33 @@
 # Changes
 
-## Latest Changes - 06/06/2023
+## Latest Changes - 25/06/2023
+
+- Implemented CMOS Read and Write
+- Implemented Simple RTC driver
+- Started implementing POSIX time
+- Renamed HAL `timer` to `time`
+- Changed HAL `time` to more C based
+- Cleaned up I/O code
+- Added `BCD_TO_BINARY` macro
+- Removed unnecessary include from `kernel.cpp`
+
+## 23/06/2023
+
+- Moved kernel-related parts of `Makefile` into its own `Makefile`
+- Moved toolchain build into `Makefile`
+- Added a patch for building a `-mno-red-zone` variant of `libgcc`
+- Tidied up both `Makefile`s
+- Various small code refactoring to remove most compiler warnings
+
+## 11/06/2023
+
+- Fixed HAL timer code so the millisecond value is rounded up correctly
+- Renamed `x86_64_Registers` to `x86_64_Interrupt_Registers`
+- Changed `LinkedList::insert` to `LinkedList::insertNode`
+- Fixed `LinkedList::deleteNode` so it fixes the existing list correctly and so page faults are very rare
+- Implemented template `SimpleLinkedList` class
+
+## 06/06/2023
 
 - Implemented `kcalloc`
 - Changed `new` to use `kcalloc`
@@ -103,7 +130,7 @@
 
 - Many Virtual Page Manager improvements (nearly done)
 - Added custom kernel stack
-- Various refactoring and cleanup
+- Various refactoring and clean-up
 - Added Linked List data structure with node pool (same as AVL tree)
 
 ## 09/01/2023
@@ -119,7 +146,7 @@
 - re-arranged folder layout for kernel source code
 - Started adding AVL Trees for MM
 - adjusted folder structure for OVMF
-- Added temperary new/delete (doesn't actually do anything except make the compiler not complain)
+- Added temporary new/delete (doesn't actually do anything except make the compiler not complain)
 - added mkgpt building
 
 ## 25/11/2022
@@ -170,7 +197,7 @@
 - Added debug printing for QEMU
 - Added variable argument support
 - Refactored graphics into HAL
-- Added basic VFS for `fprintf` & etc funtions (the VFS only supports 5 modes which can be found in `src/kernel/HAL/vfs.h`)
+- Added basic VFS for `fprintf` & etc functions (the VFS only supports 5 modes which can be found in `src/kernel/HAL/vfs.h`)
 - Removed SSE instructions from kernel
 - Turned on optimizations for kernel
 - fixed IO operations

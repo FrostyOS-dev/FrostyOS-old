@@ -364,7 +364,7 @@ void* kmalloc(size_t size) {
 }
 
 void* kcalloc(size_t size) {
-    ALIGN_UP(size, MIN_SIZE);
+    size = ALIGN_UP(size, MIN_SIZE);
     void* mem = mrvn_malloc(size);
     if (mem == nullptr)
         return nullptr;

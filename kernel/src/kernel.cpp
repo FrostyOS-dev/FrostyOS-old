@@ -1,7 +1,6 @@
 #include "kernel.hpp"
 
 #include <HAL/graphics.hpp>
-#include <HAL/timer.hpp>
 
 #include <arch/x86_64/ELFSymbols.h>
 

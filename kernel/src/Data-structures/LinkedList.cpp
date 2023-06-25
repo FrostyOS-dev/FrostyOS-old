@@ -6,7 +6,7 @@
 #include <Memory/newdelete.hpp> // required for creating and deleting nodes
 
 bool operator==(LinkedList::Node left, LinkedList::Node right) {
-	return ((left.data == right.data) && (left.next = right.next) && (left.previous == right.previous));
+	return ((left.data == right.data) && (left.next == right.next) && (left.previous == right.previous));
 }
 
 namespace LinkedList {
@@ -96,7 +96,7 @@ namespace LinkedList {
 		return node;
 	}
 
-	void insert(Node*& head, uint64_t data) {
+	void insertNode(Node*& head, uint64_t data) {
 		// check if head is NULL
 		if (head == nullptr) {
 			head = newNode(data);
@@ -126,8 +126,6 @@ namespace LinkedList {
 			if (current->data == data) return current;
 			current = current->next;
 		}
-
-		current = nullptr; // protects the node that current points to from potential deletion
 		return nullptr;
 	}
 
@@ -135,18 +133,24 @@ namespace LinkedList {
 		Node* temp = head;
 		if (temp != nullptr && temp->data == data) {
 			head = temp->next;
-			if (head != nullptr)
+			if (head != nullptr) {
 				head->previous = nullptr;
+				if (head->next != nullptr)
+					head->next->previous = head;
+			}
 			if (NodePool_IsInPool(temp))
 				NodePool_FreeNode(temp);
 			else if (NewDeleteInitialised())
 				delete temp;
 			return;
 		}
-		while (temp != nullptr && temp->data != data) {
+		while (temp->data != data) {
+			if (temp->next == nullptr)
+				return;
 			temp = temp->next;
 		}
-		if (temp == nullptr) return;
+		if (temp == nullptr)
+			return;
 		if (temp->next != nullptr)
 			temp->next->previous= temp->previous;
 		if (temp->previous!= nullptr)

@@ -7,7 +7,7 @@
 
 x86_64_IRQHandler_t g_IRQHandlers[16];
 
-void x86_64_IRQ_Handler(x86_64_Registers* regs) {
+void x86_64_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
     uint8_t irq = regs->interrupt - PIC_REMAP_OFFSET;
 
     if (g_IRQHandlers[irq] != nullptr) {

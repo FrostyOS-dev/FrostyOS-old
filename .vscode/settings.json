@@ -17,11 +17,16 @@
         "kmalloc",
         "krealloc",
         "KVPM",
+        "libgcc",
         "PPFA",
         "RSDP",
         "Unallocate",
         "Unreserve",
         "WORLDOS",
         "XSDT"
+    ],
+    "git.ignoreLimitWarning": true,
+    "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
+        "clang-diagnostic-implicit-exception-spec-mismatch"
     ]
 }

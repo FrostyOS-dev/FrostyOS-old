@@ -17,14 +17,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 06/06/2023
+## Latest Changes - 25/06/2023
 
-- Implemented `kcalloc`
-- Changed `new` to use `kcalloc`
-- Changed all object pools so they check if an object is inside the pool before deleting it
-- Converted `Device` and `PCIDevice` classes to pure-virtual
-- Added architecture-independent version of `get_physaddr`
-- Fixed `x86_64_to_HHDM` so HHDM range is first 512GiB instead of 4GiB
+- Implemented CMOS Read and Write
+- Implemented Simple RTC driver
+- Started implementing POSIX time
+- Renamed HAL `timer` to `time`
+- Changed HAL `time` to more C based
+- Cleaned up I/O code
+- Added `BCD_TO_BINARY` macro
+- Removed unnecessary include from `kernel.cpp`
 
 ## Resources used
 

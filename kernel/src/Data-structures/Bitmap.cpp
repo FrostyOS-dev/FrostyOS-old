@@ -19,7 +19,7 @@ namespace WorldOS {
         m_Buffer = nullptr;
     }
 
-    const bool Bitmap::operator[](uint64_t index) const {
+    bool Bitmap::operator[](uint64_t index) const {
         uint64_t byteIndex = index / 8;
         if (byteIndex >= m_Size)
             return false; // default is 0
