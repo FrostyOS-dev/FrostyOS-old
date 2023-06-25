@@ -18,7 +18,7 @@
 
 #include "drivers/PCI.hpp"
 
-#include "timer.hpp"
+#include "time.h"
 #include "hal.hpp"
 
 #include <assert.h>
@@ -45,7 +45,7 @@ namespace WorldOS {
         x86_64_IRQ_Initialize();
 
         x86_64_DisableInterrupts();
-        HAL_TimerInit();
+        HAL_TimeInit();
 
         x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ((fb.bpp >> 3) * fb.FrameBufferHeight * fb.FrameBufferWidth), HHDM_start);
 

@@ -17,13 +17,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 23/06/2023
+## Latest Changes - 25/06/2023
 
-- Moved kernel-related parts of `Makefile` into its own `Makefile`
-- Moved toolchain build into `Makefile`
-- Added a patch for building a `-mno-red-zone` variant of `libgcc`
-- Tidied up both `Makefile`s
-- Various small code refactoring to remove most compiler warnings
+- Implemented CMOS Read and Write
+- Implemented Simple RTC driver
+- Started implementing POSIX time
+- Renamed HAL `timer` to `time`
+- Changed HAL `time` to more C based
+- Cleaned up I/O code
+- Added `BCD_TO_BINARY` macro
+- Removed unnecessary include from `kernel.cpp`
 
 ## Resources used
 

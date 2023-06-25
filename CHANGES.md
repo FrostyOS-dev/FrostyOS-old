@@ -1,6 +1,17 @@
 # Changes
 
-## Latest Changes - 23/06/2023
+## Latest Changes - 25/06/2023
+
+- Implemented CMOS Read and Write
+- Implemented Simple RTC driver
+- Started implementing POSIX time
+- Renamed HAL `timer` to `time`
+- Changed HAL `time` to more C based
+- Cleaned up I/O code
+- Added `BCD_TO_BINARY` macro
+- Removed unnecessary include from `kernel.cpp`
+
+## 23/06/2023
 
 - Moved kernel-related parts of `Makefile` into its own `Makefile`
 - Moved toolchain build into `Makefile`
