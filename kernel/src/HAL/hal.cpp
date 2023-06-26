@@ -18,9 +18,8 @@
 
 #include "drivers/PCI.hpp"
 
-#include "drivers/disk/NVMe.hpp"
+#include "drivers/disk/NVMe/NVMeController.hpp"
 
-#include "drivers/disk/NVMe.hpp"
 #include "time.h"
 #include "hal.hpp"
 
@@ -79,8 +78,8 @@ namespace WorldOS {
             fprintf(VFS_DEBUG, "PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
             if (device->ch.ClassCode == 0x1 && device->ch.SubClass == 0x8 && device->ch.ProgIF == 0x2) { // NVMe
                 fprintf(VFS_DEBUG, "Found NVMe controller. It uses INT Line %hhx. It uses INT Pin %hhx\n", device->INTLine, device->INTPIN);
-                NVMeDisk* disk = new NVMeDisk;
-                disk->InitPCIDevice(device);
+                NVMe::NVMeController* controller = new NVMe::NVMeController;
+                controller->InitPCIDevice(device);
             }
             device = PCI::PCIDeviceList::GetPCIDevice(i);
         }
