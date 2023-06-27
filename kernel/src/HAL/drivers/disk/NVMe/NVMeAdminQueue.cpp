@@ -15,6 +15,7 @@ namespace NVMe {
         p_EntryCount = 0;
         p_ID = 0; // SHOULD NEVER CHANGE. There will always be one admin queue per controller and it has ID 0
         p_doorbell_start = nullptr;
+        p_doorbell_stride = 0;
     }
 
     NVMeAdminQueue::~NVMeAdminQueue() {
@@ -22,10 +23,11 @@ namespace NVMe {
             Delete();
     }
 
-    void NVMeAdminQueue::Create(void* doorbell_start, uint64_t entry_count, uint8_t ID) {
+    void NVMeAdminQueue::Create(void* doorbell_start, uint32_t doorbell_stride, uint64_t entry_count, uint8_t ID) {
         if (p_is_created)
             return;
         p_doorbell_start = doorbell_start;
+        p_doorbell_stride = doorbell_stride;
         p_EntryCount = entry_count;
         assert(ID == 0); // ID will ALWAYS be 0 for admin queues
         if ((entry_count * sizeof(CompletionQueueEntry)) <= 0x1000)
@@ -67,7 +69,7 @@ namespace NVMe {
             return false;
         uint32_t* admin_tail = reinterpret_cast<uint32_t*>(p_doorbell_start);
         const uint32_t old_admin_tail = *admin_tail;
-        fast_memcpy((void*)((uint64_t)p_CQEntries + old_admin_tail * sizeof(SubmissionQueueEntry)), entry, sizeof(SubmissionQueueEntry) / 8);
+        fast_memcpy((void*)((uint64_t)p_SQEntries + old_admin_tail * sizeof(SubmissionQueueEntry)), entry, sizeof(SubmissionQueueEntry) / 8);
         if (old_admin_tail >= p_EntryCount)
             *admin_tail = 0;
         else

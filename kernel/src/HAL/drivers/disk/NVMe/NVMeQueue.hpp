@@ -39,7 +39,7 @@ namespace NVMe {
     public:
         virtual ~NVMeQueue() {};
 
-        virtual void Create(void* doorbell_start, uint64_t entry_count, uint8_t ID) = 0;
+        virtual void Create(void* doorbell_start, uint32_t doorbell_stride, uint64_t entry_count, uint8_t ID) = 0;
         virtual void Delete() = 0;
         
         virtual bool SendCommand(const SubmissionQueueEntry* entry) = 0;
@@ -53,6 +53,7 @@ namespace NVMe {
         uint64_t p_EntryCount;
         uint8_t p_ID;
         void* p_doorbell_start;
+        uint32_t p_doorbell_stride;
     };
 
 }

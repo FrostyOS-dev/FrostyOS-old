@@ -9,7 +9,7 @@ namespace NVMe {
         NVMeIOQueue();
         ~NVMeIOQueue() override;
 
-        void Create(void* doorbell_start, uint64_t entry_count, uint8_t ID) override;
+        void Create(void* doorbell_start, uint32_t doorbell_stride, uint64_t entry_count, uint8_t ID) override;
         void Delete() override;
 
         bool SendCommand(const SubmissionQueueEntry* entry) override;

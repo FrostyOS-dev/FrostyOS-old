@@ -14,6 +14,7 @@ namespace NVMe {
         p_EntryCount = 0;
         p_ID = 0; // Invalid I/O ID
         p_doorbell_start = nullptr;
+        p_doorbell_stride = 0;
     }
 
     NVMeIOQueue::~NVMeIOQueue() {
@@ -21,10 +22,11 @@ namespace NVMe {
             Delete();
     }
 
-    void NVMeIOQueue::Create(void* doorbell_start, uint64_t entry_count, uint8_t ID) {
+    void NVMeIOQueue::Create(void* doorbell_start, uint32_t doorbell_stride, uint64_t entry_count, uint8_t ID) {
         if (p_is_created)
             return;
         p_doorbell_start = doorbell_start;
+        p_doorbell_stride = doorbell_stride;
         p_EntryCount = entry_count;
         assert(ID != 0); // ID 0 is reserved for admin queue
         p_ID = ID;
@@ -63,6 +65,21 @@ namespace NVMe {
     }
     
     bool NVMeIOQueue::SendCommand(const SubmissionQueueEntry* entry) {
-
+        if (!p_is_created)
+            return false;
+        uint32_t* admin_tail = reinterpret_cast<uint32_t*>(p_doorbell_start + 2 * p_ID * p_doorbell_stride);
+        const uint32_t old_admin_tail = *admin_tail;
+        fast_memcpy((void*)((uint64_t)p_SQEntries + old_admin_tail * sizeof(SubmissionQueueEntry)), entry, sizeof(SubmissionQueueEntry) / 8);
+        if (old_admin_tail >= p_EntryCount)
+            *admin_tail = 0;
+        else
+            (*admin_tail)++;
+        CompletionQueueEntry* CQ = nullptr;
+        do {
+            CQ = reinterpret_cast<CompletionQueueEntry*>((uint64_t)p_CQEntries + old_admin_tail * sizeof(CompletionQueueEntry));
+        } while (!CQ->Phase);
+        bool Successful = CQ->Status == 0;
+        fast_memset(CQ, 0, sizeof(CompletionQueueEntry) / 8);
+        return Successful;
     }
 }
