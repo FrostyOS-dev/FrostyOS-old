@@ -13,16 +13,13 @@ extern "C" void HAL_TimeInit() {
     x86_64_PIT_Init();
     x86_64_PIT_SetDivisor(11932 /* just slightly under 100 Hz */);
     RTC_Init();
-    {
-        RTCTime time, time2;
-        for (int i = 0; i < 5; i++) { // 5 attempts
-            RTCTime time = RTC_getCurrentTime();
-            sleep(10); // minimum wait time
-            RTCTime time2 = RTC_getCurrentTime();
-            if (time == time2) {
-                fprintf(VFS_DEBUG, "RTC Initialised Successfully. It is %s the %hhu of %s %hu, %hhu:%hhu:%hhu UTC\n", days_of_week[time.WeekDay - 1], time.DayOfMonth, months[time.Month - 1], time.Year, time.Hours, time.Minutes, time.Seconds);
-                break;
-            }
+    for (int i = 0; i < 5; i++) { // 5 attempts
+        RTCTime time = RTC_getCurrentTime();
+        sleep(10); // minimum wait time
+        RTCTime time2 = RTC_getCurrentTime();
+        if (time == time2) {
+            fprintf(VFS_DEBUG, "RTC Initialised Successfully. It is %s the %hhu of %s %hu, %hhu:%hhu:%hhu UTC\n", days_of_week[time.WeekDay - 1], time.DayOfMonth, months[time.Month - 1], time.Year, time.Hours, time.Minutes, time.Seconds);
+            break;
         }
     }
 }
@@ -36,7 +33,6 @@ extern "C" void sleep(uint64_t ms) {
 }
 
 extern "C" time_t getTime() {
-    RTCTime time, time2;
     for (int i = 0; i < 5; i++) { // 5 attempts
         RTCTime time = RTC_getCurrentTime();
         sleep(10); // minimum wait time

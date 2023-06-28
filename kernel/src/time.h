@@ -2,13 +2,10 @@
 #define _KERNEL_TIME_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#ifndef NULL
-#define NULL (void*)0
 #endif
 
 typedef unsigned int time_t;

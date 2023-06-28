@@ -1,18 +1,9 @@
 #include "kernel.hpp"
 
-#include <HAL/graphics.hpp>
-
 #include <arch/x86_64/ELFSymbols.h>
 
 #include <Memory/PageManager.hpp>
 #include <Memory/kmalloc.hpp>
-
-#include <HAL/drivers/ACPI/RSDP.hpp>
-#include <HAL/drivers/ACPI/XSDT.hpp>
-
-#include <arch/x86_64/io.h>
-
-#include <assert.h>
 
 namespace WorldOS {
 
@@ -43,9 +34,6 @@ namespace WorldOS {
         HAL_Stage2(params->RSDP_table);
 
         fprintf(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
-
-        test();
-
 
         // hang
         while (true) {
