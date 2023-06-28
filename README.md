@@ -17,16 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 25/06/2023
+## Latest Changes - 28/06/2023
 
-- Implemented CMOS Read and Write
-- Implemented Simple RTC driver
-- Started implementing POSIX time
-- Renamed HAL `timer` to `time`
-- Changed HAL `time` to more C based
-- Cleaned up I/O code
-- Added `BCD_TO_BINARY` macro
-- Removed unnecessary include from `kernel.cpp`
+- Fixed a redefinition error in `HAL/time.cpp`
+- Removed unnecessary includes and function calls from `StartKernel`
+- Added a virtual region class
+- Changed VirtualPageManager so it uses a virtual region instead of relevant class variables
 
 ## Resources used
 

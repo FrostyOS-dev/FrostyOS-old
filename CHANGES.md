@@ -1,6 +1,13 @@
 # Changes
 
-## Latest Changes - 25/06/2023
+## Latest Changes - 28/06/2023
+
+- Fixed a redefinition error in `HAL/time.cpp`
+- Removed unnecessary includes and function calls from `StartKernel`
+- Added a virtual region class
+- Changed VirtualPageManager so it uses a virtual region instead of relevant class variables
+
+## 25/06/2023
 
 - Implemented CMOS Read and Write
 - Implemented Simple RTC driver
