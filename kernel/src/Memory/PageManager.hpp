@@ -20,8 +20,15 @@ namespace WorldOS {
         void* AllocatePage();
         void* AllocatePages(uint64_t count);
 
+        /* Standard free */
+
         void FreePage(void* addr);
         void FreePages(void* addr);
+
+        /* Find using physical address instead of virtual address*/
+
+        void FreePhysicalPage(void* addr);
+        void FreePhysicalPages(void* addr);
 
     private:
         PageObject* m_allocated_objects;

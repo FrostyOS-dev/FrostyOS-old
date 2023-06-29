@@ -2,6 +2,7 @@
 
 #include <Memory/PagingUtil.hpp>
 #include <Memory/PageManager.hpp>
+#include <Memory/kmalloc.hpp>
 
 #include <assert.h>
 #include <util.h>
@@ -15,8 +16,7 @@ namespace NVMe {
         char MN[40]; // Model Number
         char FR[8]; // Firmware Revision
         uint8_t RAB; // Recommend Arbitration Burst
-        uint16_t IEEE0; // IEEE Organisation Unique Identifier
-        uint8_t IEEE1;
+        uint8_t IEEE[3]; // IEEE Organisation Unique Identifier
         uint8_t CMIC; // Controller Multi-Path I/O and Namespace Sharing Capabilities
         uint8_t MDTS; // Maximum Data Transfer Size
         uint16_t CNTLID; // Controller ID
@@ -101,38 +101,7 @@ namespace NVMe {
         uint8_t MSDBD; // Maximum SGL Data Block Descriptors
         uint16_t OFCS; // Optional Fabric Commands Support
         uint8_t Reserved6[242];
-        uint64_t PSD0[4]; // Power State Descriptor 0
-        uint64_t PSD1[4]; // Power State Descriptor 1
-        uint64_t PSD2[4]; // Power State Descriptor 2
-        uint64_t PSD3[4]; // Power State Descriptor 3
-        uint64_t PSD4[4]; // Power State Descriptor 4
-        uint64_t PSD5[4]; // Power State Descriptor 5
-        uint64_t PSD6[4]; // Power State Descriptor 6
-        uint64_t PSD7[4]; // Power State Descriptor 7
-        uint64_t PSD8[4]; // Power State Descriptor 8
-        uint64_t PSD9[4]; // Power State Descriptor 9
-        uint64_t PSD10[4]; // Power State Descriptor 10
-        uint64_t PSD11[4]; // Power State Descriptor 11
-        uint64_t PSD12[4]; // Power State Descriptor 12
-        uint64_t PSD13[4]; // Power State Descriptor 13
-        uint64_t PSD14[4]; // Power State Descriptor 14
-        uint64_t PSD15[4]; // Power State Descriptor 15
-        uint64_t PSD16[4]; // Power State Descriptor 16
-        uint64_t PSD17[4]; // Power State Descriptor 17
-        uint64_t PSD18[4]; // Power State Descriptor 18
-        uint64_t PSD19[4]; // Power State Descriptor 19
-        uint64_t PSD20[4]; // Power State Descriptor 20
-        uint64_t PSD21[4]; // Power State Descriptor 21
-        uint64_t PSD22[4]; // Power State Descriptor 22
-        uint64_t PSD23[4]; // Power State Descriptor 23
-        uint64_t PSD24[4]; // Power State Descriptor 24
-        uint64_t PSD25[4]; // Power State Descriptor 25
-        uint64_t PSD26[4]; // Power State Descriptor 26
-        uint64_t PSD27[4]; // Power State Descriptor 27
-        uint64_t PSD28[4]; // Power State Descriptor 28
-        uint64_t PSD29[4]; // Power State Descriptor 29
-        uint64_t PSD30[4]; // Power State Descriptor 30
-        uint64_t PSD31[4]; // Power State Descriptor 31
+        uint64_t PSD[4][32]; // Power State Descriptor 0-31
         uint8_t VendorSpecific[1024];
     } __attribute__((packed));
 
@@ -159,6 +128,7 @@ namespace NVMe {
         m_IRQ = p_device->INTLine;
         assert(m_IRQ != 0xFF);
         NVMe::BAR0* BAR0 = (NVMe::BAR0*)m_BAR0;
+        assert(BAR0->CAP.MPSMIN == 0);
         uint32_t doorbell_stride = 4 << BAR0->CAP.DSTRD; // get the stride before the controller is disabled
         BAR0->CC.Enable = 0; // Disable the controller
         do {
@@ -219,30 +189,65 @@ namespace NVMe {
         entry.CommandSpecific0 = 2; // NSID list
         assert(m_admin_queue->SendCommand(&entry));
 
+        uint64_t MaxTransferSize = 0;
+        if (m_ControllerInfo->MDTS != 0) {
+            MaxTransferSize = UINT64_C(1) << m_ControllerInfo->MDTS;
+            MaxTransferSize *= 0x1000 << BAR0->CAP.MPSMIN;
+            fprintf(VFS_DEBUG, "[%s(%lp)] INFO: Maximum transfer size in bytes is %lu.\n", __extension__ __PRETTY_FUNCTION__, device, MaxTransferSize);
+        }
+
         uint_fast16_t NSIndex = 0;
-        while (m_NSIDList[NSIndex]) {
-            NVMeDisk* disk = new NVMeDisk(m_NSIDList[NSIndex], this, IOQueue);
+        //while (m_NSIDList[NSIndex] != 0) {
+            NVMeDisk* disk = new NVMeDisk(1, this, IOQueue, MaxTransferSize);
             m_Disks.insert(disk);
+            uint8_t* data = (uint8_t*)kcalloc(disk->GetSectorSize());
+            assert(data != nullptr);
+            assert(disk->Read(data, 0, 1));
+            fprintf(VFS_DEBUG, "\nPrinting disk %lu sector 0...\n\n\n", NSIndex);
+            for (uint64_t i = 0; i < disk->GetSectorSize(); i++) {
+                fputc(VFS_DEBUG, data[i]);
+            }
+            fprintf(VFS_DEBUG, "\n\n\n");
+            NSIndex++;
+        //}
+        fprintf(VFS_DEBUG, "NVMe Success!\n");
+    }
+
+    IdentifyNamespace* NVMeController::IdentifyDisk(uint32_t ID) const {
+        NVMe::SubmissionQueueEntry entry;
+        fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
+        entry.command.Opcode = (uint8_t)AdminCommands::IDENTIFY;
+        IdentifyNamespace* NID = (IdentifyNamespace*)WorldOS::g_KPM->AllocatePage();
+        assert(NID != nullptr);
+        fast_memset(NID, 0, 4096 / 8);
+        entry.DataPTR0 = (uint64_t)get_physaddr(NID);
+        entry.CommandSpecific0 = 0; // A namespace
+        entry.NSID = ID;
+        if (m_admin_queue->SendCommand(&entry))
+            return NID;
+        else {
+            WorldOS::g_KPM->FreePage(NID);
+            return nullptr;
         }
     }
 
-    const char* NVMeController::getVendorName() {
+    const char* NVMeController::getVendorName() const {
 
     }
 
-    const char* NVMeController::getDeviceName() {
+    const char* NVMeController::getDeviceName() const {
 
     }
 
-    const char* NVMeController::getDeviceClass() {
+    const char* NVMeController::getDeviceClass() const {
         return "Mass Storage Controller";
     }
 
-    const char* NVMeController::getDeviceSubClass() {
+    const char* NVMeController::getDeviceSubClass() const {
         return "Non-Volatile Memory Controller";
     }
 
-    const char* NVMeController::getDeviceProgramInterface() {
+    const char* NVMeController::getDeviceProgramInterface() const {
         return "NVM Express";
     }
 }

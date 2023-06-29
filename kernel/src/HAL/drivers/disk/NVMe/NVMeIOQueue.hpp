@@ -4,6 +4,12 @@
 #include "NVMeQueue.hpp"
 
 namespace NVMe {
+
+    enum class IOCommands {
+        READ = 0x02,
+        WRITE = 0x01
+    };
+
     class NVMeIOQueue : public NVMeQueue {
     public:
         NVMeIOQueue();

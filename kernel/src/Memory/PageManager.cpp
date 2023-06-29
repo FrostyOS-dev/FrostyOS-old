@@ -207,4 +207,53 @@ namespace WorldOS {
         return; // ignore invalid address
     }
 
+    void PageManager::FreePhysicalPage(void* addr) {
+        PageObject* po = m_allocated_objects;
+        while (po != nullptr) {
+            if (po->physical_address == addr && po->page_count == 1) {
+                g_PPFA->FreePage(addr);
+                g_KVPM->UnallocatePage(po->virtual_address);
+                UnmapPage(po->virtual_address);
+                PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
+                if (previous != nullptr)
+                    previous->next = po->next;
+                else
+                    m_allocated_objects = po->next;
+                if (PageObjectPool_IsInPool(po))
+                    PageObjectPool_Free(po);
+                else if (NewDeleteInitialised())
+                    delete po;
+                m_allocated_object_count--;
+                return;
+            }
+            po = po->next;
+        }
+        return; // ignore invalid address
+    }
+
+    void PageManager::FreePhysicalPages(void* addr) {
+        PageObject* po = m_allocated_objects;
+        while (po != nullptr) {
+            if (po->physical_address == addr && po->page_count > 1) {
+                g_PPFA->FreePages(addr, po->page_count);
+                g_KVPM->UnallocatePages(po->virtual_address, po->page_count);
+                for (uint64_t i = 0; i < po->page_count; i++)
+                    UnmapPage((void*)((uint64_t)(po->virtual_address) + i * 0x1000));
+                PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
+                if (previous != nullptr)
+                    previous->next = po->next;
+                else
+                    m_allocated_objects = po->next;
+                if (PageObjectPool_IsInPool(po))
+                    PageObjectPool_Free(po);
+                else if (NewDeleteInitialised())
+                    delete po;
+                m_allocated_object_count--;
+                return;
+            }
+            po = po->next;
+        }
+        return; // ignore invalid address
+    }
+
 }

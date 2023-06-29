@@ -8,8 +8,8 @@ class Disk {
 public:
     virtual ~Disk() {};
 
-    virtual void Read(uint8_t* buffer, uint64_t lba, uint64_t count = 1) = 0;
-    virtual void Write(const uint8_t* buffer, uint64_t lba, uint64_t count = 1) = 0;
+    virtual bool Read(uint8_t* buffer, uint64_t lba, uint64_t count = 1) = 0;
+    virtual bool Write(const uint8_t* buffer, uint64_t lba, uint64_t count = 1) = 0;
 
     virtual size_t GetSectorSize() = 0;
 };

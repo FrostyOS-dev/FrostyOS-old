@@ -5,8 +5,8 @@ class Device {
 public:
     virtual ~Device() {};
 
-    virtual const char* getVendorName() = 0;
-    virtual const char* getDeviceName() = 0;
+    virtual const char* getVendorName() const = 0;
+    virtual const char* getDeviceName() const = 0;
 };
 
 #endif /* _HAL_DEVICE_HPP */

@@ -67,14 +67,14 @@ namespace NVMe {
     bool NVMeAdminQueue::SendCommand(const SubmissionQueueEntry* entry) {
         if (!p_is_created)
             return false;
-        uint32_t* admin_tail = reinterpret_cast<uint32_t*>(p_doorbell_start);
-        const uint32_t old_admin_tail = *admin_tail;
-        fast_memcpy((void*)((uint64_t)p_SQEntries + old_admin_tail * sizeof(SubmissionQueueEntry)), entry, sizeof(SubmissionQueueEntry) / 8);
-        if (old_admin_tail >= p_EntryCount)
-            *admin_tail = 0;
+        uint32_t admin_tail = *(reinterpret_cast<uint32_t*>(p_doorbell_start));
+        const uint32_t old_admin_tail = admin_tail;
+        fast_memcpy((void*)((uint64_t)p_SQEntries + admin_tail * sizeof(SubmissionQueueEntry)), entry, sizeof(SubmissionQueueEntry) / 8);
+        if (admin_tail >= p_EntryCount)
+            admin_tail = 0;
         else
-            (*admin_tail)++;
-        
+            admin_tail++;
+        *(reinterpret_cast<uint32_t*>(p_doorbell_start)) = admin_tail;
         CompletionQueueEntry* CQ = nullptr;
         do {
             CQ = reinterpret_cast<CompletionQueueEntry*>((uint64_t)p_CQEntries + old_admin_tail * sizeof(CompletionQueueEntry));

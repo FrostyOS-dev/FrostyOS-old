@@ -10,9 +10,9 @@ public:
 
     virtual void InitPCIDevice(PCI::Header0* device) = 0;
 
-    virtual const char* getDeviceClass() = 0;
-    virtual const char* getDeviceSubClass() = 0;
-    virtual const char* getDeviceProgramInterface() = 0;
+    virtual const char* getDeviceClass() const = 0;
+    virtual const char* getDeviceSubClass() const = 0;
+    virtual const char* getDeviceProgramInterface() const = 0;
 
 protected:
     PCI::Header0* p_device = nullptr;

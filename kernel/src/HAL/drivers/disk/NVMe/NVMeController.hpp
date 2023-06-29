@@ -77,12 +77,14 @@ namespace NVMe {
 
         void InitPCIDevice(PCI::Header0* device) override;
 
-        const char* getVendorName() override;
-        const char* getDeviceName() override;
+        IdentifyNamespace* IdentifyDisk(uint32_t ID) const;
 
-        const char* getDeviceClass() override;
-        const char* getDeviceSubClass() override;
-        const char* getDeviceProgramInterface() override;
+        const char* getVendorName() const override;
+        const char* getDeviceName() const override;
+
+        const char* getDeviceClass() const override;
+        const char* getDeviceSubClass() const override;
+        const char* getDeviceProgramInterface() const override;
     private:
         void* m_BAR0;
         uint8_t m_IRQ;
