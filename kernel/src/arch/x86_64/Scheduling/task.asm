@@ -118,7 +118,4 @@ x86_64_kernel_thread_end:
     add rsp, [kernel_stack_size]
     xor rbp, rbp
     push rax
-    mov dx, 0xe9
-    mov al, 'e'
-    out dx, al
     ret

@@ -23,16 +23,10 @@ uint64_t g_ticks = 0;
 
 void x86_64_PIT_Handler(x86_64_Interrupt_Registers* iregs) {
     g_ticks += 10;
-    if (!NewDeleteInitialised())
+    if (!Scheduling::Scheduler::isRunning())
         return;
-    x86_64_Registers* regs = new x86_64_Registers;
-    if (regs != nullptr)
-        x86_64_ConvertToStandardRegisters(regs, iregs);
-    x86_64_Registers* rregs = Scheduling::Scheduler::TimerTick(regs);
-    if (rregs != nullptr)
-        x86_64_PrepareNewRegisters(iregs, rregs);
-    if (regs != nullptr)
-        delete regs;
+    x86_64_SaveIRegistersToThread(Scheduling::Scheduler::GetCurrent(), iregs);
+    Scheduling::Scheduler::TimerTick();
 }
 
 void x86_64_PIT_Init() {

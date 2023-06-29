@@ -10,6 +10,7 @@
 #include <arch/x86_64/Stack.h>
 #include <arch/x86_64/Memory/PagingUtil.hpp>
 #include <arch/x86_64/io.h>
+#include <arch/x86_64/interrupts/pic.hpp>
 #endif
 
 namespace Scheduling {
@@ -29,7 +30,6 @@ namespace Scheduling {
         }
 
         void ScheduleThread(Thread* thread) {
-            fprintf(VFS_DEBUG, "[%s] INFO: thread=%lp\n", __extension__ __PRETTY_FUNCTION__, thread);
             assert(thread != nullptr);
             assert(thread->GetParent()->GetPriority() == Priority::KERNEL); // only kernel priority is supported
             if (g_processes.getIndex(thread->GetParent()) == UINT64_MAX)
@@ -43,9 +43,9 @@ namespace Scheduling {
                 regs->RSP = (uint64_t)x86_64_get_stack_ptr();
             thread->SetStack(regs->RSP);
             regs->RSP -= 8;
-            *(uint64_t*)(regs->RSP) = (uint64_t)(void*)&x86_64_kernel_thread_end;
-            regs->RSP -= 8;
             *(uint64_t*)(regs->RSP) = (uint64_t)(void*)&Scheduling::Scheduler::End;
+            regs->RSP -= 8;
+            *(uint64_t*)(regs->RSP) = (uint64_t)(void*)&x86_64_kernel_thread_end;
             regs->RIP = (uint64_t)thread->GetEntry();
             regs->RDI = (uint64_t)thread->GetEntryData();
             regs->CR3 = x86_64_GetCR3();
@@ -97,43 +97,44 @@ namespace Scheduling {
             WorldOS::Panic("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
         }
 
-        CPU_Registers* Next(CPU_Registers* regs) {
-            if (!g_running) {
-                fprintf(VFS_DEBUG, "[Scheduler] WARN: Scheduler not running.\n");
-                return nullptr;
-            }
-            if (g_kernel_threads.getCount() < 1) {
-                fprintf(VFS_DEBUG, "[Scheduler] WARN: Nothing to switch to. %ld\n", g_kernel_threads.getCount());
-                return nullptr; // Nothing to switch to
-            }
-            assert(g_processes.getCount() > 0);
-            assert(g_kernel_threads.getCount() > 0); // temporary until more priority levels are implemented
-            assert(regs != nullptr);
-            fast_memcpy(g_current->GetCPURegisters(), regs, sizeof(CPU_Registers) / 8);
-            g_kernel_threads.insert(g_current);
-            g_current = g_kernel_threads.get(0);
-            g_kernel_threads.remove(UINT64_C(0));
-            fprintf(VFS_DEBUG, "Switching to %lp...\n", g_current->GetCPURegisters()->RIP);
-            return g_current->GetCPURegisters();
-        }
-
         void End() {
             // TODO: call any destructors or other destruction function
             if (g_current->GetFlags() & CREATE_STACK)
                 g_current->GetParent()->GetPageManager()->FreePages((void*)(g_current->GetStack() - KiB(64)));
+            if (g_kernel_threads.getCount() == 0)
+                WorldOS::Panic("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.", nullptr, false);
             g_current = g_kernel_threads.get(0);
             g_kernel_threads.remove(UINT64_C(0));
             Next();
         }
 
+        Thread* GetCurrent() {
+            return g_current;
+        }
 
-        CPU_Registers* TimerTick(CPU_Registers* regs) {
+
+        void TimerTick() {
             g_ticks++;
             if (g_ticks == TICKS_PER_SCHEDULER_CYCLE) {
-                regs = Next(regs);
-                g_ticks = 0;
+                if (g_kernel_threads.getCount() < 1) {
+                    g_ticks = 0;
+                    return; // Nothing to switch to
+                }
+                assert(g_processes.getCount() > 0);
+                assert(g_kernel_threads.getCount() > 0); // temporary until more priority levels are implemented
+                g_kernel_threads.insert(g_current);
+                g_current = g_kernel_threads.get(0);
+                g_kernel_threads.remove(UINT64_C(0));
+#ifdef __x86_64__
+                x86_64_PIC_sendEOI(0);
+#endif
+                Next();
             }
-            return regs;
+            return;
+        }
+
+        bool isRunning() {
+            return g_running;
         }
     }
 }

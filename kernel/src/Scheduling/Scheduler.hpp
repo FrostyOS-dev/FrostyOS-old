@@ -22,12 +22,15 @@ namespace Scheduling {
 
         void __attribute__((noreturn)) Next();
         void __attribute__((noreturn)) Next(Thread* thread);
-        CPU_Registers* Next(CPU_Registers* regs);
 
         // Called when a thread ends. Responsible for cleanup
         void End();
 
-        CPU_Registers* TimerTick(CPU_Registers* regs);
+        Thread* GetCurrent();
+
+        void TimerTick(); // Only to be called in timer IRQ
+
+        bool isRunning();
     }
 
 }
