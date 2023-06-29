@@ -1,8 +1,5 @@
 #include "kernel.hpp"
 
-#include <HAL/graphics.hpp>
-#include <HAL/timer.hpp>
-
 #include <arch/x86_64/ELFSymbols.h>
 #include <arch/x86_64/io.h>
 
@@ -11,6 +8,8 @@
 
 #include <HAL/drivers/ACPI/RSDP.hpp>
 #include <HAL/drivers/ACPI/XSDT.hpp>
+
+#include <HAL/time.h>
 
 #include <Scheduling/Scheduler.hpp>
 

@@ -17,13 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 23/06/2023
+## Latest Changes - 28/06/2023
 
-- Moved kernel-related parts of `Makefile` into its own `Makefile`
-- Moved toolchain build into `Makefile`
-- Added a patch for building a `-mno-red-zone` variant of `libgcc`
-- Tidied up both `Makefile`s
-- Various small code refactoring to remove most compiler warnings
+- Fixed a redefinition error in `HAL/time.cpp`
+- Removed unnecessary includes and function calls from `StartKernel`
+- Added a virtual region class
+- Changed VirtualPageManager so it uses a virtual region instead of relevant class variables
 
 ## Resources used
 

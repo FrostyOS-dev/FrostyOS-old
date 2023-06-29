@@ -12,6 +12,8 @@
 extern "C" {
 #endif
 
+#define BCD_TO_BINARY(x) (((x & 0xF0) >> 1) + ((x & 0xF0) >> 3) + (x & 0xF))
+
 #define DIV_ROUNDUP(VALUE, DIV) (VALUE + (DIV - 1)) / DIV
 
 #define ALIGN_UP(VALUE, ALIGN) DIV_ROUNDUP(VALUE, ALIGN) * ALIGN

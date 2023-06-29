@@ -234,7 +234,7 @@ namespace WorldOS {
 
     /* Public Methods */
 
-    VirtualPageManager::VirtualPageManager() : m_FreePagesCount(0), m_FreePagesSizeTree(nullptr), m_RegionLength(0), m_RegionStart(nullptr), m_ReservedANDUsedPages(nullptr), m_ReservedPagesCount(0), m_UsedPagesCount(0) {
+    VirtualPageManager::VirtualPageManager() : m_FreePagesCount(0), m_FreePagesSizeTree(nullptr), m_ReservedANDUsedPages(nullptr), m_ReservedPagesCount(0), m_UsedPagesCount(0), m_region(nullptr) {
         // do nothing. just here so the compiler doesn't complain
     }
 
@@ -243,25 +243,28 @@ namespace WorldOS {
         Internal_clearUsedReservedPagesTree(m_ReservedANDUsedPages);
     }
 
-    void VirtualPageManager::InitVPageMgr(MemoryMapEntry** MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size, void* region_start, uint64_t region_length) {
-        m_RegionStart = region_start;
-        m_RegionLength = region_length;
+    void VirtualPageManager::InitVPageMgr(MemoryMapEntry** MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size, const VirtualRegion& region) {
         if (!AVLTree::NodePool_HasBeenInitialised())
             AVLTree::NodePool_Init();
         if (!LinkedList::NodePool_HasBeenInitialised())
             LinkedList::NodePool_Init();
-        FreePages(m_RegionStart, m_RegionLength >> 12);
+        m_region = &region;
+        FreePages(m_region->GetStart(), m_region->GetSize() >> 12);
         for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
             MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)MemoryMap + (i * MEMORY_MAP_ENTRY_SIZE));
-            if ((entry->type == WORLDOS_MEMORY_ACPI_NVS || entry->type == WORLDOS_MEMORY_ACPI_RECLAIMABLE) && (entry->Address >= (uint64_t)m_RegionStart && (entry->Address + entry->length) <= ((uint64_t)m_RegionStart + m_RegionLength))) {
+            if ((entry->type == WORLDOS_MEMORY_ACPI_NVS || entry->type == WORLDOS_MEMORY_ACPI_RECLAIMABLE) && m_region->IsInside((void*)(entry->Address), entry->length)) {
                 uint64_t page_length = (((entry->length % 4096) > 0) ? ((entry->length / 4096) + 1) : (entry->length / 4096));
                 ReservePages((void*)entry->Address, page_length);
             }
         }
-        kernel_size += 4095; // ensure none of the kernel isn't accounted for
-        LockPages(kernel_virt_start, kernel_size / 4096);
-        fb_size += 4095;
-        LockPages(fb_virt, fb_size / 4096);
+        if (m_region->IsInside(kernel_virt_start, kernel_size)) {
+            kernel_size += 4095; // ensure none of the kernel isn't accounted for
+            LockPages(kernel_virt_start, kernel_size / 4096);
+        }
+        if (m_region->IsInside(fb_virt, fb_size)) {
+            fb_size += 4095;
+            LockPages(fb_virt, fb_size / 4096);
+        }
     }
 
     void* VirtualPageManager::FindFreePage() {
@@ -325,17 +328,9 @@ namespace WorldOS {
 
     void VirtualPageManager::ReservePages(void* addr, uint64_t count) {
         uint64_t addr_i = (uint64_t)addr;
-        if ((addr_i + count * 0x1000) <= (uint64_t)m_RegionStart)
+        size_t length = count << 12;
+        if (!m_region->EnsureIsInside(addr, length))
             return;
-        else if (addr_i < (uint64_t)m_RegionStart) {
-            count -= ((uint64_t)m_RegionStart - addr_i) >> 12; // fix page count
-            addr_i = (uint64_t)m_RegionStart; // set address to region start
-        }
-        if (addr_i > ((uint64_t)m_RegionStart + m_RegionLength))
-            return;
-        else if ((addr_i + count * 0x1000) > ((uint64_t)m_RegionStart + m_RegionLength)) {
-            count -= ((addr_i + count * 0x1000) - ((uint64_t)m_RegionStart + m_RegionLength)) >> 12;
-        }
         if (count == 0)
             return;
         AVLTree::Node* node = nullptr;
@@ -353,17 +348,9 @@ namespace WorldOS {
 
     void VirtualPageManager::UnreservePages(void* addr, uint64_t count) {
         uint64_t addr_i = (uint64_t)addr;
-        if ((addr_i + count * 0x1000) <= (uint64_t)m_RegionStart)
+        size_t length = count << 12;
+        if (!m_region->EnsureIsInside(addr, length))
             return;
-        else if (addr_i < (uint64_t)m_RegionStart) {
-            count -= ((uint64_t)m_RegionStart - addr_i) >> 12; // fix page count
-            addr_i = (uint64_t)m_RegionStart; // set address to region start
-        }
-        if (addr_i > ((uint64_t)m_RegionStart + m_RegionLength))
-            return;
-        else if ((addr_i + count * 0x1000) > ((uint64_t)m_RegionStart + m_RegionLength)) {
-            count -= ((addr_i + count * 0x1000) - ((uint64_t)m_RegionStart + m_RegionLength)) >> 12;
-        }
         if (count == 0)
             return;
         AVLTree::Node* node = nullptr;
@@ -417,17 +404,9 @@ namespace WorldOS {
 
     void VirtualPageManager::LockPages(void* addr, uint64_t count) {
         uint64_t addr_i = (uint64_t)addr;
-        if ((addr_i + count * 0x1000) <= (uint64_t)m_RegionStart)
+        size_t length = count << 12;
+        if (!m_region->EnsureIsInside(addr, length))
             return;
-        else if (addr_i < (uint64_t)m_RegionStart) {
-            count -= ((uint64_t)m_RegionStart - addr_i) >> 12; // fix page count
-            addr_i = (uint64_t)m_RegionStart; // set address to region start
-        }
-        if (addr_i > ((uint64_t)m_RegionStart + m_RegionLength))
-            return;
-        else if ((addr_i + count * 0x1000) > ((uint64_t)m_RegionStart + m_RegionLength)) {
-            count -= ((addr_i + count * 0x1000) - ((uint64_t)m_RegionStart + m_RegionLength)) >> 12;
-        }
         if (count == 0)
             return;
         AVLTree::Node* node = nullptr;
@@ -445,17 +424,9 @@ namespace WorldOS {
 
     void VirtualPageManager::UnlockPages(void* addr, uint64_t count) {
         uint64_t addr_i = (uint64_t)addr;
-        if ((addr_i + count * 0x1000) <= (uint64_t)m_RegionStart)
+        size_t length = count << 12;
+        if (!m_region->EnsureIsInside(addr, length))
             return;
-        else if (addr_i < (uint64_t)m_RegionStart) {
-            count -= ((uint64_t)m_RegionStart - addr_i) >> 12; // fix page count
-            addr_i = (uint64_t)m_RegionStart; // set address to region start
-        }
-        if (addr_i > ((uint64_t)m_RegionStart + m_RegionLength))
-            return;
-        else if ((addr_i + count * 0x1000) > ((uint64_t)m_RegionStart + m_RegionLength)) {
-            count -= ((addr_i + count * 0x1000) - ((uint64_t)m_RegionStart + m_RegionLength)) >> 12;
-        }
         if (count == 0)
             return;
         AVLTree::Node* node = nullptr;
@@ -474,17 +445,9 @@ namespace WorldOS {
     // Mark pages as free
     void VirtualPageManager::FreePages(void* addr, uint64_t count) {
         uint64_t addr_i = (uint64_t)addr;
-        if ((addr_i + (count * 0x1000)) <= (uint64_t)m_RegionStart)
+        size_t length = count << 12;
+        if (!m_region->EnsureIsInside(addr, length))
             return;
-        else if (addr_i < (uint64_t)m_RegionStart) {
-            count -= ((uint64_t)m_RegionStart - addr_i) >> 12; // fix page count
-            addr_i = (uint64_t)m_RegionStart; // set address to region start
-        }
-        if (addr_i > ((uint64_t)m_RegionStart + m_RegionLength))
-            return;
-        else if ((addr_i + count * 0x1000) > ((uint64_t)m_RegionStart + m_RegionLength)) {
-            count -= ((addr_i + count * 0x1000) - ((uint64_t)m_RegionStart + m_RegionLength)) >> 12;
-        }
         if (count == 0)
             return;
         AVLTree::Node* node = nullptr;
@@ -505,17 +468,9 @@ namespace WorldOS {
 
     void VirtualPageManager::UnfreePages(void* addr, uint64_t count) {
         uint64_t addr_i = (uint64_t)addr;
-        if ((addr_i + count * 0x1000) <= (uint64_t)m_RegionStart)
+        size_t length = count << 12;
+        if (!m_region->EnsureIsInside(addr, length))
             return;
-        else if (addr_i < (uint64_t)m_RegionStart) {
-            count -= ((uint64_t)m_RegionStart - addr_i) >> 12; // fix page count
-            addr_i = (uint64_t)m_RegionStart; // set address to region start
-        }
-        if (addr_i > ((uint64_t)m_RegionStart + m_RegionLength))
-            return;
-        else if ((addr_i + count * 0x1000) > ((uint64_t)m_RegionStart + m_RegionLength)) {
-            count -= ((addr_i + count * 0x1000) - ((uint64_t)m_RegionStart + m_RegionLength)) >> 12;
-        }
         if (count == 0)
             return;
         AVLTree::Node* node = nullptr;

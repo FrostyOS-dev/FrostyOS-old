@@ -14,6 +14,7 @@
 
 WorldOS::PhysicalPageFrameAllocator PPFA;
 WorldOS::VirtualPageManager KVPM;
+WorldOS::VirtualRegion KVRegion;
 
 size_t g_MemorySize = 0;
 
@@ -152,9 +153,9 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     PPFA.FullInit(MemoryMap[0], MMEntryCount, g_MemorySize);
     g_PPFA = &PPFA;
 
-    uint64_t Vregion_start = kernel_virtual + kernel_size;
+    KVRegion = WorldOS::VirtualRegion((void*)(kernel_virtual + kernel_size), (void*)(~UINT64_C(0)));
 
     // Setup kernel virtual MM
-    KVPM.InitVPageMgr(MemoryMap, MMEntryCount, (void*)kernel_virtual, kernel_size, (void*)fb_virt, fb_size, (void*)(Vregion_start), (~UINT64_C(0)) - Vregion_start);
+    KVPM.InitVPageMgr(MemoryMap, MMEntryCount, (void*)kernel_virtual, kernel_size, (void*)fb_virt, fb_size, KVRegion);
     WorldOS::g_KVPM = &KVPM;
 }
