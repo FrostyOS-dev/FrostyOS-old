@@ -33,13 +33,13 @@ namespace NVMe {
         if ((entry_count * sizeof(CompletionQueueEntry)) <= 0x1000)
             p_CQEntries = (CompletionQueueEntry*)WorldOS::g_KPM->AllocatePage();
         else
-            p_CQEntries = (CompletionQueueEntry*)WorldOS::g_KPM->AllocatePages(entry_count * sizeof(CompletionQueueEntry) / 0x1000);
+            p_CQEntries = (CompletionQueueEntry*)WorldOS::g_KPM->AllocatePages(DIV_ROUNDUP((entry_count * sizeof(CompletionQueueEntry)), 0x1000));
         assert(p_CQEntries != nullptr);
         fast_memset(p_CQEntries, 0, sizeof(CompletionQueueEntry) * entry_count / 8);
         if ((entry_count * sizeof(SubmissionQueueEntry)) <= 0x1000)
             p_SQEntries = (SubmissionQueueEntry*)WorldOS::g_KPM->AllocatePage();
         else
-            p_SQEntries = (SubmissionQueueEntry*)WorldOS::g_KPM->AllocatePages(entry_count * sizeof(SubmissionQueueEntry) / 0x1000);
+            p_SQEntries = (SubmissionQueueEntry*)WorldOS::g_KPM->AllocatePages(DIV_ROUNDUP((entry_count * sizeof(SubmissionQueueEntry)), 0x1000));
         assert(p_SQEntries != nullptr);
         fast_memset(p_SQEntries, 0, sizeof(SubmissionQueueEntry) * entry_count / 8);
         p_is_created = true;
@@ -79,7 +79,11 @@ namespace NVMe {
         do {
             CQ = reinterpret_cast<CompletionQueueEntry*>((uint64_t)p_CQEntries + old_admin_tail * sizeof(CompletionQueueEntry));
         } while (!CQ->Phase);
-        bool Successful = CQ->Status == 0;
+        CQ->Phase = 0;
+        const uint16_t Status = CQ->Status;
+        bool Successful = Status == 0;
+        if (!Successful)
+            fprintf(VFS_DEBUG, "[%s(%lp)] WARN: command returned with exit status %hhx\n", __extension__ __PRETTY_FUNCTION__, entry, Status);
         fast_memset(CQ, 0, sizeof(CompletionQueueEntry) / 8);
         return Successful;
     }

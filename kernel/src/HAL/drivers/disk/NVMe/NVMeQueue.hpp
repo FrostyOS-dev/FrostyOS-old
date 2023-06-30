@@ -20,9 +20,12 @@ namespace NVMe {
         uint64_t MetadataPTR;
         uint64_t DataPTR0;
         uint64_t DataPTR1;
-        uint64_t CommandSpecific0;
-        uint64_t CommandSpecific1;
-        uint64_t CommandSpecific2;
+        uint32_t DWORD10;
+        uint32_t DWORD11;
+        uint32_t DWORD12;
+        uint32_t DWORD13;
+        uint32_t DWORD14;
+        uint32_t DWORD15;
     } __attribute__((packed));
 
     struct CompletionQueueEntry {

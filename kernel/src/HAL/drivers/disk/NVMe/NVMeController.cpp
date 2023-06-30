@@ -113,6 +113,8 @@ namespace NVMe {
 
     }
 
+    SubmissionQueueEntry entry;
+
     void NVMeController::InitPCIDevice(PCI::Header0* device) {
         if (p_device != nullptr)
             return;
@@ -141,8 +143,8 @@ namespace NVMe {
         assert(ACQ != nullptr);
         void* ASQ = m_admin_queue->GetSubmissionQueue();
         assert(ASQ != nullptr);
-        BAR0->ACQ = (uint64_t)ACQ;
-        BAR0->ASQ = (uint64_t)ASQ;
+        BAR0->ACQ = (uint64_t)get_physaddr(ACQ);
+        BAR0->ASQ = (uint64_t)get_physaddr(ASQ);
         BAR0->CC.IOCQES = 4; // 2^4 = 16 (sizeof(CompletionQueueEntry))
         BAR0->CC.IOSQES = 6; // 2^6 = 64 (sizeof(SubmissionQueueEntry))
         BAR0->CC.CSS = 0b000;
@@ -153,14 +155,14 @@ namespace NVMe {
         } while (BAR0->CSTS.Ready != 1); // Wait until the controller is running
         NVMeIOQueue* IOQueue = new NVMeIOQueue;
         IOQueue->Create((void*)((uint64_t)m_BAR0 + 0x1000), doorbell_stride, 64, 1);
-        NVMe::SubmissionQueueEntry entry;
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
         entry.command.Opcode = (uint8_t)AdminCommands::CREATE_IO_COMPLETION_QUEUE;
         void* IOCQ = IOQueue->GetCompletionQueue();
         assert(IOCQ != nullptr);
         entry.DataPTR0 = (uint64_t)get_physaddr(IOCQ);
-        entry.CommandSpecific0 = (UINT64_C(0x003F0001) << 32) | (0x00000001); // 64 entries in queue, ID 1, physically contiguous
+        entry.DWORD10 = 0x003F0001; // 64-entries in queue, ID 1
+        entry.DWORD11 = 1; // physically contiguous
         assert(m_admin_queue->SendCommand(&entry));
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
@@ -168,7 +170,8 @@ namespace NVMe {
         void* IOSQ = IOQueue->GetCompletionQueue();
         assert(IOSQ != nullptr);
         entry.DataPTR0 = (uint64_t)get_physaddr(IOSQ);
-        entry.CommandSpecific0 = (UINT64_C(0x003F0001) << 32) | (0x00010001); // 64 entries in queue, ID 1, IOCQ ID 1, physically contiguous
+        entry.DWORD10 = 0x003F0001; // 64 entries in queue, ID 1
+        entry.DWORD11 = 0x00010001; // IOCQ ID 1, physically contiguous
         assert(m_admin_queue->SendCommand(&entry));
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
@@ -177,7 +180,7 @@ namespace NVMe {
         assert(m_ControllerInfo != nullptr);
         fast_memset(m_ControllerInfo, 0, 4096 / 8);
         entry.DataPTR0 = (uint64_t)get_physaddr(m_ControllerInfo);
-        entry.CommandSpecific0 = 1; // The controller
+        entry.DWORD10 = 1; // The controller
         assert(m_admin_queue->SendCommand(&entry));
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
@@ -186,7 +189,7 @@ namespace NVMe {
         assert(m_NSIDList != nullptr);
         fast_memset(m_NSIDList, 0, 4096 / 8);
         entry.DataPTR0 = (uint64_t)get_physaddr(m_NSIDList);
-        entry.CommandSpecific0 = 2; // NSID list
+        entry.DWORD10 = 2; // NSID list
         assert(m_admin_queue->SendCommand(&entry));
 
         uint64_t MaxTransferSize = 0;
@@ -221,7 +224,7 @@ namespace NVMe {
         assert(NID != nullptr);
         fast_memset(NID, 0, 4096 / 8);
         entry.DataPTR0 = (uint64_t)get_physaddr(NID);
-        entry.CommandSpecific0 = 0; // A namespace
+        entry.DWORD10 = 0; // A namespace
         entry.NSID = ID;
         if (m_admin_queue->SendCommand(&entry))
             return NID;

@@ -31,8 +31,9 @@ namespace NVMe {
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
         entry.NSID = m_ID;
         entry.command.Opcode = (uint8_t)IOCommands::READ;
-        entry.CommandSpecific0 = lba;
-        entry.CommandSpecific1 = (uint16_t)(count - 1); // max count is 65536
+        entry.DWORD10 = lba & 0xFFFFFFFF;
+        entry.DWORD11 = (lba >> 32) & 0xFFFFFFFF;
+        entry.DWORD12 = (uint16_t)(count - 1); // max count is 65536
         LinkedList::SimpleLinkedList<uint64_t> PRPLists;
         uint64_t page_count = DIV_ROUNDUP(count * m_SectorSize, 0x1000);
         if (page_count == 1) {
@@ -115,8 +116,9 @@ namespace NVMe {
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
         entry.NSID = m_ID;
         entry.command.Opcode = (uint8_t)IOCommands::WRITE;
-        entry.CommandSpecific0 = lba;
-        entry.CommandSpecific1 = (uint16_t)(count - 1); // max count is 65536
+        entry.DWORD10 = lba & 0xFFFFFFFF;
+        entry.DWORD11 = (lba >> 32) & 0xFFFFFFFF;
+        entry.DWORD12 = (uint16_t)(count - 1); // max count is 65536
         LinkedList::SimpleLinkedList<uint64_t> PRPLists;
         uint64_t page_count = DIV_ROUNDUP(count * m_SectorSize, 0x1000);
         if (page_count == 1) {
