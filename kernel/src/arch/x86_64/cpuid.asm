@@ -10,12 +10,12 @@ x86_64_cpuid:
     xor rbx, rbx
     xor rcx, rcx
     xor rdx, rdx
-    mov edi, eax ; get lower 32-bits of rdi
+    mov eax, edi ; get lower 32-bits of rdi
     shr rdi, 32
-    mov edi, ebx ; get upper 32-bits of rdi
-    mov esi, ecx ; get lower 32-bits of rsi
+    mov ebx, edi ; get upper 32-bits of rdi
+    mov ecx, esi ; get lower 32-bits of rsi
     shr rsi, 32
-    mov esi, edx ; get upper 32-bits of rsi
+    mov edx, esi ; get upper 32-bits of rsi
     cli
     cpuid
     shl rbx, 32
