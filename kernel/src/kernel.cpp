@@ -1,9 +1,19 @@
 #include "kernel.hpp"
 
 #include <arch/x86_64/ELFSymbols.h>
+#include <arch/x86_64/io.h>
 
 #include <Memory/PageManager.hpp>
 #include <Memory/kmalloc.hpp>
+
+#include <HAL/drivers/ACPI/RSDP.hpp>
+#include <HAL/drivers/ACPI/XSDT.hpp>
+
+#include <HAL/time.h>
+
+#include <Scheduling/Scheduler.hpp>
+
+#include <assert.h>
 
 namespace WorldOS {
 
@@ -13,6 +23,8 @@ namespace WorldOS {
     uint64_t m_Stage;
 
     PageManager KPM;
+
+    Scheduling::Process* KProcess;
 
     extern "C" void StartKernel(KernelParams* params) {
         m_fgcolour = 0xFFFFFFFF;
@@ -31,11 +43,23 @@ namespace WorldOS {
             Panic("Bootloader Frame Buffer Bits per Pixel is not 32", nullptr, false);
         }
 
-        HAL_Stage2(params->RSDP_table);
+        // Do any early initialisation
 
+        KProcess = new Scheduling::Process(Kernel_Stage2, params->RSDP_table, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
+        KProcess->Start();
+
+        Scheduling::Scheduler::Start();
+
+        Panic("Scheduler Start returned!\n", nullptr, false);
+    }
+
+    void Kernel_Stage2(void* RSDP_table) {
         fprintf(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
 
-        // hang
+        m_Stage = STAGE2;
+
+        HAL_Stage2(RSDP_table);
+
         while (true) {
             
         }

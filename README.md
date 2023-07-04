@@ -17,12 +17,18 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 28/06/2023
+## Latest Changes - 30/06/2023
 
-- Fixed a redefinition error in `HAL/time.cpp`
-- Removed unnecessary includes and function calls from `StartKernel`
-- Added a virtual region class
-- Changed VirtualPageManager so it uses a virtual region instead of relevant class variables
+- Added Process and Thread classes
+- Added x86_64 task switch code
+- Added x86_64 register save code
+- Added `x86_64_get_stack_ptr` function
+- Added utility function to get a new stack (for tasks)
+- Added `x86_64_Interrupt_Registers` and `x86_64_Registers` conversions
+- Implemented basic kernel round-robin scheduler
+- Added function call from `x86_64_PIT_Handler` to `Scheduling::Scheduler::TimerTick()`
+- Changed kernel init to a 2 stage initialisation with second stage being called by the scheduler
+- Renamed `LATE_STAGE` to `STAGE2`
 
 ## Resources used
 
