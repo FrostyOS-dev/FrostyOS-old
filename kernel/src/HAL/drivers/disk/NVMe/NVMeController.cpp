@@ -105,6 +105,18 @@ namespace NVMe {
         uint8_t VendorSpecific[1024];
     } __attribute__((packed));
 
+    struct CreIOQDWORD10 {
+        uint16_t QID;
+        uint16_t QSIZE;
+    } __attribute__((packed));
+
+    struct CreIOSQDWORD11 {
+        uint8_t PC : 1;
+        uint8_t QPRIO : 2;
+        uint8_t Reserved : 13;
+        uint16_t CQID;
+    } __attribute__((packed));
+
     NVMeController::NVMeController() : m_BAR0(nullptr), m_IRQ(0), m_admin_queue(nullptr), m_ControllerInfo(nullptr), m_NSIDList(nullptr) {
 
     }
@@ -161,7 +173,9 @@ namespace NVMe {
         void* IOCQ = IOQueue->GetCompletionQueue();
         assert(IOCQ != nullptr);
         entry.DataPTR0 = (uint64_t)get_physaddr(IOCQ);
-        entry.DWORD10 = 0x003F0001; // 64-entries in queue, ID 1
+        CreIOQDWORD10 CDWORD10 = {1, 0x3F};
+        uint32_t* DWORDPTR = reinterpret_cast<uint32_t*>(&CDWORD10);
+        entry.DWORD10 = *DWORDPTR; // 64-entries in queue, ID 1
         entry.DWORD11 = 1; // physically contiguous
         assert(m_admin_queue->SendCommand(&entry));
 
@@ -170,8 +184,14 @@ namespace NVMe {
         void* IOSQ = IOQueue->GetCompletionQueue();
         assert(IOSQ != nullptr);
         entry.DataPTR0 = (uint64_t)get_physaddr(IOSQ);
-        entry.DWORD10 = 0x003F0001; // 64 entries in queue, ID 1
-        entry.DWORD11 = 0x00010001; // IOCQ ID 1, physically contiguous
+        CreIOQDWORD10 DWORD10 = {1, 0x3F};
+        DWORDPTR = reinterpret_cast<uint32_t*>(&DWORD10);
+        entry.DWORD10 = *DWORDPTR; // 64 entries in queue, ID 1
+        CreIOSQDWORD11 DWORD11 = {0};
+        DWORD11.CQID = 1;
+        DWORD11.PC = 1;
+        DWORDPTR = reinterpret_cast<uint32_t*>(&DWORD11);
+        entry.DWORD11 = *DWORDPTR; // IOCQ ID 1, physically contiguous
         assert(m_admin_queue->SendCommand(&entry));
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
@@ -180,7 +200,7 @@ namespace NVMe {
         assert(m_ControllerInfo != nullptr);
         fast_memset(m_ControllerInfo, 0, 4096 / 8);
         entry.DataPTR0 = (uint64_t)get_physaddr(m_ControllerInfo);
-        entry.DWORD10 = 1; // The controller
+        entry.DWORD10 = CombineWords(0, CombineBytes(0, 1)); // The controller
         assert(m_admin_queue->SendCommand(&entry));
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
@@ -189,7 +209,7 @@ namespace NVMe {
         assert(m_NSIDList != nullptr);
         fast_memset(m_NSIDList, 0, 4096 / 8);
         entry.DataPTR0 = (uint64_t)get_physaddr(m_NSIDList);
-        entry.DWORD10 = 2; // NSID list
+        entry.DWORD10 = CombineWords(0, CombineBytes(0, 2)); // NSID list
         assert(m_admin_queue->SendCommand(&entry));
 
         uint64_t MaxTransferSize = 0;
@@ -200,8 +220,8 @@ namespace NVMe {
         }
 
         uint_fast16_t NSIndex = 0;
-        //while (m_NSIDList[NSIndex] != 0) {
-            NVMeDisk* disk = new NVMeDisk(1, this, IOQueue, MaxTransferSize);
+        while (m_NSIDList[NSIndex] != 0) {
+            NVMeDisk* disk = new NVMeDisk(m_NSIDList[NSIndex], this, IOQueue, MaxTransferSize);
             m_Disks.insert(disk);
             uint8_t* data = (uint8_t*)kcalloc(disk->GetSectorSize());
             assert(data != nullptr);
@@ -212,7 +232,7 @@ namespace NVMe {
             }
             fprintf(VFS_DEBUG, "\n\n\n");
             NSIndex++;
-        //}
+        }
         fprintf(VFS_DEBUG, "NVMe Success!\n");
     }
 

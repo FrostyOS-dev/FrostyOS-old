@@ -77,7 +77,7 @@ namespace NVMe {
         CompletionQueueEntry* CQ = nullptr;
         do {
             CQ = reinterpret_cast<CompletionQueueEntry*>((uint64_t)p_CQEntries + old_admin_tail * sizeof(CompletionQueueEntry));
-        } while (!CQ->Phase);
+        } while (CQ->Phase);
         bool Successful = CQ->Status == 0;
         fast_memset(CQ, 0, sizeof(CompletionQueueEntry) / 8);
         return Successful;

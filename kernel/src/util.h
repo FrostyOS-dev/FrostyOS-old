@@ -53,6 +53,10 @@ int memcmp(const void* s1, const void* s2, const size_t n);
 #define FLAG_SET(x, flag) x |= (flag)
 #define FLAG_UNSET(x, flag) x &= ~(flag)
 
+uint64_t CombineDWords(uint32_t high, uint32_t low);
+uint32_t CombineWords(uint16_t high, uint16_t low);
+uint16_t CombineBytes(uint8_t high, uint8_t low);
+
 #ifdef __cplusplus
 }
 #endif
