@@ -105,18 +105,6 @@ namespace NVMe {
         uint8_t VendorSpecific[1024];
     } __attribute__((packed));
 
-    struct CreIOQDWORD10 {
-        uint16_t QID;
-        uint16_t QSIZE;
-    } __attribute__((packed));
-
-    struct CreIOSQDWORD11 {
-        uint8_t PC : 1;
-        uint8_t QPRIO : 2;
-        uint8_t Reserved : 13;
-        uint16_t CQID;
-    } __attribute__((packed));
-
     NVMeController::NVMeController() : m_BAR0(nullptr), m_IRQ(0), m_admin_queue(nullptr), m_ControllerInfo(nullptr), m_NSIDList(nullptr) {
 
     }
@@ -147,7 +135,7 @@ namespace NVMe {
         BAR0->CC.Enable = 0; // Disable the controller
         do {
             assert(BAR0->CSTS.CFS == 0);
-        } while (BAR0->CSTS.Ready != 0); // Wait until the controller is stopped
+        } while (BAR0->CSTS.Ready); // Wait until the controller is stopped
         BAR0->AQA = 0x003F003F; // 64 entries for Admin submission Queue and Admin completion queue
         m_admin_queue = new NVMeAdminQueue;
         m_admin_queue->Create((void*)((uint64_t)m_BAR0 + 0x1000), doorbell_stride, 64, 0);
@@ -164,7 +152,7 @@ namespace NVMe {
         BAR0->CC.Enable = 1; // Start the controller
         do {
             assert(BAR0->CSTS.CFS == 0);
-        } while (BAR0->CSTS.Ready != 1); // Wait until the controller is running
+        } while (!(BAR0->CSTS.Ready)); // Wait until the controller is running
         NVMeIOQueue* IOQueue = new NVMeIOQueue;
         IOQueue->Create((void*)((uint64_t)m_BAR0 + 0x1000), doorbell_stride, 64, 1);
 
@@ -173,10 +161,9 @@ namespace NVMe {
         void* IOCQ = IOQueue->GetCompletionQueue();
         assert(IOCQ != nullptr);
         entry.DataPTR0 = (uint64_t)get_physaddr(IOCQ);
-        CreIOQDWORD10 CDWORD10 = {1, 0x3F};
-        uint32_t* DWORDPTR = reinterpret_cast<uint32_t*>(&CDWORD10);
-        entry.DWORD10 = *DWORDPTR; // 64-entries in queue, ID 1
-        entry.DWORD11 = 1; // physically contiguous
+        entry.CreateCQ.CQID = 0x0100;
+        entry.CreateCQ.Size = 64 - 1;
+        entry.CreateCQ.CQFlags = 1; // physically contiguous
         assert(m_admin_queue->SendCommand(&entry));
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
@@ -184,14 +171,10 @@ namespace NVMe {
         void* IOSQ = IOQueue->GetCompletionQueue();
         assert(IOSQ != nullptr);
         entry.DataPTR0 = (uint64_t)get_physaddr(IOSQ);
-        CreIOQDWORD10 DWORD10 = {1, 0x3F};
-        DWORDPTR = reinterpret_cast<uint32_t*>(&DWORD10);
-        entry.DWORD10 = *DWORDPTR; // 64 entries in queue, ID 1
-        CreIOSQDWORD11 DWORD11 = {0};
-        DWORD11.CQID = 1;
-        DWORD11.PC = 1;
-        DWORDPTR = reinterpret_cast<uint32_t*>(&DWORD11);
-        entry.DWORD11 = *DWORDPTR; // IOCQ ID 1, physically contiguous
+        entry.CreateSQ.SQID = 0x0100;
+        entry.CreateSQ.Size = 64 - 1;
+        entry.CreateSQ.CQID = 1;
+        entry.CreateSQ.SQFlags = 1;
         assert(m_admin_queue->SendCommand(&entry));
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
@@ -200,7 +183,7 @@ namespace NVMe {
         assert(m_ControllerInfo != nullptr);
         fast_memset(m_ControllerInfo, 0, 4096 / 8);
         entry.DataPTR0 = (uint64_t)get_physaddr(m_ControllerInfo);
-        entry.DWORD10 = CombineWords(0, CombineBytes(0, 1)); // The controller
+        entry.Identify.CNS = 1; // The controller
         assert(m_admin_queue->SendCommand(&entry));
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
@@ -209,7 +192,7 @@ namespace NVMe {
         assert(m_NSIDList != nullptr);
         fast_memset(m_NSIDList, 0, 4096 / 8);
         entry.DataPTR0 = (uint64_t)get_physaddr(m_NSIDList);
-        entry.DWORD10 = CombineWords(0, CombineBytes(0, 2)); // NSID list
+        entry.Identify.CNS = 2; // NSID list
         assert(m_admin_queue->SendCommand(&entry));
 
         uint64_t MaxTransferSize = 0;
@@ -244,7 +227,7 @@ namespace NVMe {
         assert(NID != nullptr);
         fast_memset(NID, 0, 4096 / 8);
         entry.DataPTR0 = (uint64_t)get_physaddr(NID);
-        entry.DWORD10 = 0; // A namespace
+        entry.Identify.CNS = 0; // A namespace
         entry.NSID = ID;
         if (m_admin_queue->SendCommand(&entry))
             return NID;

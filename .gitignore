@@ -4,3 +4,4 @@ bin-int/
 iso/
 dist/
 depend/
+kernel/src/limine.h
