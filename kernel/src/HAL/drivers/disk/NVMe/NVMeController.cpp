@@ -156,26 +156,7 @@ namespace NVMe {
         NVMeIOQueue* IOQueue = new NVMeIOQueue;
         IOQueue->Create((void*)((uint64_t)m_BAR0 + 0x1000), doorbell_stride, 64, 1);
 
-        fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
-        entry.command.Opcode = (uint8_t)AdminCommands::CREATE_IO_COMPLETION_QUEUE;
-        void* IOCQ = IOQueue->GetCompletionQueue();
-        assert(IOCQ != nullptr);
-        entry.DataPTR0 = (uint64_t)get_physaddr(IOCQ);
-        entry.CreateCQ.CQID = 0x0100;
-        entry.CreateCQ.Size = 64 - 1;
-        entry.CreateCQ.CQFlags = 1; // physically contiguous
-        assert(m_admin_queue->SendCommand(&entry));
-
-        fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
-        entry.command.Opcode = (uint8_t)AdminCommands::CREATE_IO_SUBMISSION_QUEUE;
-        void* IOSQ = IOQueue->GetCompletionQueue();
-        assert(IOSQ != nullptr);
-        entry.DataPTR0 = (uint64_t)get_physaddr(IOSQ);
-        entry.CreateSQ.SQID = 0x0100;
-        entry.CreateSQ.Size = 64 - 1;
-        entry.CreateSQ.CQID = 1;
-        entry.CreateSQ.SQFlags = 1;
-        assert(m_admin_queue->SendCommand(&entry));
+        
 
         fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
         entry.command.Opcode = (uint8_t)AdminCommands::IDENTIFY;
@@ -201,6 +182,27 @@ namespace NVMe {
             MaxTransferSize *= 0x1000 << BAR0->CAP.MPSMIN;
             fprintf(VFS_DEBUG, "[%s(%lp)] INFO: Maximum transfer size in bytes is %lu.\n", __extension__ __PRETTY_FUNCTION__, device, MaxTransferSize);
         }
+
+        fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
+        entry.command.Opcode = (uint8_t)AdminCommands::CREATE_IO_COMPLETION_QUEUE;
+        void* IOCQ = IOQueue->GetCompletionQueue();
+        assert(IOCQ != nullptr);
+        entry.DataPTR0 = (uint64_t)get_physaddr(IOCQ);
+        entry.CreateCQ.CQID = m_NSIDList[0];
+        entry.CreateCQ.Size = 64 - 1;
+        entry.CreateCQ.CQFlags = 1; // physically contiguous
+        assert(m_admin_queue->SendCommand(&entry));
+
+        fast_memset(&entry, 0, sizeof(SubmissionQueueEntry) / 8);
+        entry.command.Opcode = (uint8_t)AdminCommands::CREATE_IO_SUBMISSION_QUEUE;
+        void* IOSQ = IOQueue->GetCompletionQueue();
+        assert(IOSQ != nullptr);
+        entry.DataPTR0 = (uint64_t)get_physaddr(IOSQ);
+        entry.CreateSQ.SQID = m_NSIDList[0];
+        entry.CreateSQ.Size = 64 - 1;
+        entry.CreateSQ.CQID = m_NSIDList[0];
+        entry.CreateSQ.SQFlags = 1;
+        assert(m_admin_queue->SendCommand(&entry));
 
         uint_fast16_t NSIndex = 0;
         while (m_NSIDList[NSIndex] != 0) {
