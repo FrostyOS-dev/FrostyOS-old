@@ -1,7 +1,6 @@
 #ifndef _KERNEL_X86_64_VGA_FONT_HPP
 #define _KERNEL_X86_64_VGA_FONT_HPP
 
-#include <stddef.h>
 #include <stdint.h>
 
 const uint8_t letters[95][16] = {

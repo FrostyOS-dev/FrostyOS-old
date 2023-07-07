@@ -13,6 +13,8 @@
 
 #include <Scheduling/Scheduler.hpp>
 
+#include <Graphics/VGA.hpp>
+
 #include <assert.h>
 
 namespace WorldOS {
@@ -31,6 +33,8 @@ namespace WorldOS {
         m_bgcolour = 0;
         m_Stage = EARLY_STAGE;
         m_InitialFrameBuffer = params->frameBuffer;
+
+        VGA_Init(m_InitialFrameBuffer, {0, 0}, m_fgcolour, m_bgcolour);
 
         uint64_t kernel_size = (uint64_t)_kernel_end_addr - (uint64_t)_text_start_addr;
 

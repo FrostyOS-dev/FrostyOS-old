@@ -3,6 +3,7 @@
 #include "io.h"
 
 #include <util.h>
+#include <math.h>
 
 enum class RTC_Registers {
     SECONDS = 0x00,
@@ -23,18 +24,10 @@ bool operator==(RTCTime a, RTCTime b) {
     return *a2 == *b2;
 }
 
+int8_t g_null_days[12] = {1, 12, 5, 2, 7, 4, 9, 6, 3, 8, 12, 10};
 
-uint8_t g_null_days[12] = {1, 12, 5, 2, 7, 4, 9, 6, 3, 8, 12, 10};
-
-uint8_t GetWeekDay(uint16_t Year, uint8_t m, uint8_t d) {
-    m -= 1; // Get to a better offset
-    if (m > 11)
-        m = 11; // ensure it is not out of bounds
-    int y0 = Year % 10;
-    int y1 = (Year / 10) % 10;
-    int c = Year / 100;
-    int d0 = g_null_days[m];
-    int w = (d - d0 + y0 - y1 + ((y0 / 4) - (y1 / 2)) - 2 * (c % 4)) % 7;
+uint8_t GetWeekDay(uint16_t y, uint8_t m, uint8_t d) {
+    int w = (d+=m<3 ? y-- : y-2,23*m/9+d+4+y/4-y/100+y/400) % 7; // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Keith
     return (uint8_t)w + 1;
 }
 

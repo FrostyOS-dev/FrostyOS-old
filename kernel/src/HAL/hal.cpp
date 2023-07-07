@@ -5,10 +5,7 @@
 #include <arch/x86_64/interrupts/IRQ.hpp>
 #include <arch/x86_64/interrupts/pic.hpp>
 
-#include <arch/x86_64/fpu.h>
 #include <arch/x86_64/io.h>
-
-#include <arch/x86_64/Graphics/vga-graphics.hpp>
 
 #include <arch/x86_64/Memory/PagingInit.hpp>
 
@@ -35,12 +32,6 @@ namespace WorldOS {
         x86_64_IDT_Initialize();
         x86_64_ISR_Initialize();
         x86_64_IDT_Load(&idt.idtr);
-
-        x86_64_FPU_Initialize();
-
-        x86_64_VGA_Graphics_Init(fb, {0,0}, 0xFFFFFFFF, 0);
-
-        x86_64_VGA_Graphics_ClearScreen(0);
 
         x86_64_IRQ_Initialize();
 

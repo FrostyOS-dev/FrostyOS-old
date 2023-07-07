@@ -1,6 +1,6 @@
 #include "vfs.hpp"
 
-#include "graphics.hpp"
+#include <Graphics/VGA.hpp>
 
 #include <arch/x86_64/E9.h>
 

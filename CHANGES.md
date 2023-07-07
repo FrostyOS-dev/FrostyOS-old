@@ -1,6 +1,16 @@
 # Changes
 
-## Latest Changes - 30/06/2023
+## Latest Changes - 07/07/2023
+
+- Fixed RTC GetWeekDay function
+- Added `limine.h` to gitignore
+- Added comments to `time.h`
+- Moved VGA graphics code out of arch/x86_64
+- Cleaned up VGA graphics code
+- Added `nm.sh` to `run-utils`
+- Removed unnecessary x87 FPU code
+
+## 30/06/2023
 
 - Added Process and Thread classes
 - Added x86_64 task switch code
