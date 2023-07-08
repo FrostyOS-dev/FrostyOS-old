@@ -1,4 +1,4 @@
-#include <arch/x86_64/GDT/gdt.hpp>
+#include <arch/x86_64/GDT.hpp>
 
 #include <arch/x86_64/interrupts/IDT.hpp>
 #include <arch/x86_64/interrupts/isr.hpp>
@@ -25,9 +25,7 @@
 namespace WorldOS {
 
     void HAL_EarlyInit(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb) {
-        GDT* gdt = &DefaultGDT;
-        GDTDescriptor gdtDescriptor = {(sizeof(GDT) - 1), ((uint64_t)gdt)};
-        x86_64_LoadGDT(&gdtDescriptor);
+        x86_64_GDTInit();
 
         x86_64_IDT_Initialize();
         x86_64_ISR_Initialize();

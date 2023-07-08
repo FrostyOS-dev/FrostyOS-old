@@ -17,15 +17,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 07/07/2023
+## Latest Changes - 08/07/2023
 
-- Fixed RTC GetWeekDay function
-- Added `limine.h` to gitignore
-- Added comments to `time.h`
-- Moved VGA graphics code out of arch/x86_64
-- Cleaned up VGA graphics code
-- Added `nm.sh` to `run-utils`
-- Removed unnecessary x87 FPU code
+- Completely redid GDT code
+- Moved GDT code out of unnecessary folder
 
 ## Resources used
 
@@ -34,7 +29,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
 - [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful
 - [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
-- [PonchoOS S2](https://www.youtube.com/watch?v=mpPbKEeWIHU&list=PLxN4E629pPnJxCQCLy7E0SQY_zuumOVyZ) - used for GDT and some very early design choices
 
 ## Prerequisites
 

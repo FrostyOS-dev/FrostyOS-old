@@ -1,6 +1,11 @@
 # Changes
 
-## Latest Changes - 07/07/2023
+## Latest Changes - 08/07/2023
+
+- Completely redid GDT code
+- Moved GDT code out of unnecessary folder
+
+## 07/07/2023
 
 - Fixed RTC GetWeekDay function
 - Added `limine.h` to gitignore
