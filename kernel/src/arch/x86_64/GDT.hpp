@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "TSS.hpp"
+
 struct x86_64_GDTDescriptor {
     uint16_t Size;
     uint64_t Offset;
@@ -23,6 +25,12 @@ enum class x86_64_GDTAccessByte {
     Present = 128
 };
 
+enum class x86_64_GDTSysSegType {
+    LDT = 0x2,
+    TSS_AVAILABLE = 0x9,
+    TSS_BUSY = 0xB
+};
+
 enum class x86_64_GDTFlags {
     LongMode = 2,
     PageBlocks = 8
@@ -37,6 +45,20 @@ struct x86_64_GDTEntry {
     uint8_t Flags : 4;
     uint8_t Base2;
 } __attribute__((packed));
+
+struct x86_64_GDTSysEntry {
+    uint16_t Limit0;
+    uint16_t Base0;
+    uint8_t Base1;
+    uint8_t AccessByte;
+    uint8_t Limit1 : 4;
+    uint8_t Flags : 4;
+    uint8_t Base2;
+    uint32_t Base3;
+    uint32_t Reserved;
+} __attribute__((packed));
+
+void x86_64_GDT_SetTSS(x86_64_TSS* TSS);
 
 void x86_64_GDTInit();
 

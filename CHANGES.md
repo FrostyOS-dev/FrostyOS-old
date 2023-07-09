@@ -1,6 +1,11 @@
 # Changes
 
-## Latest Changes - 08/07/2023
+## Latest Changes - 09/07/2023
+
+- Added system segment support to GDT
+- Implemented simple TSS
+
+## 08/07/2023
 
 - Completely redid GDT code
 - Moved GDT code out of unnecessary folder

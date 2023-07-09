@@ -17,10 +17,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 08/07/2023
+## Latest Changes - 09/07/2023
 
-- Completely redid GDT code
-- Moved GDT code out of unnecessary folder
+- Added system segment support to GDT
+- Implemented simple TSS
 
 ## Resources used
 
