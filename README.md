@@ -17,18 +17,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 30/06/2023
+## Latest Changes - 09/07/2023
 
-- Added Process and Thread classes
-- Added x86_64 task switch code
-- Added x86_64 register save code
-- Added `x86_64_get_stack_ptr` function
-- Added utility function to get a new stack (for tasks)
-- Added `x86_64_Interrupt_Registers` and `x86_64_Registers` conversions
-- Implemented basic kernel round-robin scheduler
-- Added function call from `x86_64_PIT_Handler` to `Scheduling::Scheduler::TimerTick()`
-- Changed kernel init to a 2 stage initialisation with second stage being called by the scheduler
-- Renamed `LATE_STAGE` to `STAGE2`
+- Added system segment support to GDT
+- Implemented simple TSS
 
 ## Resources used
 
@@ -37,7 +29,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
 - [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful
 - [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
-- [PonchoOS S2](https://www.youtube.com/watch?v=mpPbKEeWIHU&list=PLxN4E629pPnJxCQCLy7E0SQY_zuumOVyZ) - used for GDT and some very early design choices
 
 ## Prerequisites
 

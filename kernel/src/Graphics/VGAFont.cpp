@@ -1,4 +1,4 @@
-#include "vga-font.hpp"
+#include "VGAFont.hpp"
 
 GetCharReturn getChar(const char in) {
     uint8_t out[16];

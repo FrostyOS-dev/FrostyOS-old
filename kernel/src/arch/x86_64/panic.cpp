@@ -3,7 +3,7 @@
 
 #include <stdio.hpp>
 
-#include <HAL/graphics.hpp>
+#include <Graphics/VGA.hpp>
 
 void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type) {
     x86_64_DisableInterrupts();
