@@ -116,7 +116,7 @@ namespace Scheduling {
         void TimerTick() {
             g_ticks++;
             if (g_ticks == TICKS_PER_SCHEDULER_CYCLE) {
-                if (g_kernel_threads.getCount() < 1) {
+                if (!g_running || g_kernel_threads.getCount() < 1) {
                     g_ticks = 0;
                     return; // Nothing to switch to
                 }
@@ -135,6 +135,10 @@ namespace Scheduling {
 
         bool isRunning() {
             return g_running;
+        }
+
+        void Stop() {
+            g_running = false;
         }
     }
 }

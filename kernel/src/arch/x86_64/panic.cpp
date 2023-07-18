@@ -5,8 +5,20 @@
 
 #include <Graphics/VGA.hpp>
 
+#include <tty/TTY.hpp>
+
+#include <Scheduling/Scheduler.hpp>
+
+BasicVGA* g_VGADevice;
+
+void x86_64_SetPanicVGADevice(BasicVGA* device) {
+    g_VGADevice = device;
+}
+
 void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type) {
     x86_64_DisableInterrupts();
+
+    Scheduling::Scheduler::Stop();
 
     // Output all to debug first
 
@@ -15,34 +27,38 @@ void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrup
     if (type /* true = interrupt */) {
         fprintf(VFS_DEBUG, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->rip, regs->rflags);
         fprintf(VFS_DEBUG, "\nCS=%x    DS=%x    SS=%x\nINTERRUPT=%x", regs->cs, regs->ds, regs->ss, regs->interrupt);
-        if (regs->error != 0) {
+        if (regs->error != 0)
             fprintf(VFS_DEBUG, "    ERROR CODE=%x", regs->error);
-        }
         if (regs->interrupt == 0xE /* Page Fault */)
             fprintf(VFS_DEBUG, "\nCR2=%lx    CR3=%lx\n", regs->CR2, regs->CR3);
-    } else {
-        fprintf(VFS_DEBUG, "\nNo extra details are shown when type isn't Interrupt/Exception");
     }
+    else
+        fprintf(VFS_DEBUG, "\nNo extra details are shown when type isn't Interrupt/Exception");
 
     // Output all to stdout after in case framebuffer writes cause a page fault
 
-    VGA_ClearScreen(0xFF1A00F7 /* blue */);
-    VGA_SetBackgroundColour(0xFF1A00F7 /* blue */);
-    Position pos = {0,0};
-    VGA_SetCursorPosition(pos);
+    if (g_VGADevice == nullptr)
+        fprintf(VFS_DEBUG, "\nWARNING VGA Device unavailable.\n");
+    else {
+        g_VGADevice->ClearScreen(0xFF1A00F7 /* blue */);
+        g_VGADevice->SetBackgroundColour(0xFF1A00F7 /* blue */);
+        g_VGADevice->SetCursorPosition({0,0});
+        g_VGADevice->SwapBuffers(false);
 
-    fprintf(VFS_STDOUT, "KERNEL PANIC!\nError Message:  %s", reason);
+        g_CurrentTTY->SetVGADevice(g_VGADevice);
 
-    if (type /* true = interrupt */) {
-        fprintf(VFS_STDOUT, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->rip, regs->rflags);
-        fprintf(VFS_STDOUT, "\nCS=%x    DS=%x    SS=%x\nINTERRUPT=%x", regs->cs, regs->ds, regs->ss, regs->interrupt);
-        if (regs->error != 0) {
-            fprintf(VFS_STDOUT, "    ERROR CODE=%x", regs->error);
+        fprintf(VFS_STDOUT, "KERNEL PANIC!\nError Message:  %s", reason);
+
+        if (type /* true = interrupt */) {
+            fprintf(VFS_STDOUT, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->rip, regs->rflags);
+            fprintf(VFS_STDOUT, "\nCS=%x    DS=%x    SS=%x\nINTERRUPT=%x", regs->cs, regs->ds, regs->ss, regs->interrupt);
+            if (regs->error != 0)
+                fprintf(VFS_STDOUT, "    ERROR CODE=%x", regs->error);
+            if (regs->interrupt == 0xE /* Page Fault */)
+                fprintf(VFS_STDOUT, "\nCR2=%lx    CR3=%lx\n", regs->CR2, regs->CR3);
         }
-        if (regs->interrupt == 0xE /* Page Fault */)
-            fprintf(VFS_STDOUT, "\nCR2=%lx    CR3=%lx\n", regs->CR2, regs->CR3);
-    } else {
-        fprintf(VFS_STDOUT, "\nNo extra details are shown when type isn't Interrupt/Exception");
+        else
+            fprintf(VFS_STDOUT, "\nNo extra details are shown when type isn't Interrupt/Exception");
     }
 
     while (true) {
@@ -50,5 +66,3 @@ void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrup
         __asm__ volatile ("hlt");
     }
 }
-
-#undef OUT

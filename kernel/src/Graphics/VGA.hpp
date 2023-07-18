@@ -5,28 +5,54 @@
 
 #include "Graphics.h"
 
-void VGA_Init(const FrameBuffer& buffer, Position CusorPosition, uint32_t fgcolour, uint32_t bgcolour);
-bool VGA_HasBeenInitialised();
-void VGA_SetFrameBuffer(const FrameBuffer& fb);
-void VGA_SetCursorPosition(Position pos);
-void VGA_SetForegroundColour(const uint32_t colour);
-void VGA_SetBackgroundColour(const uint32_t colour);
-void VGA_ClearScreen(uint32_t colour);
-void VGA_ClearScreen(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
-void VGA_PlotPixel(uint64_t x, uint64_t y, uint32_t colour);
-void VGA_PlotPixel(uint64_t x, uint64_t y, uint8_t a, uint8_t r, uint8_t g, uint8_t b);
+#include <Memory/PageManager.hpp>
 
-void VGA_NewLine();
-void VGA_puts(const char* str);
-void VGA_putc(const char c);
-void VGA_ScrollText();
+class BasicVGA {
+public:
+    BasicVGA();
+    BasicVGA(const FrameBuffer& buffer, Position CursorPosition, uint32_t fgcolour, uint32_t bgcolour, bool double_buffer = false, WorldOS::PageManager* pm = nullptr);
+    ~BasicVGA();
 
-Position VGA_GetCursorPosition();
-uint64_t VGA_GetScreenSizeBytes();
-FrameBuffer VGA_GetFrameBuffer();
-uint32_t VGA_GetBackgroundColour();
-uint32_t VGA_GetForegroundColour();
-uint64_t VGA_GetAmountOfTextRows();
-uint64_t VGA_GetAmountOfTextColumns();
+    void Init(const FrameBuffer& buffer, Position CursorPosition, uint32_t fgcolour, uint32_t bgcolour, bool double_buffer = false, WorldOS::PageManager* pm = nullptr);
+    bool HasBeenInitialised();
+
+    void SetFrameBuffer(const FrameBuffer& fb);
+    void SetCursorPosition(Position pos);
+    void SetForegroundColour(const uint32_t colour);
+    void SetBackgroundColour(const uint32_t colour);
+
+    void ClearScreen(uint32_t colour);
+    void ClearScreen(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
+    void PlotPixel(uint64_t x, uint64_t y, uint32_t colour);
+    void PlotPixel(uint64_t x, uint64_t y, uint8_t a, uint8_t r, uint8_t g, uint8_t b);
+
+    void NewLine();
+    void Backspace();
+    void putc(char c);
+    void ScrollText();
+
+    Position GetCursorPosition();
+    uint64_t GetScreenSizeBytes();
+    FrameBuffer GetFrameBuffer();
+    uint32_t GetBackgroundColour();
+    uint32_t GetForegroundColour();
+    uint64_t GetAmountOfTextRows();
+    uint64_t GetAmountOfTextColumns();
+
+    void EnableDoubleBuffering(WorldOS::PageManager* pm);
+    void DisableDoubleBuffering();
+    void SwapBuffers(bool disable_interrupts = true);
+    bool isDoubleBufferEnabled();
+
+private:
+    Position m_CursorPosition;
+    uint32_t m_bgcolour;
+    uint32_t m_fgcolour;
+    FrameBuffer m_FrameBuffer;
+    bool m_HasBeenInitialised;
+    WorldOS::PageManager* m_pm;
+    bool m_DoubleBuffer;
+    uint8_t* m_buffer;
+};
 
 #endif /* _KERNEL_HAL_GRAPHICS_HPP */

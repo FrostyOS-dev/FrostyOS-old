@@ -6,6 +6,7 @@
 #include <arch/x86_64/interrupts/pic.hpp>
 
 #include <arch/x86_64/io.h>
+#include <arch/x86_64/panic.hpp>
 
 #include <arch/x86_64/Memory/PagingInit.hpp>
 
@@ -17,6 +18,8 @@
 
 #include "time.h"
 #include "hal.hpp"
+
+#include <tty/TTY.hpp>
 
 #include <assert.h>
 #include <stdio.hpp>
@@ -37,6 +40,8 @@ namespace WorldOS {
         HAL_TimeInit();
 
         x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ((fb.bpp >> 3) * fb.FrameBufferHeight * fb.FrameBufferWidth), HHDM_start);
+
+        x86_64_SetPanicVGADevice(g_CurrentTTY->GetVGADevice());
 
         x86_64_EnableInterrupts();
     }

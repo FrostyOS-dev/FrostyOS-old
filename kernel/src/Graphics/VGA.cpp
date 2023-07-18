@@ -3,95 +3,113 @@
 
 #include <util.h>
 
-static Position g_CursorPosition = {0,0};
-static uint32_t g_bgcolour = 0;
-static uint32_t g_fgcolour = 0;
-static FrameBuffer g_FrameBuffer = {nullptr, 0, 0, 0};
-static bool g_HasBeenInitialised = false;
+#ifdef __x86_64__
+#include <arch/x86_64/io.h>
+#endif
 
-void VGA_Init(const FrameBuffer& buffer, Position CursorPosition, uint32_t fgcolour, uint32_t bgcolour) {
-    g_FrameBuffer = buffer;
-    g_CursorPosition = CursorPosition;
-    g_fgcolour = fgcolour;
-    g_bgcolour = bgcolour;
+BasicVGA::BasicVGA() : m_CursorPosition({0, 0}), m_bgcolour(0), m_fgcolour(0xFFFFFFFF), m_FrameBuffer({nullptr, 0, 0, 0}), m_HasBeenInitialised(false), m_pm(nullptr), m_DoubleBuffer(false), m_buffer(nullptr) {
+
 }
 
-bool VGA_HasBeenInitialised() {
-    return g_HasBeenInitialised;
+BasicVGA::BasicVGA(const FrameBuffer& buffer, Position CursorPosition, uint32_t fg_colour, uint32_t bg_colour, bool double_buffer, WorldOS::PageManager* pm) : m_CursorPosition(CursorPosition), m_bgcolour(bg_colour), m_fgcolour(fg_colour), m_FrameBuffer(buffer), m_HasBeenInitialised(true), m_pm(pm), m_DoubleBuffer(double_buffer), m_buffer(nullptr) {
+    if (double_buffer)
+        EnableDoubleBuffering(pm);
 }
 
-void VGA_SetFrameBuffer(const FrameBuffer& buffer) {
-    g_FrameBuffer = buffer;
+BasicVGA::~BasicVGA() {
+    
 }
 
-void VGA_SetCursorPosition(Position CursorPosition) {
-    g_CursorPosition = CursorPosition;
+void BasicVGA::Init(const FrameBuffer& buffer, Position CursorPosition, uint32_t fg_colour, uint32_t bg_colour, bool double_buffer, WorldOS::PageManager* pm) {
+    m_FrameBuffer = buffer;
+    m_CursorPosition = CursorPosition;
+    m_fgcolour = fg_colour;
+    m_bgcolour = bg_colour;
+    m_HasBeenInitialised = true;
+    m_pm = pm;
+    m_DoubleBuffer = double_buffer;
+    m_buffer = nullptr;
+    if (double_buffer)
+        EnableDoubleBuffering(pm);
 }
 
-void VGA_SetForegroundColour(const uint32_t colour) {
-    g_fgcolour = colour;
+bool BasicVGA::HasBeenInitialised() {
+    return m_HasBeenInitialised;
 }
 
-void VGA_SetBackgroundColour(const uint32_t colour) {
-    g_bgcolour = colour;
+void BasicVGA::SetFrameBuffer(const FrameBuffer& buffer) {
+    m_FrameBuffer = buffer;
 }
 
-void VGA_ClearScreen(uint32_t ARGB) {
-    for (uint64_t y = 0; y < g_FrameBuffer.FrameBufferHeight; y++) {
-        for (uint64_t x = 0; x < g_FrameBuffer.FrameBufferWidth; x++) {
-            VGA_PlotPixel(x, y, ARGB);
+void BasicVGA::SetCursorPosition(Position CursorPosition) {
+    m_CursorPosition = CursorPosition;
+}
+
+void BasicVGA::SetForegroundColour(const uint32_t colour) {
+    m_fgcolour = colour;
+}
+
+void BasicVGA::SetBackgroundColour(const uint32_t colour) {
+    m_bgcolour = colour;
+}
+
+void BasicVGA::ClearScreen(uint32_t ARGB) {
+    for (uint64_t y = 0; y < m_FrameBuffer.FrameBufferHeight; y++) {
+        for (uint64_t x = 0; x < m_FrameBuffer.FrameBufferWidth; x++) {
+            PlotPixel(x, y, ARGB);
         }
     }
 }
 
-void VGA_ClearScreen(uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
-    for (uint64_t y = 0; y < g_FrameBuffer.FrameBufferHeight; y++) {
-        for (uint64_t x = 0; x < g_FrameBuffer.FrameBufferWidth; x++) {
-            VGA_PlotPixel(x, y, a, r, g, b);
+void BasicVGA::ClearScreen(uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
+    for (uint64_t y = 0; y < m_FrameBuffer.FrameBufferHeight; y++) {
+        for (uint64_t x = 0; x < m_FrameBuffer.FrameBufferWidth; x++) {
+            PlotPixel(x, y, a, r, g, b);
         }
     }
 }
 
-void VGA_PlotPixel(uint64_t x, uint64_t y, uint32_t ARGB) {
-    *((uint32_t*)(g_FrameBuffer.FrameBufferAddress + 4 * g_FrameBuffer.FrameBufferWidth * y + 4 * x)) = ARGB;
+void BasicVGA::PlotPixel(uint64_t x, uint64_t y, uint32_t ARGB) {
+    if (m_DoubleBuffer)
+        *((uint32_t*)(m_buffer + 4 * m_FrameBuffer.FrameBufferWidth * y + 4 * x)) = ARGB;
+    else
+        *((uint32_t*)(m_FrameBuffer.FrameBufferAddress + 4 * m_FrameBuffer.FrameBufferWidth * y + 4 * x)) = ARGB;
 }
 
-void VGA_PlotPixel(uint64_t x, uint64_t y, uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
+void BasicVGA::PlotPixel(uint64_t x, uint64_t y, uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
     uint32_t ARGB = (a << 8) | r;
     ARGB = (ARGB << 8) | g;
     ARGB = (ARGB << 8) | b;
-    VGA_PlotPixel(x, y, ARGB);
+    PlotPixel(x, y, ARGB);
 }
 
-void VGA_NewLine() {
-    g_CursorPosition.y += 16;
-    if (g_CursorPosition.y >= g_FrameBuffer.FrameBufferHeight)
-        VGA_ScrollText();
-    g_CursorPosition.x = 0;
+void BasicVGA::NewLine() {
+    m_CursorPosition.y += 16;
+    if (m_CursorPosition.y >= m_FrameBuffer.FrameBufferHeight)
+        ScrollText();
+    m_CursorPosition.x = 0;
 }
 
-void VGA_puts(const char* str) {
-    char c = 0x00;
-    uint64_t location = 0;
-    while (true) {
-        c = str[location++];
-        if (c == 0x00) break;
-        if (c == '\n') {
-            VGA_NewLine();
-        }
-        else {
-            if (g_FrameBuffer.FrameBufferWidth < (g_CursorPosition.x + 18)) {
-                VGA_NewLine();
-            }
-            VGA_putc(c);
-        }
-    }
+void BasicVGA::Backspace() {
+    if (m_CursorPosition.x < 10 && m_CursorPosition.y < 10)
+        return; // Cannot backspace
+    // Rewind
+    if (m_CursorPosition.x < 10)
+        m_CursorPosition = {GetAmountOfTextColumns() - 1, m_CursorPosition.y - 16};
+    else
+        m_CursorPosition = {m_CursorPosition.x - 10, m_CursorPosition.y};
+    putc(' '); // clear the existing character
+    // Rewind again
+    if (m_CursorPosition.x < 10)
+        m_CursorPosition = {GetAmountOfTextColumns() - 1, m_CursorPosition.y - 16};
+    else
+        m_CursorPosition = {m_CursorPosition.x - 10, m_CursorPosition.y};
 }
 
-void VGA_putc(const char c) {
+void BasicVGA::putc(const char c) {
 
     if (c == '\n') {
-        VGA_NewLine();
+        NewLine();
         return;
     }
 
@@ -127,49 +145,87 @@ void VGA_putc(const char c) {
             temp = mask[cy] >> inverseCX;
             temp &= 1;
             bit = temp;
-            VGA_PlotPixel((g_CursorPosition.x)+cx, (g_CursorPosition.y)+cy, (bit ? g_fgcolour : g_bgcolour));
+            PlotPixel((m_CursorPosition.x)+cx, (m_CursorPosition.y)+cy, (bit ? m_fgcolour : m_bgcolour));
             inverseCX--;
         }
     }
     /* Adjust Cursor position to say a character has been printed */
-    g_CursorPosition = {g_CursorPosition.x + 10, g_CursorPosition.y};
+    m_CursorPosition = {m_CursorPosition.x + 10, m_CursorPosition.y};
 }
 
-void VGA_ScrollText() {
+void BasicVGA::ScrollText() {
     /* Copy everything up one row */
-    for (uint64_t y = 16; y < ((VGA_GetAmountOfTextRows() - 1) * 16); y += 16)
-        fast_memmove((g_FrameBuffer.FrameBufferAddress + ((y - 16) * 4 * g_FrameBuffer.FrameBufferWidth)), (g_FrameBuffer.FrameBufferAddress + (y * 4 * g_FrameBuffer.FrameBufferWidth)), 4 * g_FrameBuffer.FrameBufferWidth);
+    for (uint64_t y = 16; y < ((GetAmountOfTextRows() - 1) * 16); y += 16)
+        fast_memmove((m_FrameBuffer.FrameBufferAddress + ((y - 16) * 4 * m_FrameBuffer.FrameBufferWidth)), (m_FrameBuffer.FrameBufferAddress + (y * 4 * m_FrameBuffer.FrameBufferWidth)), 4 * m_FrameBuffer.FrameBufferWidth);
 
     /* Set everything in the last row to zero */
-    fast_memset((void*)((uint64_t)(g_FrameBuffer.FrameBufferAddress) + 4 * g_FrameBuffer.FrameBufferWidth * 16 * (VGA_GetAmountOfTextRows() - 1)), 0, (4 * g_FrameBuffer.FrameBufferWidth * 16) / 8);
+    fast_memset((void*)((uint64_t)(m_FrameBuffer.FrameBufferAddress) + 4 * m_FrameBuffer.FrameBufferWidth * 16 * (GetAmountOfTextRows() - 1)), 0, (4 * m_FrameBuffer.FrameBufferWidth * 16) / 8);
 
-    g_CursorPosition.y -= 16;
+    m_CursorPosition.y -= 16;
 }
 
-Position VGA_GetCursorPosition() {
-    return g_CursorPosition;
+Position BasicVGA::GetCursorPosition() {
+    return m_CursorPosition;
 }
 
-uint64_t VGA_GetScreenSizeBytes() {
-    return g_FrameBuffer.FrameBufferWidth * g_FrameBuffer.FrameBufferHeight * 4;
+uint64_t BasicVGA::GetScreenSizeBytes() {
+    return m_FrameBuffer.FrameBufferWidth * m_FrameBuffer.FrameBufferHeight * 4;
 }
 
-FrameBuffer VGA_GetFrameBuffer() {
-    return g_FrameBuffer;
+FrameBuffer BasicVGA::GetFrameBuffer() {
+    return m_FrameBuffer;
 }
 
-uint32_t VGA_GetBackgroundColour() {
-    return g_bgcolour;
+uint32_t BasicVGA::GetBackgroundColour() {
+    return m_bgcolour;
 }
 
-uint32_t VGA_GetForegroundColour() {
-    return g_fgcolour;
+uint32_t BasicVGA::GetForegroundColour() {
+    return m_fgcolour;
 }
 
-uint64_t VGA_GetAmountOfTextRows() {
-    return g_FrameBuffer.FrameBufferHeight / 16;
+uint64_t BasicVGA::GetAmountOfTextRows() {
+    return m_FrameBuffer.FrameBufferHeight / 16;
 }
 
-uint64_t VGA_GetAmountOfTextColumns() {
-    return g_FrameBuffer.FrameBufferWidth / 10;
+uint64_t BasicVGA::GetAmountOfTextColumns() {
+    return m_FrameBuffer.FrameBufferWidth / 10;
+}
+
+void BasicVGA::EnableDoubleBuffering(WorldOS::PageManager* pm) {
+    if (pm == nullptr)
+        return;
+    m_pm = pm;
+    m_buffer = (uint8_t*)m_pm->AllocatePages(DIV_ROUNDUP(GetScreenSizeBytes(), 0x1000));
+    if (m_buffer == nullptr)
+        return;
+    fast_memset(m_buffer, 0, ALIGN_UP(GetScreenSizeBytes(), 0x1000) / 8);
+    m_DoubleBuffer = true;
+}
+
+void BasicVGA::DisableDoubleBuffering() {
+    if (m_pm == nullptr)
+        return;
+    m_DoubleBuffer = false;
+    m_pm->FreePages(m_buffer);
+}
+
+void BasicVGA::SwapBuffers(bool disable_interrupts) {
+    if (!m_DoubleBuffer)
+        return;
+    if (disable_interrupts) {
+#ifdef __x86_64__
+        x86_64_DisableInterrupts();
+#endif
+    }
+    fast_memcpy(m_FrameBuffer.FrameBufferAddress, m_buffer, GetScreenSizeBytes());
+    if (disable_interrupts) {
+#ifdef __x86_64__
+        x86_64_EnableInterrupts();
+#endif
+    }
+}
+
+bool BasicVGA::isDoubleBufferEnabled() {
+    return m_DoubleBuffer;
 }
