@@ -21,6 +21,8 @@ void internal_fputc(const fd_t file, const char c, bool swap) {
         g_CurrentTTY->putc(c);
         if (swap)
             g_CurrentTTY->GetVGADevice()->SwapBuffers();
+        if (file == VFS_DEBUG_AND_STDOUT)
+            VFS_write(VFS_DEBUG, (uint8_t*)&c, 1);
     }
     else
         VFS_write(file, (uint8_t*)&c, 1);
@@ -31,6 +33,8 @@ void internal_fputs(const fd_t file, const char* str, bool swap) {
         g_CurrentTTY->puts(str);
         if (swap)
             g_CurrentTTY->GetVGADevice()->SwapBuffers();
+        if (file == VFS_DEBUG_AND_STDOUT)
+            VFS_write(VFS_DEBUG, (uint8_t*)str, strlen(str));
     }
     else
         VFS_write(file, (uint8_t*)str, strlen(str));

@@ -76,8 +76,6 @@ namespace WorldOS {
 
         HAL_Stage2(RSDP_table);
 
-        Panic("Test", nullptr, false);
-
         while (true) {
             
         }
