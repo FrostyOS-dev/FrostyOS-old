@@ -27,18 +27,18 @@ namespace NVMe {
                 uint16_t CQFlags;
                 uint16_t IRQVector;
                 uint64_t unused[2];
-            } CreateCQ;
+            } __attribute__((packed)) CreateCQ;
             struct {
                 uint16_t SQID;
                 uint16_t Size;
                 uint16_t SQFlags;
                 uint16_t CQID;
                 uint64_t unused[2];
-            } CreateSQ;
+            } __attribute__((packed)) CreateSQ;
             struct {
                 uint32_t CNS;
                 uint32_t unused[5];
-            } Identify;
+            } __attribute__((packed)) Identify;
             struct {
                 uint64_t LBA;
                 uint16_t NLB; // Number of Logical Blocks
@@ -51,7 +51,7 @@ namespace NVMe {
                 uint8_t DSM;
                 uint8_t Reserved2[3];
                 uint64_t unused;
-            } Read;
+            } __attribute__((packed)) Read;
             struct {
                 uint64_t LBA;
                 uint16_t NLB; // Number of Logical Blocks
@@ -66,7 +66,7 @@ namespace NVMe {
                 uint8_t Reserved2;
                 uint16_t DSPEC;
                 uint64_t unused;
-            } Write;
+            } __attribute__((packed)) Write;
         };
     } __attribute__((packed));
 
