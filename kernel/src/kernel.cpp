@@ -1,7 +1,6 @@
 #include "kernel.hpp"
 
 #include <arch/x86_64/ELFSymbols.h>
-#include <arch/x86_64/io.h>
 
 #include <Memory/PageManager.hpp>
 #include <Memory/kmalloc.hpp>
@@ -14,27 +13,38 @@
 #include <Scheduling/Scheduler.hpp>
 
 #include <Graphics/VGA.hpp>
+#include <Graphics/Colour.hpp>
+
+#include <tty/TTY.hpp>
 
 #include <assert.h>
 
 namespace WorldOS {
 
     FrameBuffer m_InitialFrameBuffer;
-    uint32_t m_fgcolour;
-    uint32_t m_bgcolour;
+    Colour g_fgcolour;
+    Colour g_bgcolour;
     uint64_t m_Stage;
 
     PageManager KPM;
 
     Scheduling::Process* KProcess;
 
+    BasicVGA KBasicVGA;
+
+    TTY KTTY;
+
     extern "C" void StartKernel(KernelParams* params) {
-        m_fgcolour = 0xFFFFFFFF;
-        m_bgcolour = 0;
+        g_fgcolour = Colour(0xFF, 0xFF, 0xFF);
+        g_bgcolour = Colour(0, 0, 0);
         m_Stage = EARLY_STAGE;
         m_InitialFrameBuffer = params->frameBuffer;
 
-        VGA_Init(m_InitialFrameBuffer, {0, 0}, m_fgcolour, m_bgcolour);
+        KBasicVGA.Init(m_InitialFrameBuffer, {0, 0}, g_fgcolour.as_ARGB(), g_bgcolour.as_ARGB());
+
+        KTTY = TTY(&KBasicVGA, g_fgcolour, g_bgcolour); 
+
+        g_CurrentTTY = &KTTY;
 
         uint64_t kernel_size = (uint64_t)_kernel_end_addr - (uint64_t)_text_start_addr;
 
@@ -49,6 +59,8 @@ namespace WorldOS {
 
         // Do any early initialisation
 
+        KBasicVGA.EnableDoubleBuffering(g_KPM);
+
         KProcess = new Scheduling::Process(Kernel_Stage2, params->RSDP_table, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
         KProcess->Start();
 
@@ -58,11 +70,13 @@ namespace WorldOS {
     }
 
     void Kernel_Stage2(void* RSDP_table) {
-        fprintf(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
+        fputs(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
 
         m_Stage = STAGE2;
 
         HAL_Stage2(RSDP_table);
+
+        Panic("Test", nullptr, false);
 
         while (true) {
             

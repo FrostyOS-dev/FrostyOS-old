@@ -31,6 +31,8 @@ namespace Scheduling {
         void TimerTick(); // Only to be called in timer IRQ
 
         bool isRunning();
+
+        void Stop();
     }
 
 }

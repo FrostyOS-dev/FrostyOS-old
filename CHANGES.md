@@ -1,6 +1,16 @@
 # Changes
 
-## Latest Changes - 09/07/2023
+## Latest Changes - 18/07/2023
+
+- Created simple colour class
+- Refactored simple VGA code into a `BasicVGA` class
+- Add simple TTY class
+- Added double buffering support
+- Added a x86_64 panic VGA device
+- Added a scheduler `Stop()` function
+- Fixed struct definitions for VGA Framebuffer and Position
+
+## 09/07/2023
 
 - Added system segment support to GDT
 - Implemented simple TSS

@@ -4,20 +4,44 @@
 
 #include <string.h> // just used for strlen function
 
-void fputc(const fd_t file, const char c) {
-    VFS_write(file, (uint8_t*)&c, 1);
-}
-
-void fputs(const fd_t file, const char* str) {
-    VFS_write(file, (uint8_t*)str, strlen(str));
-}
+#include <tty/TTY.hpp>
 
 void putc(const char c) {
-    fputc(VFS_STDOUT, c);
+    g_CurrentTTY->putc(c);
+    g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 void puts(const char* str) {
-    fputs(VFS_STDOUT, str);
+    g_CurrentTTY->puts(str);
+    g_CurrentTTY->GetVGADevice()->SwapBuffers();
+}
+
+void internal_fputc(const fd_t file, const char c, bool swap) {
+    if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT) {
+        g_CurrentTTY->putc(c);
+        if (swap)
+            g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    }
+    else
+        VFS_write(file, (uint8_t*)&c, 1);
+}
+
+void internal_fputs(const fd_t file, const char* str, bool swap) {
+    if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT) {
+        g_CurrentTTY->puts(str);
+        if (swap)
+            g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    }
+    else
+        VFS_write(file, (uint8_t*)str, strlen(str));
+}
+
+void fputc(const fd_t file, const char c) {
+    internal_fputc(file, c, true);
+}
+
+void fputs(const fd_t file, const char* str) {
+    internal_fputs(file, str, true);
 }
 
 #define PRINTF_STATE_NORMAL         0
@@ -48,12 +72,12 @@ void fprintf_unsigned(const fd_t file, uint64_t number, uint8_t radix) {
 
     // print number in reverse order
     while (--pos >= 0)
-        fputc(file, buffer[pos]);
+        internal_fputc(file, buffer[pos], false);
 }
 
 void fprintf_signed(const fd_t file, int64_t number, uint8_t radix) {
     if (number < 0) {
-        fputc(file, '-');
+        internal_fputc(file, '-', false);
         fprintf_unsigned(file, -number, radix);
     }
     else fprintf_unsigned(file, number, radix);
@@ -80,7 +104,7 @@ void vfprintf(const fd_t file, const char* format, va_list args) {
                         gotoNextChar = true;
                         break;
                     default:
-                        fputc(file, c);
+                        internal_fputc(file, c, false);
                         gotoNextChar = true;
                         break;
                 }
@@ -126,15 +150,15 @@ void vfprintf(const fd_t file, const char* format, va_list args) {
             case PRINTF_STATE_SPEC:
                 switch (c) {
                     case 'c':
-                        fputc(file, (char)va_arg(args, int));
+                        internal_fputc(file, (char)va_arg(args, int), false);
                         break;
 
                     case 's':   
-                        fputs(file, va_arg(args, const char*));
+                        internal_fputs(file, va_arg(args, const char*), false);
                         break;
 
                     case '%':
-                        fputc(file, '%');
+                        internal_fputc(file, '%', false);
                         break;
 
                     case 'd':
@@ -213,6 +237,8 @@ void fprintf(const fd_t file, const char* format, ...) {
     va_start(args, format);
     vfprintf(file, format, args);
     va_end(args);
+    if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT)
+        g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 void printf(const char* format, ...) {
@@ -220,10 +246,12 @@ void printf(const char* format, ...) {
     va_start(args, format);
     vfprintf(VFS_STDOUT, format, args);
     va_end(args);
+    g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 void vprintf(const char* format, va_list args) {
     vfprintf(VFS_STDOUT, format, args);
+    g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file) {
@@ -232,4 +260,6 @@ void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t f
     for (uint64_t i = 0; i < count; i+=size) {
         VFS_write(file, (uint8_t*)((uint64_t)out * i), size);
     }
+    if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT)
+        g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
