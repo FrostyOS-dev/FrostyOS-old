@@ -4,6 +4,8 @@
 
 #include <Data-structures/LinkedList.hpp>
 
+#include <Memory/PagingUtil.hpp>
+
 namespace PCI {
 
     void EnumerateFunctions(void* device_addr) {
@@ -46,7 +48,7 @@ namespace PCI {
         }
 
         void AddPCIDevice(Header0* device) {
-            LinkedList::insertNode(g_deviceList, (uint64_t)device);
+            LinkedList::insertNode(g_deviceList, (uint64_t)to_HHDM(device));
         }
 
         void RemovePCIDevice(uint64_t index) {
