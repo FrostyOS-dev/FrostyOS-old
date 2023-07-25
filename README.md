@@ -17,15 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 18/07/2023
+## Latest Changes - 25/07/2023
 
-- Created simple colour class
-- Refactored simple VGA code into a `BasicVGA` class
-- Add simple TTY class
-- Added double buffering support
-- Added a x86_64 panic VGA device
-- Added a scheduler `Stop()` function
-- Fixed struct definitions for VGA Framebuffer and Position
+- Added CLion files to .gitignore
+- Added parallel build support to `Makefile` and `kernel/Makefile`
+- Moved run code into `Makefile`
+- Added proper build/run configuration support to `Makefile`
 
 ## Resources used
 
@@ -124,11 +121,11 @@ If you cannot meet these requirements, see notes
 
 ## Building
 
-1. run `make` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed
+1. run `make -j<jobs>` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<jobs>` should be the amount of parallel threads to run. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed
 
-## Running - Anything with bash
+## Build and Run - Unix like, Windows 11 and Windows 10 method 2
 
-1. run `./run.sh [config]`. 'config' being either 'debug' or 'release'. If not provided, 'debug' is assumed.
+1. run `make -j<jobs> config=<config>` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<jobs>` should be the amount of parallel threads to run. `<config>` should be either `debug` or `release`. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
 
 ## Running - Other
 

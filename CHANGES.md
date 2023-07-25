@@ -1,6 +1,13 @@
 # Changes
 
-## Latest Changes - 18/07/2023
+## Latest Changes - 25/07/2023
+
+- Added CLion files to .gitignore
+- Added parallel build support to `Makefile` and `kernel/Makefile`
+- Moved run code into `Makefile`
+- Added proper build/run configuration support to `Makefile`
+
+## 18/07/2023
 
 - Created simple colour class
 - Refactored simple VGA code into a `BasicVGA` class

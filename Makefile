@@ -1,19 +1,35 @@
-.PHONY: boot-iso all toolchain dependencies clean-all mkgpt clean-os
+.PHONY: boot-iso all toolchain dependencies clean-all mkgpt clean-os run
+
+ifndef config
+	config=debug
+endif
 
 TOOLCHAIN_PREFIX = $(HOME)/opt/cross
 
 PATH := $(PATH):$(TOOLCHAIN_PREFIX)/bin
 SHELL := env PATH=$(PATH) /bin/bash
 
-CC = x86_64-elf-gcc
-CXX = x86_64-elf-g++
-LD = x86_64-elf-ld
+CC = $(TOOLCHAIN_PREFIX)/bin/x86_64-elf-gcc
+CXX = $(TOOLCHAIN_PREFIX)/bin/x86_64-elf-g++
+LD = $(TOOLCHAIN_PREFIX)/bin/x86_64-elf-ld
 ASM = nasm
 
 all: boot-iso
 	@echo --------------
 	@echo Build complete
 	@echo --------------
+
+run: all
+	@echo -------
+	@echo Running
+	@echo -------
+ifeq ($(config), debug)
+	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
+else ifeq ($(config), release)
+	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64
+else
+	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
+endif
 
 mkgpt:
 	@echo --------------
@@ -62,9 +78,6 @@ endif
 	@rm -fr toolchain
 
 dependencies:
-	@echo ---------------------
-	@echo Fetching dependencies
-	@echo ---------------------
 	@mkdir -p dist/boot/EFI/BOOT
 	@curl -o dist/boot/EFI/BOOT/BOOTX64.EFI https://raw.githubusercontent.com/limine-bootloader/limine/v4.x-branch-binary/BOOTX64.EFI &> /dev/null
 	@mkdir -p depend/tools/bin
@@ -82,17 +95,14 @@ clean-all:
 	@rm -fr iso dist depend
 
 clean-os:
-	@echo ---------------------------
-	@echo Cleaning WorldOS build tree
-	@echo ---------------------------
 	@$(MAKE) -C kernel clean-kernel
 	@rm -fr iso dist
 
-boot-iso: clean-os dependencies toolchain
+boot-iso: clean-os .WAIT dependencies toolchain
 	@echo ---------------
 	@echo Building Kernel
 	@echo ---------------
-	@$(MAKE) -C kernel kernel
+	@$(MAKE) -C kernel kernel config=$(config)
 	@echo -----------------
 	@echo Making disk image
 	@echo -----------------

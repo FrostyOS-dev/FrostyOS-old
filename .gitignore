@@ -4,6 +4,7 @@ bin-int/
 iso/
 dist/
 depend/
+.idea/
 
 # Files
 kernel/src/limine.h

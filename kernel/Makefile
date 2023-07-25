@@ -15,6 +15,11 @@ KERNEL_ASMFLAGS = -f elf64
 KERNEL_CFLAGS = -mcmodel=kernel -std=c17 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fno-stack-protector -fno-exceptions -Isrc -mgeneral-regs-only -mno-red-zone -O2
 KERNEL_TARGET = bin/kernel.elf
 
+ifeq ($(config), release)
+	KERNEL_CXXFLAGS += -DNDEBUG=1
+	KERNEL_CFLAGS += -DNDEBUG=1
+endif
+
 .PHONY: kernel clean-kernel kernel-dependencies
 
 kernel: $(kernel_cxx_object_files) $(kernel_c_object_files) $(kernel_asm_object_files)
@@ -35,14 +40,11 @@ kernel-dependencies:
 $(kernel_cxx_object_files): bin-int/%.cpp.o : src/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) -o $@ -c $(patsubst bin-int/%.cpp.o, src/%.cpp, $@) $(KERNEL_CXXFLAGS)
-	@echo 
 
 $(kernel_c_object_files): bin-int/%.c.o : src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) -o $@ -c $(patsubst bin-int/%.c.o, src/%.c, $@) $(KERNEL_CFLAGS)
-	@echo 
 
 $(kernel_asm_object_files): bin-int/%.asm.o : src/%.asm
 	@mkdir -p $(dir $@)
 	$(ASM) $(patsubst bin-int/%.asm.o, src/%.asm, $@) $(KERNEL_ASMFLAGS) -o $@
-	@echo 
