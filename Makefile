@@ -79,7 +79,7 @@ endif
 
 dependencies:
 	@mkdir -p dist/boot/EFI/BOOT
-	@curl -o dist/boot/EFI/BOOT/BOOTX64.EFI https://raw.githubusercontent.com/limine-bootloader/limine/v4.x-branch-binary/BOOTX64.EFI &> /dev/null
+	@curl -o dist/boot/EFI/BOOT/BOOTX64.EFI https://raw.githubusercontent.com/limine-bootloader/limine/v5.x-branch-binary/BOOTX64.EFI &> /dev/null
 	@mkdir -p depend/tools/bin
 ifeq ("$(wildcard depend/tools/bin/mkgpt)","")
 	@$(MAKE) mkgpt
