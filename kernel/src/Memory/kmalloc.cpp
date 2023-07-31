@@ -1,3 +1,20 @@
+/*
+Copyright (©) 2022-2023  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include "kmalloc.hpp"
 #include "newdelete.hpp"
 
@@ -159,8 +176,8 @@ struct Chunk {
     DList all;
     int used;
     union {
-	char data[0];
-	DList free;
+	    char data[0];
+	    DList free;
     };
 };
  
@@ -359,12 +376,8 @@ void kmalloc_init() {
     NewDeleteInit();
 }
 
-void* kmalloc(size_t size) {
-    return mrvn_malloc(ALIGN_UP(size, MIN_SIZE));
-}
-
-void* kcalloc(size_t size) {
-    size = ALIGN_UP(size, MIN_SIZE);
+extern "C" void* kcalloc(size_t num, size_t size) {
+    size = ALIGN_UP((size * num), MIN_SIZE);
     void* mem = mrvn_malloc(size);
     if (mem == nullptr)
         return nullptr;
@@ -372,7 +385,29 @@ void* kcalloc(size_t size) {
     return mem;
 }
 
-void kfree(void* addr) {
+extern "C" void kfree(void* addr) {
     return mrvn_free(addr);
 }
 
+extern "C" void* kmalloc(size_t size) {
+    if (size == 0)
+        return nullptr;
+    return mrvn_malloc(ALIGN_UP(size, MIN_SIZE));
+}
+
+extern "C" void* krealloc(void* ptr, size_t size) {
+    if (size == 0) {
+        kfree(ptr);
+        return nullptr;
+    }
+    if (ptr < g_mem_start || ptr > g_mem_end)
+        return nullptr;
+    size = ALIGN_UP(size, MIN_SIZE);
+    size_t old_size = memory_chunk_size((Chunk*)((char*)ptr - HEADER_SIZE));
+    void* ptr2 = kmalloc(size);
+    if (ptr2 == nullptr)
+        return nullptr;
+    fast_memcpy(ptr2, ptr, old_size);
+    kfree(ptr);
+    return ptr2;
+}

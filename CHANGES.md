@@ -1,6 +1,15 @@
 # Changes
 
-## Latest Changes - 25/07/2023
+## Latest Changes - 31/07/2023
+
+- Added `krealloc` function
+- Added declarations for `kcalloc`, `kfree`, `kmalloc` and `krealloc` to `stdlib.h` so we are ISO C compliant
+- Made `kcalloc` ISO C compliant
+- Cleaned up `stdlib.h`
+- Fixed up header guards in `stdbool.h`, `stddef.h`, `stdio.hpp`, `stdlib.h`, `string.h` and `time.h`
+- Added Copyright header to all C/C++ header and source files, all x86 assembly source files, kernel linker script, all `Makefile`s
+
+## 25/07/2023
 
 - Added CLion files to .gitignore
 - Added parallel build support to `Makefile` and `kernel/Makefile`

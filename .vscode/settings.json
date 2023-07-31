@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "system_error": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "time.h": "c"
     },
     "makefile.dryrunSwitches": [
         "boot-iso"
