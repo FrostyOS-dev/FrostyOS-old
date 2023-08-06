@@ -37,6 +37,8 @@ extern "C" {
 
 #define ALIGN_DOWN(VALUE, ALIGN) (VALUE / ALIGN) * ALIGN
 
+#define PAGE_SIZE 4096
+
 void* memset(void* dst, const uint8_t value, const size_t n);
 void* memcpy(void* dst, const void* src, const size_t n);
 void* memmove(void* dst, const void* src, const size_t n);

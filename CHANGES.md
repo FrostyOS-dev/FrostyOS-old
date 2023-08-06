@@ -1,6 +1,16 @@
 # Changes
 
-## Latest Changes - 31/07/2023
+## Latest Changes - 06/08/2023
+
+- Added count check to `PageManager::AllocatePages` so `PageManager::AllocatePage` is called when `count` is 1
+- Implemented simple `rand` and `srand` functions based on implementation from TetrisOS by jdh
+- Added `PAGE_SIZE` macro to `util.h`
+- Removed unnecessary include from `stdlib.c`
+- Implemented simple temp (RAM) filesystem
+- Implemented simple VFS. Currently only fully supports root mountpoint
+- Implemented simple file stream.
+
+## 31/07/2023
 
 - Added `krealloc` function
 - Added declarations for `kcalloc`, `kfree`, `kmalloc` and `krealloc` to `stdlib.h` so we are ISO C compliant

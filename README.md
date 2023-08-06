@@ -17,21 +17,22 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 31/07/2023
+## Latest Changes - 06/08/2023
 
-- Added `krealloc` function
-- Added declarations for `kcalloc`, `kfree`, `kmalloc` and `krealloc` to `stdlib.h` so we are ISO C compliant
-- Made `kcalloc` ISO C compliant
-- Cleaned up `stdlib.h`
-- Fixed up header guards in `stdbool.h`, `stddef.h`, `stdio.hpp`, `stdlib.h`, `string.h` and `time.h`
-- Added Copyright header to all C/C++ header and source files, all x86 assembly source files, kernel linker script, all `Makefile`s
+- Added count check to `PageManager::AllocatePages` so `PageManager::AllocatePage` is called when `count` is 1
+- Implemented simple `rand` and `srand` functions based on implementation from TetrisOS by jdh
+- Added `PAGE_SIZE` macro to `util.h`
+- Removed unnecessary include from `stdlib.c`
+- Implemented simple temp (RAM) filesystem
+- Implemented simple VFS. Currently only fully supports root mountpoint
+- Implemented simple file stream.
 
 ## Resources used
 
 - [OSDev Wiki](https://wiki.osdev.org/Main_Page) - used for documentation on almost everything
 - [Intel x86_64 Software development manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) - used for instruction references and Page Tables
 - [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
-- [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful
+- [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful. rand function from this
 - [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
 
 ## Prerequisites

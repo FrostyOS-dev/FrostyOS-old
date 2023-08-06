@@ -120,6 +120,8 @@ namespace WorldOS {
     }
 
     void* PageManager::AllocatePages(uint64_t count) {
+        if (count == 1)
+            return AllocatePage();
         void* phys_addr = g_PPFA->AllocatePages(count);
         if (phys_addr == nullptr)
             return nullptr;

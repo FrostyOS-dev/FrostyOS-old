@@ -36,6 +36,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <assert.h>
 
+#include <fs/VFS.hpp>
+
 namespace WorldOS {
 
     FrameBuffer m_InitialFrameBuffer;
@@ -92,6 +94,12 @@ namespace WorldOS {
         m_Stage = STAGE2;
 
         HAL_Stage2(RSDP_table);
+
+        VFS* KVFS = new VFS;
+        g_VFS = KVFS;
+        assert(KVFS->MountRoot(FileSystemType::TMPFS));
+
+        fputs(VFS_DEBUG, "VFS root mounted.\n");
 
         while (true) {
             

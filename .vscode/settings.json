@@ -21,6 +21,7 @@
         "libgcc",
         "PPFA",
         "RSDP",
+        "TMPFS",
         "Unallocate",
         "Unreserve",
         "WORLDOS",
@@ -28,6 +29,8 @@
     ],
     "git.ignoreLimitWarning": true,
     "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
-        "clang-diagnostic-implicit-exception-spec-mismatch"
+        "clang-diagnostic-implicit-exception-spec-mismatch",
+        "clang-diagnostic-incompatible-library-redeclaration",
+        "clang-diagnostic-error"
     ]
 }

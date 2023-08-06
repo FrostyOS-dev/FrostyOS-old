@@ -17,8 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdlib.h>
 
-#include <string.h>
-
 int atoi(const char* str) {
     int value = 0;
     unsigned char is_negative = 0;
@@ -70,4 +68,25 @@ unsigned long strtoul(const char* str) {
         i++;
     }
     return value;
+}
+
+static unsigned int rseed = 1;
+
+void srand(unsigned int s) {
+    rseed = s;
+}
+
+unsigned int rand() {
+    static unsigned int x = 123456789;
+    static unsigned int y = 362436069;
+    static unsigned int z = 521288629;
+    static unsigned int w = 88675123;
+
+    x *= 23786259 - rseed;
+
+    unsigned int t;
+
+    t = x ^ (x << 11);
+    x = y; y = z; z = w;
+    return w = w ^ (w >> 19) ^ t ^ (t >> 8);
 }

@@ -50,7 +50,8 @@ void kfree(void* ptr);
 void* kmalloc(size_t size);
 void* krealloc(void* ptr, size_t size);
 
-void __attribute__((noreturn)) abort();
+unsigned int rand();
+void srand(unsigned int);
 
 #ifdef __cplusplus
 }
