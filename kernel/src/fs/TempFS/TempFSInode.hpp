@@ -55,7 +55,7 @@ namespace TempFS {
         bool RemoveChild(TempFSInode* child);
 
         bool SetParent(TempFSInode* parent);
-        TempFSInode* GetParent() const;
+        TempFSInode* GetParent() const override;
 
         void ResetID(uint32_t seed = 0) override;
 

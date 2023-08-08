@@ -17,15 +17,17 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 06/08/2023
+## Latest Changes - 08/08/2023
 
-- Added count check to `PageManager::AllocatePages` so `PageManager::AllocatePage` is called when `count` is 1
-- Implemented simple `rand` and `srand` functions based on implementation from TetrisOS by jdh
-- Added `PAGE_SIZE` macro to `util.h`
-- Removed unnecessary include from `stdlib.c`
-- Implemented simple temp (RAM) filesystem
-- Implemented simple VFS. Currently only fully supports root mountpoint
-- Implemented simple file stream.
+- Fixed `fwrite` function so it now actually works
+- Added `GetParent` function to `Inode` base class and applied changes accordingly to `TempFS::TempFSInode` class
+- Fixed `VFS::CreateFolder` function so it removes a trailing slash from the name if present.
+- Fixed `VFS::GetMountpoint` function so it works with subdirectories within the root filesystem
+- Fixed `VFS::OpenStream` function so it actually adds the newly created stream to the `VFS` class's internal data structures
+- Implemented `VFS::CloseStream` function
+- Added `Kernel_Stage2Params` structure so multiple arguments can be passed to the kernel Stage2 instead of the old one argument
+- Added basic tar initial RAMFS support via limine kernel modules. All root filesystem files/folders are placed under `root/`
+- Added `example.txt` file under `root/`
 
 ## Resources used
 

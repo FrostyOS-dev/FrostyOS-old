@@ -37,6 +37,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <assert.h>
 
 #include <fs/VFS.hpp>
+#include <fs/initramfs.hpp>
 
 namespace WorldOS {
 
@@ -52,6 +53,12 @@ namespace WorldOS {
     BasicVGA KBasicVGA;
 
     TTY KTTY;
+
+    struct Stage2_Params {
+        void* RSDP_addr;
+        void* initramfs_addr;
+        size_t initramfs_size;
+    } Kernel_Stage2Params;
 
     extern "C" void StartKernel(KernelParams* params) {
         g_fgcolour = Colour(0xFF, 0xFF, 0xFF);
@@ -80,7 +87,13 @@ namespace WorldOS {
 
         KBasicVGA.EnableDoubleBuffering(g_KPM);
 
-        KProcess = new Scheduling::Process(Kernel_Stage2, params->RSDP_table, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
+        Kernel_Stage2Params = {
+            .RSDP_addr = params->RSDP_table,
+            .initramfs_addr = params->initramfs_addr,
+            .initramfs_size = params->initramfs_size
+        };
+
+        KProcess = new Scheduling::Process(Kernel_Stage2, (void*)&Kernel_Stage2Params, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
         KProcess->Start();
 
         Scheduling::Scheduler::Start();
@@ -88,18 +101,24 @@ namespace WorldOS {
         Panic("Scheduler Start returned!\n", nullptr, false);
     }
 
-    void Kernel_Stage2(void* RSDP_table) {
+    void Kernel_Stage2(void* params_addr) {
         fputs(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
 
         m_Stage = STAGE2;
 
-        HAL_Stage2(RSDP_table);
+        Stage2_Params* params = (Stage2_Params*)params_addr;
+
+        HAL_Stage2(params->RSDP_addr);
 
         VFS* KVFS = new VFS;
         g_VFS = KVFS;
         assert(KVFS->MountRoot(FileSystemType::TMPFS));
 
         fputs(VFS_DEBUG, "VFS root mounted.\n");
+
+        Initialise_InitRAMFS(params->initramfs_addr, params->initramfs_size);
+
+        fputs(VFS_DEBUG, "Initial RAMFS initialised.\n");
 
         while (true) {
             

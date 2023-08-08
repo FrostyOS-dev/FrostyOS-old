@@ -96,6 +96,13 @@ bool VFS::CreateFolder(const char* parent, const char* name) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return false;
     }
+    uint64_t name_length = strlen(name);
+    char const* i_name = name;
+    if (name[name_length - 1] == PATH_SEPARATOR) {
+        char* temp_name = new char[name_length];
+        memcpy(temp_name, name, name_length - 1);
+        i_name = temp_name;
+    }
     switch (mountPoint->type) {
         case FileSystemType::TMPFS:
             if (mountPoint->fs == nullptr) {
@@ -105,7 +112,7 @@ bool VFS::CreateFolder(const char* parent, const char* name) {
             {
                 using namespace TempFS;
                 TempFileSystem* fs = (TempFileSystem*)mountPoint->fs;
-                bool rc = fs->CreateFolder((TempFSInode*)parent_inode, name);
+                bool rc = fs->CreateFolder((TempFSInode*)parent_inode, i_name);
                 SetLastError(fs->GetLastError());
                 return rc;
             }
@@ -182,6 +189,7 @@ FileStream* VFS::OpenStream(const char* path, uint8_t modes) {
                     return nullptr;
                 }
                 SetLastError(FileSystemError::SUCCESS);
+                m_streams.insert(stream);
                 return stream;
             }
             break;
@@ -195,7 +203,25 @@ FileStream* VFS::OpenStream(const char* path, uint8_t modes) {
 }
 
 bool VFS::CloseStream(FileStream* stream) {
-    fprintf(VFS_DEBUG, "[%s(%lp)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, stream);
+    if (stream == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return false;
+    }
+    for (uint64_t i = 0; i < m_streams.getCount(); i++) {
+        FileStream* i_stream = m_streams.get(i);
+        if (i_stream == nullptr) {
+            SetLastError(FileSystemError::INTERNAL_ERROR);
+            return false;
+        }
+        if (stream == i_stream) {
+            (void)(stream->Close()); // ignore return value
+            delete stream;
+            m_streams.remove(i);
+            SetLastError(FileSystemError::SUCCESS);
+            return true;
+        }
+    }
+    SetLastError(FileSystemError::INVALID_ARGUMENTS);
     return false;
 }
 
@@ -227,10 +253,10 @@ VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) {
             }
             TempFSInode* last_inode = nullptr;
             TempFSInode* raw_inode = fs->GetInode(path, &last_inode, &split_index);
-            if (raw_inode == nullptr || raw_inode->GetType() != InodeType::Folder)
+            if (raw_inode == nullptr)
                 raw_inode = last_inode;
             if (raw_inode != nullptr && raw_inode->GetType() != InodeType::Folder)
-                raw_inode = nullptr;
+                raw_inode = raw_inode->GetParent();
             RootInode = (Inode*)raw_inode;
         }
         break;
@@ -242,19 +268,29 @@ VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) {
     }
     bool rootFound = false;
     VFS_MountPoint* mount_point;
-    for (uint64_t i = 0; i < m_mountPoints.getCount(); i++) {
-        VFS_MountPoint* mountPoint = m_mountPoints.get(i);
-        if (mountPoint == nullptr) {
-            SetLastError(FileSystemError::INTERNAL_ERROR);
-            if (inode != nullptr)
-                *inode = nullptr;
-            return nullptr;
-        }
-        if (mountPoint->RootInode == RootInode) {
+    while (true) {
+        if (RootInode == nullptr) {
+            mount_point = m_root;
             rootFound = true;
-            mount_point = mountPoint;
             break;
         }
+        for (uint64_t i = 0; i < m_mountPoints.getCount(); i++) {
+            VFS_MountPoint* mountPoint = m_mountPoints.get(i);
+            if (mountPoint == nullptr) {
+                SetLastError(FileSystemError::INTERNAL_ERROR);
+                if (inode != nullptr)
+                    *inode = nullptr;
+                return nullptr;
+            }
+            if (mountPoint->RootInode == RootInode) {
+                rootFound = true;
+                mount_point = mountPoint;
+                break;
+            }
+        }
+        if (rootFound)
+            break;
+        RootInode = RootInode->GetParent();
     }
     if (!rootFound) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);

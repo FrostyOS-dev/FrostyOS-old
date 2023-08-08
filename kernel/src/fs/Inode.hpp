@@ -67,6 +67,8 @@ public:
 
     virtual InodeError GetLastError() const { return p_lastError; }
 
+    virtual Inode* GetParent() const = 0;
+
 protected:
     virtual void SetLastError(InodeError error) const { p_lastError = error; } // const so const functions can perform error reporting
 

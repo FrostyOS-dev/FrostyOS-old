@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-.PHONY: boot-iso all toolchain dependencies clean-all mkgpt clean-os run
+.PHONY: boot-iso all toolchain dependencies clean-all mkgpt clean-os run initramfs
 
 ifndef config
 	config=debug
@@ -102,6 +102,13 @@ endif
 	@rm -fr depend/tools/build
 	@$(MAKE) -C kernel kernel-dependencies
 
+initramfs:
+	@echo ----------------------
+	@echo Creating initial RAMFS
+	@echo ----------------------
+	@mkdir -p dist/boot/WorldOS root
+	@cd root && tar -c --no-auto-compress -f ../dist/boot/WorldOS/initramfs.tar *
+
 clean-all:
 	@echo ------------
 	@echo Cleaning all
@@ -118,6 +125,7 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@echo Building Kernel
 	@echo ---------------
 	@$(MAKE) -C kernel kernel config=$(config)
+	@$(MAKE) initramfs
 	@echo -----------------
 	@echo Making disk image
 	@echo -----------------
@@ -132,5 +140,6 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@mcopy -i iso/fat.img dist/boot/EFI/BOOT/BOOTX64.EFI ::/EFI/BOOT
 	@mmd -i iso/fat.img ::/WorldOS
 	@mcopy -i iso/fat.img dist/boot/WorldOS/kernel.elf ::/WorldOS
+	@mcopy -i iso/fat.img dist/boot/WorldOS/initramfs.tar ::/WorldOS
 	@mcopy -i iso/fat.img dist/boot/limine.cfg ::
 	@./depend/tools/bin/mkgpt -o iso/hdimage.bin --image-size 8192 --part iso/fat.img --type system
