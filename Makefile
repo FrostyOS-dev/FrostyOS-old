@@ -19,14 +19,14 @@ ifndef config
 	config=debug
 endif
 
-TOOLCHAIN_PREFIX = $(HOME)/opt/cross
+TOOLCHAIN_PREFIX = $(HOME)/opt/x86_64-worldos-cross
 
 PATH := $(PATH):$(TOOLCHAIN_PREFIX)/bin
 SHELL := env PATH=$(PATH) /bin/bash
 
-CC = $(TOOLCHAIN_PREFIX)/bin/x86_64-elf-gcc
-CXX = $(TOOLCHAIN_PREFIX)/bin/x86_64-elf-g++
-LD = $(TOOLCHAIN_PREFIX)/bin/x86_64-elf-ld
+CC = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc
+CXX = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-g++
+LD = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld
 ASM = nasm
 
 all: boot-iso
@@ -64,31 +64,30 @@ mkgpt:
 	@rm -fr depend/tools/build/mkgpt
 
 toolchain:
-ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-elf-ld -v 2>/dev/null | grep 2.40)", "")
+ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld -v 2>/dev/null | grep 2.41)", "")
 	@echo -----------------
 	@echo Building binutils
 	@echo -----------------
 	@mkdir -p toolchain/binutils/{src,build}
-	@curl -o toolchain/binutils/binutils-2.40.tar.gz -L https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.gz
-	@tar -xf toolchain/binutils/binutils-2.40.tar.gz -C toolchain/binutils/src/
-	@cd toolchain/binutils/build && ../src/binutils-2.40/configure --target=x86_64-elf --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot --disable-nls --disable-werror
+	@curl -o toolchain/binutils/binutils-2.41.tar.xz -L https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.xz
+	@tar -xJf toolchain/binutils/binutils-2.41.tar.xz -C toolchain/binutils/src/
+	@cd toolchain/binutils/src && patch -s -p0 < ../../../patches/binutils.patch
+	@cd toolchain/binutils/build && ../src/binutils-2.41/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --disable-werror --enable-shared
 	@$(MAKE) -C toolchain/binutils/build -j4
 	@$(MAKE) -C toolchain/binutils/build install
 	@rm -fr toolchain/binutils
 endif
-ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-elf-gcc -dumpversion)", "13.1.0")
+ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion)", "13.2.0")
 	@echo ------------
 	@echo Building GCC
 	@echo ------------
 	@mkdir -p toolchain/gcc/{src,build}
-	@curl -o toolchain/gcc/gcc-13.1.0.tar.gz -L https://ftp.gnu.org/gnu/gcc/gcc-13.1.0/gcc-13.1.0.tar.gz
-	@tar -xf toolchain/gcc/gcc-13.1.0.tar.gz -C toolchain/gcc/src/
-	@cd toolchain/gcc && patch -s -p0 < ../../patches/gcc-libgcc-no-red-zone.patch
-	@cd toolchain/gcc/build && ../src/gcc-13.1.0/configure --target=x86_64-elf --prefix="$(TOOLCHAIN_PREFIX)" --disable-nls --enable-languages=c,c++ --without-headers
-	@$(MAKE) -C toolchain/gcc/build -j4 all-gcc
-	@$(MAKE) -C toolchain/gcc/build -j4 all-target-libgcc
-	@$(MAKE) -C toolchain/gcc/build install-gcc
-	@$(MAKE) -C toolchain/gcc/build install-target-libgcc
+	@curl -o toolchain/gcc/gcc-13.2.0.tar.xz -L https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz
+	@tar -xJf toolchain/gcc/gcc-13.2.0.tar.xz -C toolchain/gcc/src/
+	@cd toolchain/gcc/src && patch -s -p0 < ../../../patches/gcc.patch
+	@cd toolchain/gcc/build && ../src/gcc-13.2.0/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --enable-shared --enable-languages=c,c++
+	@$(MAKE) -C toolchain/gcc/build -j4 all-gcc all-target-libgcc
+	@$(MAKE) -C toolchain/gcc/build install-gcc install-target-libgcc
 endif
 	@rm -fr toolchain
 

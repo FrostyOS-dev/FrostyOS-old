@@ -17,17 +17,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 08/08/2023
+## Latest Changes - 12/08/2023
 
-- Fixed `fwrite` function so it now actually works
-- Added `GetParent` function to `Inode` base class and applied changes accordingly to `TempFS::TempFSInode` class
-- Fixed `VFS::CreateFolder` function so it removes a trailing slash from the name if present.
-- Fixed `VFS::GetMountpoint` function so it works with subdirectories within the root filesystem
-- Fixed `VFS::OpenStream` function so it actually adds the newly created stream to the `VFS` class's internal data structures
-- Implemented `VFS::CloseStream` function
-- Added `Kernel_Stage2Params` structure so multiple arguments can be passed to the kernel Stage2 instead of the old one argument
-- Added basic tar initial RAMFS support via limine kernel modules. All root filesystem files/folders are placed under `root/`
-- Added `example.txt` file under `root/`
+- Added some basic C header files to `root/data/include/`
+- Added basic Symbolic link support to TempFS
+- Added intra-mount-point Symbolic link support to the VFS
+- Added `toolchain` directory to the gitignore
+- Added custom `x86_64-worldos` toolchain support
+- Cleaned up `README.md`
 
 ## Resources used
 
@@ -64,6 +61,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - libmpc
 - mpfr
 - binutils version 2 or higher (only for binutils builds)
+- libtool
+- patch
 
 #### mkgpt build
 
@@ -90,7 +89,7 @@ If you cannot meet these requirements, see notes
 
 - install WSL2 and install a distribution to it
 - follow the steps for Linux -> (distribution you chose), except remove `qemu` from the install list (in WSL2)
-- install `qemu` from its website and add it to `PATH`
+- install `qemu` from [its website](https://www.qemu.org/download/#windows) and add it to `PATH`
 
 #### Windows 10 Method 2
 
@@ -108,11 +107,11 @@ If you cannot meet these requirements, see notes
 
 #### Debian
 
-- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm`
+- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm libtool patch`
 
 #### Fedora/RHEL
 
-- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm`
+- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm libtool patch`
 
 #### Arch
 
@@ -120,7 +119,7 @@ If you cannot meet these requirements, see notes
 
 #### Gentoo
 
-- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm`
+- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch`
 
 ---
 
@@ -166,4 +165,4 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 ### Other platforms
 
 - All modern POSIX operating systems (including MacOS X) should be able to build and run this OS. It might just take a bit more effort.
-- Windows versions that don't support WSL2 or WSLg might require a lot more effort to get this OS running, so I recommend to just install a Linux VM on those.
+- Windows versions that don't support WSL2 or WSLg might require a lot more effort to get this OS running, so I recommend to just install a Linux Virtual Machine on those.

@@ -37,6 +37,8 @@ namespace TempFS {
         bool CreateFile(TempFSInode* parent, const char* name, size_t size = 0);
         bool CreateFolder(const char* parent, const char* name) override;
         bool CreateFolder(TempFSInode* parent, const char* name);
+        bool CreateSymLink(const char* parent, const char* name, const char* target) override;
+        bool CreateSymLink(TempFSInode* parent, const char* name, TempFSInode* target);
 
         bool DeleteInode(const char* path, bool recursive = false) override;
         bool DeleteInode(TempFSInode* inode, bool recursive = false);

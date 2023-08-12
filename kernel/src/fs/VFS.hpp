@@ -39,7 +39,7 @@ struct VFS_MountPoint {
 
 class FileStream; // defined in FileStream.hpp
 
-class VFS : public FileSystem {
+class VFS final : public FileSystem {
 public:
     VFS();
     VFS(FileSystemType root_type);
@@ -50,6 +50,7 @@ public:
 
     bool CreateFile(const char* parent, const char* name, size_t size = 0) override;
     bool CreateFolder(const char* parent, const char* name) override;
+    bool CreateSymLink(const char* parent, const char* name, const char* target) override;
 
     bool DeleteInode(const char* path, bool recursive = false) override;
 

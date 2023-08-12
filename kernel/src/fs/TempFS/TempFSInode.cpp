@@ -19,8 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "TempFileSystem.hpp"
 
 #include <string.h>
-
-// REMOVE THIS INCLUDE. ONLY FOR malloc and rand/srand
 #include <stdlib.h>
 
 #include <Memory/PageManager.hpp>
@@ -34,8 +32,8 @@ namespace TempFS {
 
     }
 
-    bool TempFSInode::Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, size_t blockSize, uint32_t seed) {
-        if (name == nullptr || fileSystem == nullptr || blockSize == 0) {
+    bool TempFSInode::Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, size_t blockSize, void* extra, uint32_t seed) {
+        if (name == nullptr || fileSystem == nullptr || blockSize == 0 || type == InodeType::Unkown || (type == InodeType::SymLink && extra == nullptr)) {
             SetLastError(InodeError::INVALID_ARGUMENTS);
             return false;
         }
@@ -56,11 +54,21 @@ namespace TempFS {
         }
         else
             m_fileSystem->CreateNewRootInode(this);
+        if (p_type == InodeType::SymLink)
+            m_children.insert((TempFSInode*)extra);
         SetLastError(InodeError::SUCCESS);
         return true;
     }
 
-    bool TempFSInode::Delete() {
+    bool TempFSInode::Delete(bool delete_target) {
+        TempFSInode* target = GetTarget();
+        if (target != this && delete_target) {
+            if (target == nullptr)
+                return false;
+            bool rc = target->Delete();
+            if (!rc)
+                return false;
+        }
         for (uint64_t i = GetChildCount(); i > 0; i--) {
             TempFSInode* child = m_children.get(i - 1);
             if (child == nullptr) {
@@ -95,11 +103,18 @@ namespace TempFS {
                 delete block; 
             }
         }
+        p_ID = 0; // invalidate this inode
         SetLastError(InodeError::SUCCESS);
         return true;
     }
     
     bool TempFSInode::Open() {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->Open();
+        }
         if (p_isOpen) {
             SetLastError(InodeError::SUCCESS);
             return true; // already open
@@ -116,6 +131,12 @@ namespace TempFS {
     }
     
     bool TempFSInode::Close() {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->Close();
+        }
         if (!p_isOpen) {
             SetLastError(InodeError::SUCCESS);
             return true; // already closed
@@ -130,6 +151,12 @@ namespace TempFS {
     }
     
     bool TempFSInode::ReadStream(uint8_t* bytes, uint64_t count) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->ReadStream(bytes, count);
+        }
         if (!p_isOpen) {
             SetLastError(InodeError::STREAM_CLOSED);
             return false;
@@ -165,6 +192,12 @@ namespace TempFS {
     }
     
     bool TempFSInode::WriteStream(const uint8_t* bytes, uint64_t count) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->WriteStream(bytes, count);
+        }
         if (!p_isOpen) {
             SetLastError(InodeError::STREAM_CLOSED);
             return false;
@@ -206,6 +239,12 @@ namespace TempFS {
     }
     
     bool TempFSInode::Seek(uint64_t offset) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->Seek(offset);
+        }
         if (!p_isOpen) {
             SetLastError(InodeError::STREAM_CLOSED);
             return false;
@@ -238,6 +277,12 @@ namespace TempFS {
     }
     
     bool TempFSInode::Rewind() {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->Rewind();
+        }
         if (!p_isOpen) {
             SetLastError(InodeError::STREAM_CLOSED);
             return false;
@@ -256,6 +301,12 @@ namespace TempFS {
     
 
     bool TempFSInode::Read(uint64_t offset, uint8_t* bytes, uint64_t count) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->Read(offset, bytes, count);
+        }
         bool isOpen = p_isOpen;
         if (!p_isOpen) {
             if (!Open())
@@ -270,6 +321,12 @@ namespace TempFS {
     }
     
     bool TempFSInode::Write(uint64_t offset, const uint8_t* bytes, uint64_t count) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->Write(offset, bytes, count);
+        }
         bool isOpen = p_isOpen;
         if (!p_isOpen) {
             if (!Open())
@@ -284,6 +341,12 @@ namespace TempFS {
     }
 
     bool TempFSInode::Expand(size_t new_size) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->Expand(new_size);
+        }
         MemBlock* mem_block = new MemBlock;
         if (mem_block == nullptr) {
             SetLastError(InodeError::ALLOCATION_FAILED);
@@ -301,7 +364,59 @@ namespace TempFS {
         return true;
     }
 
+    InodeType TempFSInode::GetType() const {
+        switch (p_type) {
+        case InodeType::File:
+        case InodeType::Folder:
+            SetLastError(InodeError::SUCCESS);
+            return p_type;
+        case InodeType::SymLink:
+        {
+            TempFSInode* sub = m_children.get(0);
+            if (sub == nullptr) {
+                SetLastError(InodeError::INTERNAL_ERROR);
+                return InodeType::Unkown;
+            }
+            SetLastError(InodeError::SUCCESS);
+            return sub->GetType();
+        }
+        default:
+            SetLastError(InodeError::INVALID_TYPE);
+            return InodeType::Unkown;
+        }
+        SetLastError(InodeError::INTERNAL_ERROR); // should be unreachable
+        return InodeType::Unkown;
+    }
+
+    void TempFSInode::SetType(InodeType type) {
+        switch (p_type) {
+        case InodeType::File:
+        case InodeType::Folder:
+            SetLastError(InodeError::SUCCESS);
+            p_type = type;
+            return;
+        case InodeType::SymLink:
+        {
+            TempFSInode* sub = m_children.get(0);
+            if (sub == nullptr)
+                SetLastError(InodeError::INTERNAL_ERROR);
+            SetLastError(InodeError::SUCCESS);
+            return sub->SetType(type);
+        }
+        default:
+            SetLastError(InodeError::INVALID_TYPE);
+            return;
+        }
+        SetLastError(InodeError::INTERNAL_ERROR); // should be unreachable
+    }
+
     bool TempFSInode::AddChild(TempFSInode* child) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->AddChild(child);
+        }
         if (child == nullptr) {
             SetLastError(InodeError::INVALID_ARGUMENTS);
             return false;
@@ -316,6 +431,12 @@ namespace TempFS {
     }
 
     TempFSInode* TempFSInode::GetChild(uint64_t ID) const {
+        const TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return nullptr;
+            return target->GetChild(ID);
+        }
         if (p_type != InodeType::Folder) {
             SetLastError(InodeError::INVALID_TYPE);
             return nullptr;
@@ -336,6 +457,12 @@ namespace TempFS {
     }
 
     TempFSInode* TempFSInode::GetChild(const char* name) const {
+        const TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return nullptr;
+            return target->GetChild(name);
+        }
         if (p_type != InodeType::Folder) {
             SetLastError(InodeError::INVALID_TYPE);
             return nullptr;
@@ -360,10 +487,22 @@ namespace TempFS {
     }
 
     uint64_t TempFSInode::GetChildCount() const {
+        const TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return 0;
+            return target->GetChildCount();
+        }
         return m_children.getCount();
     }
 
     bool TempFSInode::RemoveChild(TempFSInode* child) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->RemoveChild(child);
+        }
         if (p_type != InodeType::Folder) {
             SetLastError(InodeError::INVALID_TYPE);
             return false;
@@ -383,6 +522,12 @@ namespace TempFS {
     }
 
     bool TempFSInode::SetParent(TempFSInode* parent) {
+        TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return false;
+            return target->SetParent(parent);
+        }
         if (m_parent != nullptr) {
             if (!m_parent->RemoveChild(this)) {
                 if (GetLastError() == InodeError::INVALID_ARGUMENTS)
@@ -402,6 +547,12 @@ namespace TempFS {
     }
 
     TempFSInode* TempFSInode::GetParent() const {
+        const TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return nullptr;
+            return target->GetParent();
+        }
         return m_parent;
     }
 
@@ -414,5 +565,35 @@ namespace TempFS {
 
     void TempFSInode::SetLastError(InodeError error) const {
         p_lastError = error;
+    }
+
+    TempFSInode* TempFSInode::GetTarget() {
+        if (p_type == InodeType::SymLink) {
+            TempFSInode* sub = m_children.get(0);
+            if (sub == nullptr)
+                SetLastError(InodeError::INTERNAL_ERROR);
+            else
+                SetLastError(InodeError::SUCCESS);
+            return sub;
+        }
+        else {
+            SetLastError(InodeError::SUCCESS);
+            return this;
+        }
+    }
+
+    const TempFSInode* TempFSInode::GetTarget() const {
+        if (p_type == InodeType::SymLink) {
+            TempFSInode* sub = m_children.get(0);
+            if (sub == nullptr || sub->GetID() == 0)
+                SetLastError(InodeError::INTERNAL_ERROR);
+            else
+                SetLastError(InodeError::SUCCESS);
+            return sub;
+        }
+        else {
+            SetLastError(InodeError::SUCCESS);
+            return this;
+        }
     }
 }

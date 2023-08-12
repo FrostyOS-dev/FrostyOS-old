@@ -22,15 +22,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stddef.h>
 
 enum class InodeType {
+    Unkown = -1, // normally used for errors
     File = 0,
-    Folder = 1
+    Folder = 1,
+    SymLink = 2
 };
 
 enum class InodeError {
     SUCCESS = 0,
     STREAM_CLOSED = 1, // The stream is closed. e.g. ReadStream attempted, but the stream is closed.
     INVALID_ARGUMENTS = 2, // One or more arguments are invalid. e.g. invalid byte count
-    INVALID_TYPE = 3, // Invalid operation for Inode. e.g. Read/Write on folder, Adding a child to a file
+    INVALID_TYPE = 3, // Invalid operation for Inode. e.g. Read/Write on folder, Adding a child to a file, Unknown Inode type
     ALLOCATION_FAILED = 4, // Memory allocation failed
     INTERNAL_ERROR = 5 // An error with class data structure(s)
 };
@@ -56,8 +58,11 @@ public:
     virtual const char* GetName() const { return p_name; }
     virtual void SetName(const char* name) { p_name = name; }
 
-    virtual InodeType GetType() const { return p_type; }
-    virtual void SetType(InodeType type) { p_type = type; }
+    virtual InodeType GetType() const = 0; // get the type of the Inode. for links, this returns the type of the item pointed to by the Inode
+    virtual void SetType(InodeType type) = 0;
+
+    virtual InodeType GetRealType() const { return p_type; } // get the real type of the Inode. for links, this actually returns the type
+    virtual void SetRealType(InodeType type) { p_type = type; }
 
     virtual size_t GetBlockSize() const { return p_blockSize; }
     virtual void SetBlockSize(size_t blockSize) { p_blockSize = blockSize; }

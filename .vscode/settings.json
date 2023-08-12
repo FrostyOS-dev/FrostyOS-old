@@ -32,5 +32,10 @@
         "clang-diagnostic-implicit-exception-spec-mismatch",
         "clang-diagnostic-incompatible-library-redeclaration",
         "clang-diagnostic-error"
-    ]
+    ],
+    "C_Cpp.files.exclude": {
+        "**/toolchain" : true,
+        "**/.vscode": true,
+        "**/.vs": true
+    }
 }

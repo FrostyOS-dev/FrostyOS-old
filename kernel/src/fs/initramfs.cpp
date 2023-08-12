@@ -74,6 +74,9 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
             assert(g_VFS->CloseStream(stream));
             }
             break;
+        case 2: // Symbolic Link
+            assert(g_VFS->CreateSymLink(parent, name, header->filename));
+            break;
         case 5: // Folder
             assert(g_VFS->CreateFolder(parent, name));
             break;

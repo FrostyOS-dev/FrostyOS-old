@@ -123,6 +123,46 @@ namespace TempFS {
         return true;
     }
 
+    bool TempFileSystem::CreateSymLink(const char* parent, const char* name, const char* target) {
+        if (name == nullptr) {
+            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+            return false;
+        }
+        TempFSInode* parent_inode = GetInode(parent);
+        if (parent_inode == nullptr && parent != nullptr)
+            return false;
+        TempFSInode* target_inode = GetInode(target);
+        if (target_inode == nullptr)
+            return false;
+        TempFSInode* inode = new TempFSInode;
+        if (!inode->Create(name, parent_inode, InodeType::SymLink, this, p_blockSize, target_inode)) {
+            if (inode->GetLastError() == InodeError::INVALID_TYPE)
+                SetLastError(FileSystemError::INVALID_ARGUMENTS);
+            else
+                SetLastError(FileSystemError::INTERNAL_ERROR);
+            return false;
+        }
+        SetLastError(FileSystemError::SUCCESS);
+        return true;
+    }
+
+    bool TempFileSystem::CreateSymLink(TempFSInode* parent, const char* name, TempFSInode* target) {
+        if (name == nullptr) {
+            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+            return false;
+        }
+        TempFSInode* inode = new TempFSInode;
+        if (!inode->Create(name, parent, InodeType::SymLink, this, p_blockSize, target)) {
+            if (inode->GetLastError() == InodeError::INVALID_TYPE)
+                SetLastError(FileSystemError::INVALID_ARGUMENTS);
+            else
+                SetLastError(FileSystemError::INTERNAL_ERROR);
+            return false;
+        }
+        SetLastError(FileSystemError::SUCCESS);
+        return true;
+    }
+
     bool TempFileSystem::DeleteInode(const char* path, bool recursive) {
         if (path == nullptr) {
             SetLastError(FileSystemError::INVALID_ARGUMENTS);

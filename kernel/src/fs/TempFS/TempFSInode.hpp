@@ -33,8 +33,8 @@ namespace TempFS {
         TempFSInode();
         ~TempFSInode() override;
 
-        bool Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, size_t blockSize = PAGE_SIZE, uint32_t seed = 0);
-        bool Delete();
+        bool Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, size_t blockSize = PAGE_SIZE, void* extra = nullptr, uint32_t seed = 0);
+        bool Delete(bool delete_target = false); // normally just deletes this and not the target
 
         bool Open() override;
         bool Close() override;
@@ -47,6 +47,9 @@ namespace TempFS {
         bool Write(uint64_t offset, const uint8_t* bytes, uint64_t count = 1) override;
 
         bool Expand(size_t new_size) override;
+
+        InodeType GetType() const override;
+        void SetType(InodeType type) override;
 
         bool AddChild(TempFSInode* child);
         TempFSInode* GetChild(uint64_t ID) const;
@@ -62,6 +65,9 @@ namespace TempFS {
     protected:
 
         void SetLastError(InodeError error) const override;
+
+        TempFSInode* GetTarget(); // resolve the actual target of an operation. for files and folders, it just returns `this`, but for symbolic links, it returns the sub inode.
+        const TempFSInode* GetTarget() const;
 
     private:
         TempFSInode* m_parent;

@@ -1,6 +1,15 @@
 # Changes
 
-## Latest Changes - 08/08/2023
+## Latest Changes - 12/08/2023
+
+- Added some basic C header files to `root/data/include/`
+- Added basic Symbolic link support to TempFS
+- Added intra-mount-point Symbolic link support to the VFS
+- Added `toolchain` directory to the gitignore
+- Added custom `x86_64-worldos` toolchain support
+- Cleaned up `README.md`
+
+## 08/08/2023
 
 - Fixed `fwrite` function so it now actually works
 - Added `GetParent` function to `Inode` base class and applied changes accordingly to `TempFS::TempFSInode` class

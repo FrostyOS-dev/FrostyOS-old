@@ -126,6 +126,45 @@ bool VFS::CreateFolder(const char* parent, const char* name) {
     return false;
 }
 
+bool VFS::CreateSymLink(const char* parent, const char* name, const char* target) {
+    Inode* parent_inode = nullptr;
+    VFS_MountPoint* mountPoint = GetMountPoint(parent, &parent_inode);
+    Inode* target_inode = nullptr;
+    VFS_MountPoint* target_mountPoint = GetMountPoint(target, &target_inode); // currently, parent and target must be on the same mount-point
+    if (mountPoint == nullptr || mountPoint != target_mountPoint || (parent_inode == nullptr && GetLastError() != FileSystemError::SUCCESS) || name == nullptr || (parent_inode != nullptr && parent_inode->GetType() != InodeType::Folder) || target_inode == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return false;
+    }
+    uint64_t name_length = strlen(name);
+    char const* i_name = name;
+    if (name[name_length - 1] == PATH_SEPARATOR) {
+        char* temp_name = new char[name_length];
+        memcpy(temp_name, name, name_length - 1);
+        i_name = temp_name;
+    }
+    switch (mountPoint->type) {
+        case FileSystemType::TMPFS:
+            if (mountPoint->fs == nullptr) {
+                SetLastError(FileSystemError::INTERNAL_ERROR);
+                return false;
+            }
+            {
+                using namespace TempFS;
+                TempFileSystem* fs = (TempFileSystem*)mountPoint->fs;
+                bool rc = fs->CreateSymLink((TempFSInode*)parent_inode, i_name, (TempFSInode*)target_inode);
+                SetLastError(fs->GetLastError());
+                return rc;
+            }
+            break;
+        default:
+            SetLastError(FileSystemError::INVALID_FS);
+            return false;
+            break;
+    }
+    SetLastError(FileSystemError::INTERNAL_ERROR); // should be unreachable
+    return false;
+}
+
 
 bool VFS::DeleteInode(const char* path, bool recursive) {
     Inode* parent_inode = nullptr;

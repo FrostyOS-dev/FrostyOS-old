@@ -1,12 +1,12 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "Kernel",
             "includePath": [
                 "${workspaceFolder}/kernel/src/*"
             ],
             "defines": [],
-            "compilerPath": "${HOME}/opt/cross/bin/x86_64-elf-gcc",
+            "compilerPath": "${HOME}/opt/x86_64-worldos-cross/bin/x86_64-worldos-gcc",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
@@ -30,43 +30,6 @@
                 "-nostdinc",
                 "-ffreestanding",
                 "-fno-pie",
-                "-fno-stack-protector",
-                "-fno-exceptions",
-                "-Ikernel/src",
-                "-mgeneral-regs-only",
-                "-mno-red-zone",
-                "-O2",
-                "-fno-use-cxa-atexit",
-                "-fno-rtti",
-                "-Tkernel/kernel.ld",
-                "-static",
-                "-Bsymbolic",
-                "-zmax-page-size=0x1000"
-            ]
-        },
-        {
-            "name": "Win32",
-            "includePath": [
-                "${workspaceFolder}/kernel/src/*"
-            ],
-            "defines": [],
-            "windowsSdkVersion": "10.0.19041.0",
-            "compilerPath": "C:\\Program Files\\mingw32-w64\\bin\\gcc.exe",
-            "cStandard": "c17",
-            "cppStandard": "c++20",
-            "intelliSenseMode": "windows-gcc-x64",
-            "compilerArgs": [
-                "-mcmodel=kernel",
-                "-g",
-                "-Wall",
-                "-Wextra",
-                "-Wpedantic",
-                "-Wstrict-aliasing",
-                "-Wno-pointer-arith",
-                "-Wno-unused-parameter",
-                "-nostdlib",
-                "-nostdinc",
-                "-ffreestanding-fno-pie",
                 "-fno-stack-protector",
                 "-fno-exceptions",
                 "-Ikernel/src",

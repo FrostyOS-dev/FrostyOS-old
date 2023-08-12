@@ -43,6 +43,7 @@ public:
 
     virtual bool CreateFile(const char* parent, const char* name, size_t size = 0) = 0;
     virtual bool CreateFolder(const char* parent, const char* name) = 0;
+    virtual bool CreateSymLink(const char* parent, const char* name, const char* target) = 0;
 
     virtual bool DeleteInode(const char* path, bool recursive = false) = 0;
 
