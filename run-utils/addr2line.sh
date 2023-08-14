@@ -2,4 +2,4 @@
 
 make toolchain
 
-$HOME/opt/cross/bin/x86_64-elf-addr2line -e $1 $2
+$HOME/opt/x86_64-worldos-cross/bin/x86_64-worldos-addr2line -e $1 $2
