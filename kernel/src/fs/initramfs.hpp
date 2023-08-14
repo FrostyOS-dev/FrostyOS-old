@@ -55,7 +55,7 @@ namespace TarFS {
 
     size_t ASCII_OCT_To_UInt(char* str, size_t len);
 
-    int USTAR_Lookup(uint8_t* archive, char* filename, uint8_t** out);
+    size_t USTAR_Lookup(uint8_t* archive, const char* filename, uint8_t** out);
     void EnumerateUSTAR(uint8_t* archive);
 }
 

@@ -16,7 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "TSS.hpp"
-#include "Stack.h"
+#include "Stack.hpp"
 #include "GDT.hpp"
 
 #include <util.h>

@@ -113,18 +113,24 @@ clean-all:
 	@echo Cleaning all
 	@echo ------------
 	@$(MAKE) -C kernel clean-kernel
-	@rm -fr iso dist depend
+	@$(MAKE) -C utils clean-utils
+	@rm -fr iso dist depend root/kernel.map
 
 clean-os:
 	@$(MAKE) -C kernel clean-kernel
-	@rm -fr iso dist
+	@rm -fr iso dist root/kernel.map
 
 boot-iso: clean-os .WAIT dependencies toolchain
 	@echo ---------------
 	@echo Building Kernel
 	@echo ---------------
 	@$(MAKE) -C kernel kernel config=$(config)
-	@$(MAKE) initramfs
+	@echo --------------
+	@echo Building utils
+	@echo --------------
+	@$(MAKE) -C utils build
+	@utils/bin/buildsymboltable kernel/bin/kernel.elf root/kernel.map
+	@$(MAKE) --no-print-directory initramfs
 	@echo -----------------
 	@echo Making disk image
 	@echo -----------------

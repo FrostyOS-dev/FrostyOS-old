@@ -17,7 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "kernel.hpp"
 
-#include <arch/x86_64/ELFSymbols.h>
+#ifdef __x86_64__
+#include <arch/x86_64/ELFSymbols.hpp>
+#endif
 
 #include <Memory/PageManager.hpp>
 #include <Memory/kmalloc.hpp>
@@ -84,6 +86,13 @@ namespace WorldOS {
         }
 
         // Do any early initialisation
+
+        uint8_t* ELF_map_data;
+        uint64_t ELF_map_size = TarFS::USTAR_Lookup((uint8_t*)(params->initramfs_addr), "kernel.map", &ELF_map_data);
+        if (ELF_map_size == 0)
+            fprintf(VFS_DEBUG, "WARN: Cannot find kernel symbol file\n");
+        else
+            g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size);
 
         KBasicVGA.EnableDoubleBuffering(g_KPM);
 

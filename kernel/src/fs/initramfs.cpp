@@ -42,7 +42,7 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
             if (header->filepath[i] == PATH_SEPARATOR && header->filepath[i + 1] != 0)
                 last_separator = i;
         }
-        char* parent = "/";
+        char const* parent = "/";
         char* name = header->filepath;
         if (last_separator < 99) {
             parent = new char[last_separator + 1];
@@ -104,16 +104,20 @@ namespace TarFS {
         return num;
     }
 
-    int USTAR_Lookup(uint8_t* archive, char* filename, uint8_t** out) {
-        uint8_t* ptr = archive;
+    size_t USTAR_Lookup(uint8_t* archive, const char* filename, uint8_t** out) {
+        USTARItemHeader* header = (USTARItemHeader*)archive;
  
-        while (memcmp(ptr + 257, "ustar", 5) == 0) {
-            int filesize = ASCII_OCT_To_UInt((char*)((uint64_t)ptr + 0x7c), 12);
-            if (memcmp(ptr, filename, strlen(filename) + 1) == 0) {
-                *out = (uint8_t*)((uint64_t)ptr + 512);
-                return filesize;
+        while (memcmp(&(header->ID), "ustar", 5) == 0) {
+            
+            uint64_t size = ASCII_OCT_To_UInt(header->size, 12);
+
+            if (memcmp(header->filepath, filename, strlen(filename) + 1) == 0) {
+                if (size > 0)
+                    *out = (uint8_t*)((uint64_t)header + 512);
+                return size;
             }
-            ptr = (uint8_t*)((uint64_t)ptr + (((filesize + 511) / 512) + 1) * 512);
+
+            header = (USTARItemHeader*)((uint64_t)header + 512 + ALIGN_UP(size, 512));
         }
         return 0;
     }

@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _KERNEL_X86_64_ELF_KERNEL_HPP
 #define _KERNEL_X86_64_ELF_KERNEL_HPP
 
-#include "ELFSymbols.h"
+#include "ELFSymbols.hpp"
 
 #include <stddef.h>
 

@@ -15,7 +15,19 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "Stack.h"
+#ifndef _X86_64_KERNEL_STACK_HPP
+#define _X86_64_KERNEL_STACK_HPP
 
-unsigned char __attribute__((aligned(0x1000))) kernel_stack[KERNEL_STACK_SIZE] = {0};
-unsigned long int kernel_stack_size = KERNEL_STACK_SIZE;
+#define KERNEL_STACK_SIZE 65536
+
+extern "C" {
+
+extern unsigned char __attribute__((aligned(0x1000))) kernel_stack[KERNEL_STACK_SIZE];
+
+extern unsigned long int kernel_stack_size;
+
+}
+
+void x86_64_walk_stack_frames(void* RBP);
+
+#endif /* _X86_64_KERNEL_STACK_HPP */

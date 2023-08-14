@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #ifdef __x86_64__
 #include <arch/x86_64/Scheduling/taskutil.hpp>
-#include <arch/x86_64/Stack.h>
+#include <arch/x86_64/Stack.hpp>
 #include <arch/x86_64/Memory/PagingUtil.hpp>
 #include <arch/x86_64/io.h>
 #include <arch/x86_64/interrupts/pic.hpp>

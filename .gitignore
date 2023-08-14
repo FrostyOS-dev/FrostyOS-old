@@ -9,3 +9,4 @@ toolchain/
 
 # Files
 kernel/src/limine.h
+root/kernel.map

@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <HAL/hal.hpp>
 
 #include "../ELFKernel.hpp"
-#include "../Stack.h"
+#include "../Stack.hpp"
 #include "../io.h"
 
 #include <stdio.hpp>

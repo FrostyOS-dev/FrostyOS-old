@@ -15,14 +15,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_X86_64_ELF_SYMBOLS_H
-#define _KERNEL_X86_64_ELF_SYMBOLS_H
+#ifndef _KERNEL_X86_64_ELF_SYMBOLS_HPP
+#define _KERNEL_X86_64_ELF_SYMBOLS_HPP
 
 #include <stdint.h>
+#include <stddef.h>
 
-#ifdef __cplusplus
+
 extern "C" {
-#endif
 
 extern uint8_t __text_start;
 extern uint8_t __text_end;
@@ -43,10 +43,32 @@ extern const void* _data_end_addr;
 extern const void* _bss_start_addr;
 extern const void* _bss_end_addr;
 extern const void* _kernel_end_addr;
-
-
-#ifdef __cplusplus 
+ 
 }
-#endif
 
-#endif /* _KERNEL_X86_64_ELF_SYMBOLS_H */
+
+#include <Data-structures/LinkedList.hpp>
+
+struct ELFSymbol {
+    char const* name;
+    uint64_t address;
+};
+
+class ELFSymbols {
+public:
+    ELFSymbols();
+    ELFSymbols(const void* data, size_t size);
+    ~ELFSymbols();
+
+    const char* LookupSymbol(uint64_t address);
+    uint64_t LookupSymbol(const char* name);
+
+private:
+    LinkedList::SimpleLinkedList<ELFSymbol> m_symbols;
+};
+
+extern ELFSymbols* g_KernelSymbols;
+
+
+
+#endif /* _KERNEL_X86_64_ELF_SYMBOLS_HPP */
