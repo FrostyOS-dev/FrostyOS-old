@@ -21,7 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 
 void x86_64_debug_putc(const char c) {
+#ifndef NDEBUG
     x86_64_outb(0xE9, c);
+#endif
 }
 
 void x86_64_debug_puts(const char* str) {

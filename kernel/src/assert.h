@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _ASSERT_H
 
 #ifdef NDEBUG
-#define assert(expr) expr
+#define assert(expr) (void)(expr)
 #else
 
     #define __ASSERT_FUNCTION __extension__ __PRETTY_FUNCTION__
