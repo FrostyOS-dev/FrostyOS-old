@@ -68,7 +68,7 @@ namespace Scheduling {
             regs->CR3 = x86_64_GetCR3();
             regs->CS = 0x08; // Kernel Code Segment
             regs->DS = 0x10; // Kernel Data Segment
-            regs->RFLAGS = 1 << 9; // IF Flag
+            regs->RFLAGS = (1 << 9) | (1 << 1); // IF Flag and Reserved (always 1)
 #else
 #error Unkown Architecture
 #endif
