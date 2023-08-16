@@ -86,7 +86,7 @@ namespace NVMe {
             return false;
         uint32_t* admin_tail = reinterpret_cast<uint32_t*>(p_doorbell_start + 2 * p_ID * p_doorbell_stride);
         const uint32_t old_admin_tail = *admin_tail;
-        fast_memcpy((void*)((uint64_t)p_SQEntries + old_admin_tail * sizeof(SubmissionQueueEntry)), entry, sizeof(SubmissionQueueEntry) / 8);
+        fast_memcpy((void*)((uint64_t)p_SQEntries + old_admin_tail * sizeof(SubmissionQueueEntry)), entry, sizeof(SubmissionQueueEntry));
         if (old_admin_tail >= p_EntryCount)
             *admin_tail = 0;
         else

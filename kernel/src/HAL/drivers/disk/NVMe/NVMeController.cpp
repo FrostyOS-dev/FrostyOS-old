@@ -138,12 +138,12 @@ namespace NVMe {
         if (device == nullptr)
             return;
         p_device = device;
-        PCI::MemSpaceBaseAddressRegister mem_bar = *(PCI::MemSpaceBaseAddressRegister*)&(p_device->BAR0);
-        assert(mem_bar.always0 == 0);
-        assert(mem_bar.type == 0x02);
-        m_BAR0 = to_HHDM((void*)((mem_bar.AlignedBaseAddress << 4) + ((uint64_t)(p_device->BAR1) << 32)));
-        MapPage((void*)((mem_bar.AlignedBaseAddress << 4) | ((uint64_t)(p_device->BAR1) << 32)), m_BAR0, 0x8000003); // Present, Read/Write, Execute Disable
-        MapPage((void*)(((mem_bar.AlignedBaseAddress << 4) | ((uint64_t)(p_device->BAR1) << 32)) + 0x1000), (void*)((uint64_t)m_BAR0 + 0x1000), 0x8000003); // Present, Read/Write, Execute Disable
+        PCI::MemSpaceBaseAddressRegister* mem_bar = (PCI::MemSpaceBaseAddressRegister*)&(p_device->BAR0);
+        assert(mem_bar->always0 == 0);
+        assert(mem_bar->type == 0x02);
+        m_BAR0 = to_HHDM((void*)((mem_bar->AlignedBaseAddress << 4) + ((uint64_t)(p_device->BAR1) << 32)));
+        MapPage((void*)((mem_bar->AlignedBaseAddress << 4) | ((uint64_t)(p_device->BAR1) << 32)), m_BAR0, 0x8000003); // Present, Read/Write, Execute Disable
+        MapPage((void*)(((mem_bar->AlignedBaseAddress << 4) | ((uint64_t)(p_device->BAR1) << 32)) + 0x1000), (void*)((uint64_t)m_BAR0 + 0x1000), 0x8000003); // Present, Read/Write, Execute Disable
         m_IRQ = p_device->INTLine;
         assert(m_IRQ != 0xFF);
         NVMe::BAR0* BAR0 = (NVMe::BAR0*)m_BAR0;

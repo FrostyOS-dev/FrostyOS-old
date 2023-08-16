@@ -87,7 +87,7 @@ namespace NVMe {
         uint32_t admin_tail = *(reinterpret_cast<uint32_t*>(p_doorbell_start));
         uint32_t old_admin_tail = admin_tail;
         //p_SQEntries[admin_tail] = *entry;
-        fast_memcpy(&(p_SQEntries[admin_tail]), entry, sizeof(SubmissionQueueEntry) / 8);
+        fast_memcpy(&(p_SQEntries[admin_tail]), entry, sizeof(SubmissionQueueEntry));
         if (admin_tail >= p_EntryCount)
             admin_tail = 0;
         else
