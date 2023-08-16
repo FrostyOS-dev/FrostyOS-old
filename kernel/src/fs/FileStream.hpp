@@ -46,6 +46,7 @@ public:
     bool Rewind();
     uint64_t GetOffset() const;
     bool isOpen() const;
+    size_t GetSize() const;
 
     FileStreamError GetLastError() const;
 

@@ -60,10 +60,10 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     fast_memset(&PML1_KernelLowest, 0, sizeof(Level1Group) / 8);
 
     
-    PML4_Array.entries[0].Present = 1;
-    PML4_Array.entries[0].ReadWrite = 1;
-    PML4_Array.entries[0].UserSuper = 1;
-    PML4_Array.entries[0].Address = (uint64_t)x86_64_get_physaddr(&PML3_LowestArray) >> 12;
+    //PML4_Array.entries[0].Present = 1;
+    //PML4_Array.entries[0].ReadWrite = 1;
+    //PML4_Array.entries[0].UserSuper = 1;
+    //PML4_Array.entries[0].Address = (uint64_t)x86_64_get_physaddr(&PML3_LowestArray) >> 12;
 
     PML4_Array.entries[511].Present = 1;
     PML4_Array.entries[511].ReadWrite = 1;

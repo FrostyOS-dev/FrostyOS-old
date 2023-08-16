@@ -253,10 +253,26 @@ bool FileStream::isOpen() const {
     }
     if (m_inode == nullptr || m_inode->GetType() != InodeType::File) {
         SetLastError(FileStreamError::INVALID_INODE);
-        return 0;
+        return false;
     }
     SetLastError(FileStreamError::SUCCESS);
     return m_inode->isOpen();
+}
+
+size_t FileStream::GetSize() const {
+    if (m_inode == nullptr || m_inode->GetType() != InodeType::File) {
+        SetLastError(FileStreamError::INVALID_INODE);
+        return 0;
+    }
+    switch (m_mountPoint->type) {
+    case FileSystemType::TMPFS:
+        return ((TempFS::TempFSInode*)m_inode)->GetSize();
+    default:
+        SetLastError(FileStreamError::INVALID_FS_TYPE);
+        return 0;
+    }
+    SetLastError(FileStreamError::INTERNAL_ERROR); // should be unreachable
+    return 0;
 }
 
 FileStreamError FileStream::GetLastError() const {

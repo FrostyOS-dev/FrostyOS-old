@@ -45,9 +45,9 @@ void x86_64_GDTInit() {
     g_GDT[2].AccessByte = ((uint8_t)x86_64_GDTAccessByte::Write | (uint8_t)x86_64_GDTAccessByte::CodeData | (uint8_t)x86_64_GDTAccessByte::Ring0 | (uint8_t)x86_64_GDTAccessByte::Present);
     g_GDT[2].Flags = (uint8_t)x86_64_GDTFlags::LongMode | (uint8_t)x86_64_GDTFlags::PageBlocks;
 
-    g_GDT[3].AccessByte = ((uint8_t)x86_64_GDTAccessByte::Read | (uint8_t)x86_64_GDTAccessByte::Executable | (uint8_t)x86_64_GDTAccessByte::CodeData | (uint8_t)x86_64_GDTAccessByte::Ring3 | (uint8_t)x86_64_GDTAccessByte::Present);
+    g_GDT[3].AccessByte = ((uint8_t)x86_64_GDTAccessByte::Write | (uint8_t)x86_64_GDTAccessByte::CodeData | (uint8_t)x86_64_GDTAccessByte::Ring3 | (uint8_t)x86_64_GDTAccessByte::Present);
     g_GDT[3].Flags = (uint8_t)x86_64_GDTFlags::LongMode | (uint8_t)x86_64_GDTFlags::PageBlocks;
-    g_GDT[4].AccessByte = ((uint8_t)x86_64_GDTAccessByte::Write | (uint8_t)x86_64_GDTAccessByte::CodeData | (uint8_t)x86_64_GDTAccessByte::Ring3 | (uint8_t)x86_64_GDTAccessByte::Present);
+    g_GDT[4].AccessByte = ((uint8_t)x86_64_GDTAccessByte::Read | (uint8_t)x86_64_GDTAccessByte::Executable | (uint8_t)x86_64_GDTAccessByte::CodeData | (uint8_t)x86_64_GDTAccessByte::Ring3 | (uint8_t)x86_64_GDTAccessByte::Present);
     g_GDT[4].Flags = (uint8_t)x86_64_GDTFlags::LongMode | (uint8_t)x86_64_GDTFlags::PageBlocks;
 
     x86_64_TSS_Init();

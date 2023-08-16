@@ -596,4 +596,20 @@ namespace TempFS {
             return this;
         }
     }
+
+    size_t TempFSInode::GetSize() const {
+        const TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr) {
+                SetLastError(InodeError::INTERNAL_ERROR);
+                return 0;
+            }
+            return target->GetSize();
+        }
+        if (GetType() != InodeType::File) {
+            SetLastError(InodeError::INVALID_TYPE);
+            return 0;
+        }
+        return m_size;
+    }
 }

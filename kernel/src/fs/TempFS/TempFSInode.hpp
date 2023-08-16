@@ -62,6 +62,8 @@ namespace TempFS {
 
         void ResetID(uint32_t seed = 0) override;
 
+        size_t GetSize() const;
+
     protected:
 
         void SetLastError(InodeError error) const override;

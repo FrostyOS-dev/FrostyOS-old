@@ -56,17 +56,19 @@ void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrup
     else
         fprintf(VFS_DEBUG, "\nNo extra details are shown when type isn't Interrupt/Exception\n");
 
-    fprintf(VFS_DEBUG, "Stack trace:\n");
-    char const* name = nullptr;
-    if (g_KernelSymbols != nullptr)
-        name = g_KernelSymbols->LookupSymbol(regs->rip);
-    fprintf(VFS_DEBUG, "%lx", regs->rip);
-    if (name != nullptr)
-        fprintf(VFS_DEBUG, ": %s\n", name);
-    else
-        fputc(VFS_DEBUG, '\n');
+    if (type) {
+        fprintf(VFS_DEBUG, "Stack trace:\n");
+        char const* name = nullptr;
+        if (g_KernelSymbols != nullptr)
+            name = g_KernelSymbols->LookupSymbol(regs->rip);
+        fprintf(VFS_DEBUG, "%lx", regs->rip);
+        if (name != nullptr)
+            fprintf(VFS_DEBUG, ": %s\n", name);
+        else
+            fputc(VFS_DEBUG, '\n');
 
-    x86_64_walk_stack_frames((void*)(regs->RBP));
+        x86_64_walk_stack_frames((void*)(regs->RBP));
+    }
 
     // Output all to stdout after in case framebuffer writes cause a page fault
 

@@ -42,6 +42,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.hpp>
 #include <string.h>
 
+#include <Memory/PagingUtil.hpp>
+
 namespace WorldOS {
 
     void HAL_EarlyInit(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb) {
@@ -78,7 +80,7 @@ namespace WorldOS {
         assert(MCFGFound); // it must be found or device detection won't work
         for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
             MCFGEntry* entry = GetMCFGEntry(i);
-            PCI::EnumerateBuses((void*)(entry->Address));
+            PCI::EnumerateBuses(to_HHDM((void*)(entry->Address)));
         }
         PCI::Header0* device = PCI::PCIDeviceList::GetPCIDevice(0);
         for (uint64_t i = 1; device != nullptr; i++) {

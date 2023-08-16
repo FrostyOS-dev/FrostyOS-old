@@ -25,7 +25,7 @@ bool InitAndValidateXSDT(void* XSDT) {
     if (XSDT == nullptr)
         return false;
     if (doChecksum(reinterpret_cast<ACPISDTHeader*>(XSDT))) {
-        g_XSDT = (ACPISDTHeader*)to_HHDM(XSDT);
+        g_XSDT = reinterpret_cast<ACPISDTHeader*>(XSDT);
         return true;
     }
     return false;
@@ -33,7 +33,7 @@ bool InitAndValidateXSDT(void* XSDT) {
 
 ACPISDTHeader* getOtherSDT(uint64_t index) {
     uint64_t* start = (uint64_t*)((uint64_t)g_XSDT + sizeof(ACPISDTHeader));
-    return (ACPISDTHeader*)(start[index]);
+    return (ACPISDTHeader*)to_HHDM((void*)(start[index]));
 }
 
 uint64_t getSDTCount() {

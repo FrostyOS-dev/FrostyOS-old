@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stddef.h>
 
+#include <Memory/PagingUtil.hpp>
+
 bool g_XSDT_supported = false;
 bool g_ACPI_revision = false; // false for 1.0, true for 2.0 and higher
 RSDPDescriptor* g_baseRSDP;
@@ -59,5 +61,5 @@ bool IsXSDTAvailable() {
 void* GetXSDT() {
     if (!IsXSDTAvailable())
         return nullptr;
-    return (void*)(g_fullRSDP->XSDTAddress);
+    return to_HHDM((void*)(g_fullRSDP->XSDTAddress));
 }
