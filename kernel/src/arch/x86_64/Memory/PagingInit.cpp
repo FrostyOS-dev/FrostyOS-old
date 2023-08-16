@@ -1,3 +1,20 @@
+/*
+Copyright (©) 2022-2023  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include "PagingInit.hpp"
 #include "PageMapIndexer.hpp"
 
@@ -7,7 +24,7 @@
 #include <HAL/hal.hpp>
 
 #include "../ELFKernel.hpp"
-#include "../Stack.h"
+#include "../Stack.hpp"
 #include "../io.h"
 
 #include <stdio.hpp>
@@ -43,10 +60,10 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     fast_memset(&PML1_KernelLowest, 0, sizeof(Level1Group) / 8);
 
     
-    PML4_Array.entries[0].Present = 1;
-    PML4_Array.entries[0].ReadWrite = 1;
-    PML4_Array.entries[0].UserSuper = 1;
-    PML4_Array.entries[0].Address = (uint64_t)x86_64_get_physaddr(&PML3_LowestArray) >> 12;
+    //PML4_Array.entries[0].Present = 1;
+    //PML4_Array.entries[0].ReadWrite = 1;
+    //PML4_Array.entries[0].UserSuper = 1;
+    //PML4_Array.entries[0].Address = (uint64_t)x86_64_get_physaddr(&PML3_LowestArray) >> 12;
 
     PML4_Array.entries[511].Present = 1;
     PML4_Array.entries[511].ReadWrite = 1;

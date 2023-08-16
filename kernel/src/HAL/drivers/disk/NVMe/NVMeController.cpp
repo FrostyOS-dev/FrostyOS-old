@@ -1,3 +1,20 @@
+/*
+Copyright (©) 2023  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include "NVMeController.hpp"
 
 #include <Memory/PagingUtil.hpp>
@@ -208,7 +225,7 @@ namespace NVMe {
         while (m_NSIDList[NSIndex] != 0) {
             NVMeDisk* disk = new NVMeDisk(m_NSIDList[NSIndex], this, IOQueue, MaxTransferSize);
             m_Disks.insert(disk);
-            uint8_t* data = (uint8_t*)kcalloc(disk->GetSectorSize());
+            uint8_t* data = (uint8_t*)kcalloc(disk->GetSectorSize(), 1);
             assert(data != nullptr);
             assert(disk->Read(data, 0, 1));
             fprintf(VFS_DEBUG, "\nPrinting disk %lu sector 0...\n\n\n", NSIndex);

@@ -4,6 +4,9 @@ bin-int/
 iso/
 dist/
 depend/
+.idea/
+toolchain/
 
 # Files
 kernel/src/limine.h
+root/kernel.map

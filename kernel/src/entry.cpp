@@ -1,3 +1,20 @@
+/*
+Copyright (©) 2022-2023  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -50,6 +67,14 @@ volatile struct limine_hhdm_request hhdm_request {
     .response = nullptr
 };
 
+volatile struct limine_module_request initramfs_request {
+    .id = LIMINE_MODULE_REQUEST,
+    .revision = 0,
+    .response = nullptr,
+    .internal_module_count = 0,
+    .internal_modules = nullptr
+};
+
 }
  
 static void done(void) {
@@ -96,6 +121,10 @@ extern "C" void _start(void) {
         done();
     }
 
+    if (initramfs_request.response == nullptr) {
+        done();
+    }
+
     limine_kernel_file_response* kernel_file_response = kernel_file_request.response;
 
     if (kernel_file_response->kernel_file == nullptr) {
@@ -116,6 +145,14 @@ extern "C" void _start(void) {
 
     limine_hhdm_response* hhdm_response = hhdm_request.response;
 
+    limine_module_response* module_response = initramfs_request.response;
+
+    if (module_response->module_count < 1) {
+        done();
+    }
+
+    limine_file* initramfs_file = module_response->modules[0];
+
     if (kernel_file->size == 0) {
         done();
     }
@@ -123,6 +160,8 @@ extern "C" void _start(void) {
     if ((hhdm_response->offset & UINT32_MAX) != 0 || hhdm_response->offset < 0xFFFF800000000000) {
         done();
     }
+
+    
 
     WorldOS::MemoryMapEntry** memoryMap = (WorldOS::MemoryMapEntry**)memmap_response->entries;
 
@@ -135,7 +174,9 @@ extern "C" void _start(void) {
         .kernel_virtual_addr = kernel_address_response->virtual_base,
         .kernel_size = kernel_file->size,
         .RSDP_table = rsdp_response->address,
-        .hhdm_start_addr = hhdm_response->offset
+        .hhdm_start_addr = hhdm_response->offset,
+        .initramfs_addr = initramfs_file->address,
+        .initramfs_size = initramfs_file->size
     };
 
     StartKernel(&kernelParams);

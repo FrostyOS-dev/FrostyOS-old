@@ -2,4 +2,4 @@
 
 make toolchain
 
-$HOME/opt/cross/bin/x86_64-elf-nm -C --format=bsd $1
+$HOME/opt/x86_64-worldos-cross/bin/x86_64-worldos-nm -C --format=bsd $1

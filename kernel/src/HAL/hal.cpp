@@ -1,3 +1,20 @@
+/*
+Copyright (©) 2022-2023  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include <arch/x86_64/GDT.hpp>
 
 #include <arch/x86_64/interrupts/IDT.hpp>
@@ -28,6 +45,7 @@
 #include <string.h>
 
 #include <Memory/newdelete.hpp>
+#include <Memory/PagingUtil.hpp>
 
 namespace WorldOS {
 
@@ -65,7 +83,7 @@ namespace WorldOS {
         assert(MCFGFound); // it must be found or device detection won't work
         for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
             MCFGEntry* entry = GetMCFGEntry(i);
-            PCI::EnumerateBuses((void*)(entry->Address));
+            PCI::EnumerateBuses(to_HHDM((void*)(entry->Address)));
         }
         PCI::Header0* device = PCI::PCIDeviceList::GetPCIDevice(0);
         for (uint64_t i = 1; device != nullptr; i++) {

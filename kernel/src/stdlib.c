@@ -1,6 +1,21 @@
-#include <stdlib.h>
+/*
+Copyright (©) 2022-2023  Frosty515
 
-#include <string.h>
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#include <stdlib.h>
 
 int atoi(const char* str) {
     int value = 0;
@@ -53,4 +68,25 @@ unsigned long strtoul(const char* str) {
         i++;
     }
     return value;
+}
+
+static unsigned int rseed = 1;
+
+void srand(unsigned int s) {
+    rseed = s;
+}
+
+unsigned int rand() {
+    static unsigned int x = 123456789;
+    static unsigned int y = 362436069;
+    static unsigned int z = 521288629;
+    static unsigned int w = 88675123;
+
+    x *= 23786259 - rseed;
+
+    unsigned int t;
+
+    t = x ^ (x << 11);
+    x = y; y = z; z = w;
+    return w = w ^ (w >> 19) ^ t ^ (t >> 8);
 }

@@ -1,3 +1,20 @@
+/*
+Copyright (©) 2022-2023  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include "stdio.hpp"
 
 #include <stdbool.h>
@@ -21,6 +38,8 @@ void internal_fputc(const fd_t file, const char c, bool swap) {
         g_CurrentTTY->putc(c);
         if (swap)
             g_CurrentTTY->GetVGADevice()->SwapBuffers();
+        if (file == VFS_DEBUG_AND_STDOUT)
+            VFS_write(VFS_DEBUG, (uint8_t*)&c, 1);
     }
     else
         VFS_write(file, (uint8_t*)&c, 1);
@@ -31,6 +50,8 @@ void internal_fputs(const fd_t file, const char* str, bool swap) {
         g_CurrentTTY->puts(str);
         if (swap)
             g_CurrentTTY->GetVGADevice()->SwapBuffers();
+        if (file == VFS_DEBUG_AND_STDOUT)
+            VFS_write(VFS_DEBUG, (uint8_t*)str, strlen(str));
     }
     else
         VFS_write(file, (uint8_t*)str, strlen(str));
@@ -258,7 +279,7 @@ void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t f
     uint8_t* out = (uint8_t*)ptr;
 
     for (uint64_t i = 0; i < count; i+=size) {
-        VFS_write(file, (uint8_t*)((uint64_t)out * i), size);
+        VFS_write(file, (uint8_t*)((uint64_t)out + i), size);
     }
     if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT)
         g_CurrentTTY->GetVGADevice()->SwapBuffers();
