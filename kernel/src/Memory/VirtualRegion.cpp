@@ -91,14 +91,10 @@ namespace WorldOS {
         if (IsInside(mem, size))
             return true; // Already inside
         void* mem_i = mem;
-        if (mem_i > m_end) {
-            fprintf(VFS_DEBUG, "[%s] WARN: mem(%lp) is above end.", __extension__ __PRETTY_FUNCTION__, mem_i);
+        if (mem_i > m_end)
             return false; // Outside of bounds
-        }
-        if ((void*)((size_t)mem_i + size) <= m_start) {
-            fprintf(VFS_DEBUG, "[%s] WARN: mem(%lp) + size(%lu) is below start.", __extension__ __PRETTY_FUNCTION__, mem_i, (size_t)size);
+        if ((void*)((size_t)mem_i + size) <= m_start)
             return false; // Outside of bounds
-        }
         if (((void*)((size_t)mem_i + size) > m_start) && (mem_i < m_start))
             mem = m_start;
         if (size > m_size)

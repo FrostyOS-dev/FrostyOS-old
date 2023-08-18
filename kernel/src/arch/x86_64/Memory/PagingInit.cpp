@@ -31,7 +31,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 WorldOS::PhysicalPageFrameAllocator PPFA;
 WorldOS::VirtualPageManager KVPM;
+WorldOS::VirtualPageManager VPM;
 WorldOS::VirtualRegion KVRegion;
+WorldOS::VirtualRegion VAddressSpace;
 
 size_t g_MemorySize = 0;
 
@@ -151,28 +153,24 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     fast_memset((void*)&cr3_layout, 0, sizeof(CR3Layout) / 8);
     cr3_layout.Address = PML4_phys >> 12;
 
-
     x86_64_LoadCR3(*((uint64_t*)&cr3_layout), kernel_physical); // will flush the TLB, so it does not need to be done earlier
-
-    // must be done after PPFA is initialised so physical memory can be allocated for the page tables
-    { // run inside new {} so so the WorldOS namespace is only "used" within that section of code
-        using namespace WorldOS;
-        for (uint64_t i = 0; i < MMEntryCount; i++) {
-            MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)MemoryMap + (i * MEMORY_MAP_ENTRY_SIZE));
-            if (entry->type == WORLDOS_MEMORY_ACPI_NVS || entry->type == WORLDOS_MEMORY_ACPI_RECLAIMABLE) {
-                uint64_t length = (entry->length % 4095 > 0 ? entry->length + 1 : entry->length);
-                x86_64_identity_map((void*)(entry->Address), length, 0x3); // Present, Read/Write, Execute
-            }
-        }
-    }
 
     // Fully initialise physical MM
     PPFA.FullInit(MemoryMap[0], MMEntryCount, g_MemorySize);
     g_PPFA = &PPFA;
 
     KVRegion = WorldOS::VirtualRegion((void*)(kernel_virtual + kernel_size), (void*)(~UINT64_C(0)));
+    VAddressSpace = WorldOS::VirtualRegion((void*)0, (void*)(~UINT64_C(0)));
 
     // Setup kernel virtual MM
+    VPM.InitVPageMgr(nullptr, 0, nullptr, 0, nullptr, 0, VAddressSpace);
+    WorldOS::VirtualRegion non_canonical((void*)0x10000000000000, (void*)0xFFF0000000000000);
+    VPM.ReservePages(non_canonical.GetStart(), non_canonical.GetSize() >> 12); // reserve all non-canonical addresses
+    VPM.ReservePage(nullptr); // reserve first page
+    VPM.ReservePages((void*)HHDM_start, 0x100000000); // Reserve from HHDM_start to HHDM_start + 0x100000000000
+    VPM.ReservePages((void*)kernel_virtual, DIV_ROUNDUP((KVRegion.GetSize() + kernel_size), 0x1000)); // reserve kernel address space
+    VPM.ReservePages((void*)fb_virt, DIV_ROUNDUP(fb_size, 0x1000)); // reserve framebuffer
+    WorldOS::g_VPM = &VPM;
     KVPM.InitVPageMgr(MemoryMap, MMEntryCount, (void*)kernel_virtual, kernel_size, (void*)fb_virt, fb_size, KVRegion);
     WorldOS::g_KVPM = &KVPM;
 }

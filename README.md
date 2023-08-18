@@ -17,12 +17,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 18/08/2023
+## Latest Changes - 18/08/2023 (Afternoon)
 
-- Added extra pixel information to the `Framebuffer` struct
-- Added a colour format class for better support with bits per pixel other than 32
-- Changed the `BasicVGA` class to use the `Colour` class with the new colour format support
-- Added support for 8, 16, 24, 40, 48, 56, 64 bits per pixel
+- Removed unnecessary debug printing from `VirtualRegion` class
+- Added a global instance of the `VirtualPageManager` class for all address space
+- Fixed paging initialisation so ACPI memory map entries are not identity mapped
 
 ## Resources used
 

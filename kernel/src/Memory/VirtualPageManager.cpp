@@ -503,7 +503,7 @@ namespace WorldOS {
         m_FreePagesCount -= count;
     }
 
-    
+    VirtualPageManager* g_VPM = nullptr;
     VirtualPageManager* g_KVPM = nullptr;
 
 }

@@ -1,6 +1,12 @@
 # Changes
 
-## Latest Changes - 18/08/2023
+## Latest Changes - 18/08/2023 (Afternoon)
+
+- Removed unnecessary debug printing from `VirtualRegion` class
+- Added a global instance of the `VirtualPageManager` class for all address space
+- Fixed paging initialisation so ACPI memory map entries are not identity mapped
+
+## 18/08/2023
 
 - Added extra pixel information to the `Framebuffer` struct
 - Added a colour format class for better support with bits per pixel other than 32
