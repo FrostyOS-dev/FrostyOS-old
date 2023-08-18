@@ -35,6 +35,12 @@ struct FrameBuffer {
     uint64_t FrameBufferWidth;
     uint64_t FrameBufferHeight;
     uint16_t bpp; // Bits per pixel
+    uint8_t red_mask_size;
+    uint8_t red_mask_shift;
+    uint8_t green_mask_size;
+    uint8_t green_mask_shift;
+    uint8_t blue_mask_size;
+    uint8_t blue_mask_shift;
 };
 
 

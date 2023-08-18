@@ -30,8 +30,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 BasicVGA* g_VGADevice;
 
+static Colour g_panic_background;
+
 void x86_64_SetPanicVGADevice(BasicVGA* device) {
     g_VGADevice = device;
+    g_panic_background = Colour(device->GetBackgroundColour().GetFormat(), 0x1A, 0, 0xF7);
 }
 
 void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type) {
@@ -75,8 +78,8 @@ void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrup
     if (g_VGADevice == nullptr)
         fprintf(VFS_DEBUG, "\nWARNING VGA Device unavailable.\n");
     else {
-        g_VGADevice->ClearScreen(0xFF1A00F7 /* blue */);
-        g_VGADevice->SetBackgroundColour(0xFF1A00F7 /* blue */);
+        g_VGADevice->ClearScreen(g_panic_background /* blue */);
+        g_VGADevice->SetBackgroundColour(g_panic_background /* blue */);
         g_VGADevice->SetCursorPosition({0,0});
         g_VGADevice->SwapBuffers(false);
 

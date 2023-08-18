@@ -17,11 +17,34 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Colour.hpp"
 
-Colour::Colour() : m_r(0), m_g(0), m_b(0) {
+#include <stdio.hpp>
+
+ColourFormat::ColourFormat() : m_bpp(0), m_red_shift(0), m_green_shift(0), m_blue_shift(0), m_red_mask(0), m_green_mask(0), m_blue_mask(0) {
+
+}
+
+ColourFormat::ColourFormat(uint16_t bpp, uint8_t red_shift, uint8_t red_size, uint8_t green_shift, uint8_t green_size, uint8_t blue_shift, uint8_t blue_size) : m_bpp(bpp), m_red_shift(red_shift), m_green_shift(green_shift), m_blue_shift(blue_shift), m_red_mask(0), m_green_mask(0), m_blue_mask(0) {
+    m_red_mask = (1 << red_size) - 1;
+    m_green_mask = (1 << green_size) - 1;
+    m_blue_mask = (1 << blue_size) - 1;
+    fprintf(VFS_DEBUG, "m_red_mask = %hhu, m_green_mask = %hhu, m_blue_mask = %hhu, m_red_shift = %hhu, m_green_shift = %hhu, m_blue_shift = %hhu, m_bpp = %hu\n", m_red_mask, m_green_mask, m_blue_mask, m_red_shift, m_green_shift, m_blue_shift, m_bpp);
+}
+
+ColourFormat::~ColourFormat() {
+
+}
+
+uint64_t ColourFormat::render(uint8_t r, uint8_t g, uint8_t b) const {
+    return (((r & m_red_mask) << m_red_shift) | ((g & m_green_mask) << m_green_shift) | ((b & m_blue_mask) << m_blue_shift)) & ((UINT64_C(1) << m_bpp) - 1);
+}
+
+
+
+Colour::Colour() : m_r(0), m_g(0), m_b(0), m_render(0), m_format() {
     
 }
 
-Colour::Colour(uint8_t r, uint8_t g, uint8_t b) : m_r(r), m_g(g), m_b(b) {
+Colour::Colour(const ColourFormat& format, uint8_t r, uint8_t g, uint8_t b) : m_r(r), m_g(g), m_b(b), m_render(0), m_format(format) {
 
 }
 
@@ -43,4 +66,14 @@ uint8_t Colour::GetGreen() {
 
 uint8_t Colour::GetBlue() {
     return m_b;
+}
+
+uint64_t Colour::render() const {
+    if (m_render == 0)
+        m_render = m_format.render(m_r, m_g, m_b); // only render once
+    return m_render;
+}
+
+const ColourFormat& Colour::GetFormat() const {
+    return m_format;
 }

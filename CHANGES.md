@@ -1,6 +1,13 @@
 # Changes
 
-## Latest Changes - 16/08/2023
+## Latest Changes - 18/08/2023
+
+- Added extra pixel information to the `Framebuffer` struct
+- Added a colour format class for better support with bits per pixel other than 32
+- Changed the `BasicVGA` class to use the `Colour` class with the new colour format support
+- Added support for 8, 16, 24, 40, 48, 56, 64 bits per pixel
+
+## 16/08/2023
 
 - Fixed ACPI tables code so all addresses are converted to HHDM addresses
 - Fixed `HAL_Stage2` so the PCI buses address is converted to a HHDM address

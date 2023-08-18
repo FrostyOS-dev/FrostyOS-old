@@ -17,16 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 16/08/2023
+## Latest Changes - 18/08/2023
 
-- Fixed ACPI tables code so all addresses are converted to HHDM addresses
-- Fixed `HAL_Stage2` so the PCI buses address is converted to a HHDM address
-- Changed Paging initialisation code so that the first 4GiB is only mapped to HDDM address space and not identity mapped
-- Changed `x86_64_Panic` so a stack trace is only performed for interrupts/exceptions
-- Fixed `FileStream::isOpen` so the correct return type is returned when the internal inode is either null or not a file
-- Added a `GetSize` function to the `TempFSInode` class
-- Added a `GetSize` function to file streams
-- Reordered user GDT segments so they will work better with system calls later
+- Added extra pixel information to the `Framebuffer` struct
+- Added a colour format class for better support with bits per pixel other than 32
+- Changed the `BasicVGA` class to use the `Colour` class with the new colour format support
+- Added support for 8, 16, 24, 40, 48, 56, 64 bits per pixel
 
 ## Resources used
 
