@@ -17,8 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Colour.hpp"
 
-#include <stdio.hpp>
-
 ColourFormat::ColourFormat() : m_bpp(0), m_red_shift(0), m_green_shift(0), m_blue_shift(0), m_red_mask(0), m_green_mask(0), m_blue_mask(0) {
 
 }
@@ -27,7 +25,6 @@ ColourFormat::ColourFormat(uint16_t bpp, uint8_t red_shift, uint8_t red_size, ui
     m_red_mask = (1 << red_size) - 1;
     m_green_mask = (1 << green_size) - 1;
     m_blue_mask = (1 << blue_size) - 1;
-    fprintf(VFS_DEBUG, "m_red_mask = %hhu, m_green_mask = %hhu, m_blue_mask = %hhu, m_red_shift = %hhu, m_green_shift = %hhu, m_blue_shift = %hhu, m_bpp = %hu\n", m_red_mask, m_green_mask, m_blue_mask, m_red_shift, m_green_shift, m_blue_shift, m_bpp);
 }
 
 ColourFormat::~ColourFormat() {
