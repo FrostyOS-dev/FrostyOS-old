@@ -17,11 +17,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 18/08/2023 (Afternoon)
+## Latest Changes - 19/08/2023
 
-- Removed unnecessary debug printing from `VirtualRegion` class
-- Added a global instance of the `VirtualPageManager` class for all address space
-- Fixed paging initialisation so ACPI memory map entries are not identity mapped
+- Implemented support for panic register saving outside of interrupts/exceptions with a `x86_64_PrePanic` function
+- Added a `PANIC(reason)` macro for easier panic outside of interrupts/exceptions
+- Added a check inside `x86_64_Panic` to ensure we don't get a page fault due to a null panic reason
 
 ## Resources used
 
