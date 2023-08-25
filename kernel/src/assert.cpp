@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdio.hpp>
 
-extern void __assert_fail(const char* assertion, const char* file, unsigned int line, const char* function) {
+extern __attribute__((noreturn)) void __assert_fail(const char* assertion, const char* file, unsigned int line, const char* function) {
     // FIXME: change this function call so it outputs to stderr once that works properly
     fprintf(VFS_DEBUG, "Assertion failed: \"%s\", file %s, line %u, function \"%s\"\n", assertion, file, line, function);
     PANIC("Assertion failed. See debug log for more info.");
