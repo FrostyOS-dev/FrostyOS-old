@@ -138,6 +138,10 @@ namespace NVMe {
         if (device == nullptr)
             return;
         p_device = device;
+        PCI::CommandRegister* command_reg = (PCI::CommandRegister*)&(p_device->ch.Command);
+        command_reg->BusMaster = 1;
+        command_reg->MemorySpace = 1;
+        command_reg->IOSpace = 1;
         PCI::MemSpaceBaseAddressRegister* mem_bar = (PCI::MemSpaceBaseAddressRegister*)&(p_device->BAR0);
         assert(mem_bar->always0 == 0);
         assert(mem_bar->type == 0x02);
