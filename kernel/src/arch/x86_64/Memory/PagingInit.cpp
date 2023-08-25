@@ -38,13 +38,16 @@ WorldOS::VirtualRegion VAddressSpace;
 size_t g_MemorySize = 0;
 
 void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, uint64_t fb_virt, uint64_t fb_size, uint64_t HHDM_start) {
-    if (!x86_64_EnsureNX())
-        WorldOS::Panic("No execute is not available. It is required.", nullptr, false);
-    if (!x86_64_EnsureLargePages())
-        WorldOS::Panic("2MiB pages are not available. They are required.", nullptr, false);
+    if (!x86_64_EnsureNX()) {
+        PANIC("No execute is not available. It is required.");
+    }
+    if (!x86_64_EnsureLargePages()) {
+        PANIC("2MiB pages are not available. They are required.");
+    }
 
-    if ((HHDM_start & ~0xffffff8000000000) > 0) // HHDM lower 39 bits have a value
-        WorldOS::Panic("HHDM must have PML3, PML2, PML1 and offset values of 0.", nullptr, false);
+    if ((HHDM_start & ~0xffffff8000000000) > 0) { // HHDM lower 39 bits have a value
+        PANIC("HHDM must have PML3, PML2, PML1 and offset values of 0.");
+    }
 
     g_MemorySize = GetMemorySize((const WorldOS::MemoryMapEntry**)MemoryMap, MMEntryCount);
 

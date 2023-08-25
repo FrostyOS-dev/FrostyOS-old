@@ -1,6 +1,13 @@
 # Changes
 
-## Latest Changes - 19/08/2023
+## Latest Changes - 25/08/2023
+
+- Changed `__assert_failed` to use new panic system
+- Changed PagingInit, PageManager and PhysicalPageFrameAllocator to use new panic system
+- Changed Scheduler to use new panic system
+- Changed `StartKernel` to use new panic system
+
+## 19/08/2023
 
 - Implemented support for panic register saving outside of interrupts/exceptions with a `x86_64_PrePanic` function
 - Added a `PANIC(reason)` macro for easier panic outside of interrupts/exceptions

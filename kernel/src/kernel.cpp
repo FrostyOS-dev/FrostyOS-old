@@ -84,7 +84,7 @@ namespace WorldOS {
         kmalloc_init();
 
         if (params->frameBuffer.bpp % 8 > 0 || params->frameBuffer.bpp > 64) {
-            Panic("Bootloader Frame Buffer Bits per Pixel is either not byte aligned or larger than 64", nullptr, false);
+            PANIC("Bootloader Frame Buffer Bits per Pixel is either not byte aligned or larger than 64");
         }
 
         // Do any early initialisation
@@ -109,7 +109,7 @@ namespace WorldOS {
 
         Scheduling::Scheduler::Start();
 
-        Panic("Scheduler Start returned!\n", nullptr, false);
+        PANIC("Scheduler Start returned!\n");
     }
 
     void Kernel_Stage2(void* params_addr) {

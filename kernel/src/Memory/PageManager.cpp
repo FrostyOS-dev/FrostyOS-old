@@ -49,10 +49,12 @@ namespace WorldOS {
 
         // if page object pool was used then we call panic()
         if (m_page_object_pool_used) {
-            if (m_mode)
-                Panic("USER PageManager illegal destruction. PageManager cannot be destroyed if page object pool has been used.", nullptr, false);
-            else
-                Panic("SUPERVISOR PageManager illegal destruction. PageManager cannot be destroyed if page object pool has been used.", nullptr, false);
+            if (m_mode) {
+                PANIC("USER PageManager illegal destruction. PageManager cannot be destroyed if page object pool has been used.");
+            }
+            else {
+                PANIC("SUPERVISOR PageManager illegal destruction. PageManager cannot be destroyed if page object pool has been used.");
+            }
         }
     }
 

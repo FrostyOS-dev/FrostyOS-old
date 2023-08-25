@@ -88,7 +88,7 @@ namespace Scheduling {
 #ifdef __x86_64__
             x86_64_kernel_switch(g_current->GetCPURegisters());
 #endif
-            WorldOS::Panic("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
+            PANIC("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
 
         void __attribute__((noreturn)) Next() {
@@ -98,7 +98,7 @@ namespace Scheduling {
 #ifdef __x86_64__
             x86_64_kernel_switch(g_current->GetCPURegisters());
 #endif
-            WorldOS::Panic("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
+            PANIC("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
 
         void __attribute__((noreturn)) Next(Thread* thread) {
@@ -111,7 +111,7 @@ namespace Scheduling {
 #ifdef __x86_64__
             x86_64_kernel_switch(thread->GetCPURegisters());
 #endif
-            WorldOS::Panic("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
+            PANIC("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
 
         void End() {
@@ -119,7 +119,7 @@ namespace Scheduling {
             if (g_current->GetFlags() & CREATE_STACK)
                 g_current->GetParent()->GetPageManager()->FreePages((void*)(g_current->GetStack() - KiB(64)));
             if (g_kernel_threads.getCount() == 0)
-                WorldOS::Panic("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.", nullptr, false);
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
             g_current = g_kernel_threads.get(0);
             g_kernel_threads.remove(UINT64_C(0));
             Next();

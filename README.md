@@ -17,11 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 19/08/2023
+## Latest Changes - 25/08/2023
 
-- Implemented support for panic register saving outside of interrupts/exceptions with a `x86_64_PrePanic` function
-- Added a `PANIC(reason)` macro for easier panic outside of interrupts/exceptions
-- Added a check inside `x86_64_Panic` to ensure we don't get a page fault due to a null panic reason
+- Changed `__assert_failed` to use new panic system
+- Changed PagingInit, PageManager and PhysicalPageFrameAllocator to use new panic system
+- Changed Scheduler to use new panic system
+- Changed `StartKernel` to use new panic system
 
 ## Resources used
 
