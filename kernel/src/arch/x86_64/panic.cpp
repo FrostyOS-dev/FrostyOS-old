@@ -20,6 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Stack.hpp"
 #include "ELFSymbols.hpp"
 
+#include "Scheduling/taskutil.hpp"
+
 #include <stdio.hpp>
 
 #include <Graphics/VGA.hpp>
@@ -30,70 +32,91 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 BasicVGA* g_VGADevice;
 
+static Colour g_panic_background;
+
 void x86_64_SetPanicVGADevice(BasicVGA* device) {
     g_VGADevice = device;
+    g_panic_background = Colour(device->GetBackgroundColour().GetFormat(), 0x1A, 0, 0xF7);
 }
 
-void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type) {
+x86_64_Registers g_regs; // only used as buffer
+
+char const* g_panic_reason = nullptr;
+
+extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void* data, const bool type) {
     x86_64_DisableInterrupts();
 
     Scheduling::Scheduler::Stop();
 
-    // Output all to debug first
+    //reason = "temp";
+    if (reason == nullptr)
+        reason = g_panic_reason;
 
-    fprintf(VFS_DEBUG, "KERNEL PANIC!\nError Message:  %s", reason);
-
-    if (type /* true = interrupt */) {
-        fprintf(VFS_DEBUG, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->rip, regs->rflags);
-        fprintf(VFS_DEBUG, "\nCS=%x    DS=%x    SS=%x\nINTERRUPT=%x", regs->cs, regs->ds, regs->ss, regs->interrupt);
-        if (regs->error != 0)
-            fprintf(VFS_DEBUG, "    ERROR CODE=%x\n", regs->error);
-        else
-            fputc(VFS_DEBUG, '\n');
-        if (regs->interrupt == 0xE /* Page Fault */)
-            fprintf(VFS_DEBUG, "CR2=%lx    CR3=%lx\n", regs->CR2, regs->CR3);
+    x86_64_Interrupt_Registers* i_regs = nullptr;
+    x86_64_Registers* regs = nullptr;
+    if (type) {
+        i_regs = (x86_64_Interrupt_Registers*)data;
+        x86_64_ConvertToStandardRegisters(&g_regs, i_regs);
+        regs = &g_regs;
     }
     else
-        fprintf(VFS_DEBUG, "\nNo extra details are shown when type isn't Interrupt/Exception\n");
+        regs = (x86_64_Registers*)data;
 
-    if (type) {
-        fprintf(VFS_DEBUG, "Stack trace:\n");
-        char const* name = nullptr;
-        if (g_KernelSymbols != nullptr)
-            name = g_KernelSymbols->LookupSymbol(regs->rip);
-        fprintf(VFS_DEBUG, "%lx", regs->rip);
-        if (name != nullptr)
-            fprintf(VFS_DEBUG, ": %s\n", name);
+    // Output all to debug first
+
+    fprintf(VFS_DEBUG, "KERNEL PANIC!\nError Message:  %s", reason == nullptr ? "(null)" : reason);
+
+    fprintf(VFS_DEBUG, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->RIP, regs->RFLAGS);
+    fprintf(VFS_DEBUG, "\nCS=%x    DS=%x", regs->CS, regs->DS);
+    if (type /* true = interrupt */) {
+        fprintf(VFS_DEBUG, "    SS=%x\nINTERRUPT=%x", i_regs->ss, i_regs->interrupt);
+        if (i_regs->error != 0)
+            fprintf(VFS_DEBUG, "    ERROR CODE=%x\n", i_regs->error);
         else
             fputc(VFS_DEBUG, '\n');
-
-        x86_64_walk_stack_frames((void*)(regs->RBP));
+        if (i_regs->interrupt == 0xE /* Page Fault */)
+            fprintf(VFS_DEBUG, "CR2=%lx    CR3=%lx\n", i_regs->CR2, regs->CR3);
     }
+    else
+        fputc(VFS_DEBUG, '\n');
+
+    fprintf(VFS_DEBUG, "Stack trace:\n");
+    char const* name = nullptr;
+    if (g_KernelSymbols != nullptr)
+        name = g_KernelSymbols->LookupSymbol(regs->RIP);
+    fprintf(VFS_DEBUG, "%lx", regs->RIP);
+    if (name != nullptr)
+        fprintf(VFS_DEBUG, ": %s\n", name);
+    else
+        fputc(VFS_DEBUG, '\n');
+
+    x86_64_walk_stack_frames((void*)(regs->RBP));
 
     // Output all to stdout after in case framebuffer writes cause a page fault
 
     if (g_VGADevice == nullptr)
         fprintf(VFS_DEBUG, "\nWARNING VGA Device unavailable.\n");
     else {
-        g_VGADevice->ClearScreen(0xFF1A00F7 /* blue */);
-        g_VGADevice->SetBackgroundColour(0xFF1A00F7 /* blue */);
+        g_VGADevice->ClearScreen(g_panic_background /* blue */);
+        g_VGADevice->SetBackgroundColour(g_panic_background /* blue */);
         g_VGADevice->SetCursorPosition({0,0});
         g_VGADevice->SwapBuffers(false);
 
         g_CurrentTTY->SetVGADevice(g_VGADevice);
 
-        fprintf(VFS_STDOUT, "KERNEL PANIC!\nError Message:  %s", reason);
+        fprintf(VFS_STDOUT, "KERNEL PANIC!\nError Message:  %s", reason == nullptr ? "(null)" : reason);
 
+        fprintf(VFS_STDOUT, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->RIP, regs->RFLAGS);
+        fprintf(VFS_STDOUT, "\nCS=%x    DS=%x", regs->CS, regs->DS);
         if (type /* true = interrupt */) {
-            fprintf(VFS_STDOUT, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->rip, regs->rflags);
-            fprintf(VFS_STDOUT, "\nCS=%x    DS=%x    SS=%x\nINTERRUPT=%x", regs->cs, regs->ds, regs->ss, regs->interrupt);
-            if (regs->error != 0)
-                fprintf(VFS_STDOUT, "    ERROR CODE=%x", regs->error);
-            if (regs->interrupt == 0xE /* Page Fault */)
-                fprintf(VFS_STDOUT, "\nCR2=%lx    CR3=%lx\n", regs->CR2, regs->CR3);
+            fprintf(VFS_STDOUT, "    SS=%x\nINTERRUPT=%x", i_regs->ss, i_regs->interrupt);
+            if (i_regs->error != 0)
+                fprintf(VFS_STDOUT, "    ERROR CODE=%x\n", i_regs->error);
+            else
+                fputc(VFS_STDOUT, '\n');
+            if (i_regs->interrupt == 0xE /* Page Fault */)
+                fprintf(VFS_STDOUT, "CR2=%lx    CR3=%lx\n", i_regs->CR2, regs->CR3);
         }
-        else
-            fprintf(VFS_STDOUT, "\nNo extra details are shown when type isn't Interrupt/Exception\n");
     }
 
     while (true) {

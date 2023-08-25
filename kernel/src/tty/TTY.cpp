@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 TTY* g_CurrentTTY = nullptr;
 
-TTY::TTY() : m_VGADevice(nullptr), m_foreground(0xFF, 0xFF, 0xFF), m_background(0, 0, 0) {
+TTY::TTY() : m_VGADevice(nullptr), m_foreground(), m_background() {
 
 }
 
@@ -56,7 +56,7 @@ void TTY::putc(char c) {
             m_VGADevice->SetCursorPosition({0, m_VGADevice->GetCursorPosition().y});
             break;
         case '\f':
-            m_VGADevice->ClearScreen(m_background.as_ARGB());
+            m_VGADevice->ClearScreen(m_background);
             m_VGADevice->SetCursorPosition({0, 0});
             break;
         default:

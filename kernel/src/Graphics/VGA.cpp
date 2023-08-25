@@ -24,11 +24,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/io.h>
 #endif
 
-BasicVGA::BasicVGA() : m_CursorPosition({0, 0}), m_bgcolour(0), m_fgcolour(0xFFFFFFFF), m_FrameBuffer({nullptr, 0, 0, 0}), m_HasBeenInitialised(false), m_pm(nullptr), m_DoubleBuffer(false), m_buffer(nullptr) {
+BasicVGA::BasicVGA() : m_CursorPosition({0, 0}), m_bgcolour(), m_fgcolour(), m_FrameBuffer({nullptr, 0, 0, 0, 0, 0, 0, 0, 0, 0}), m_HasBeenInitialised(false), m_pm(nullptr), m_DoubleBuffer(false), m_buffer(nullptr) {
 
 }
 
-BasicVGA::BasicVGA(const FrameBuffer& buffer, Position CursorPosition, uint32_t fg_colour, uint32_t bg_colour, bool double_buffer, WorldOS::PageManager* pm) : m_CursorPosition(CursorPosition), m_bgcolour(bg_colour), m_fgcolour(fg_colour), m_FrameBuffer(buffer), m_HasBeenInitialised(true), m_pm(pm), m_DoubleBuffer(double_buffer), m_buffer(nullptr) {
+BasicVGA::BasicVGA(const FrameBuffer& buffer, Position CursorPosition, const Colour& fg_colour, const Colour& bg_colour, bool double_buffer, WorldOS::PageManager* pm) : m_CursorPosition(CursorPosition), m_bgcolour(bg_colour), m_fgcolour(fg_colour), m_FrameBuffer(buffer), m_HasBeenInitialised(true), m_pm(pm), m_DoubleBuffer(double_buffer), m_buffer(nullptr) {
     if (double_buffer)
         EnableDoubleBuffering(pm);
 }
@@ -37,7 +37,7 @@ BasicVGA::~BasicVGA() {
     
 }
 
-void BasicVGA::Init(const FrameBuffer& buffer, Position CursorPosition, uint32_t fg_colour, uint32_t bg_colour, bool double_buffer, WorldOS::PageManager* pm) {
+void BasicVGA::Init(const FrameBuffer& buffer, Position CursorPosition, const Colour& fg_colour, const Colour& bg_colour, bool double_buffer, WorldOS::PageManager* pm) {
     m_FrameBuffer = buffer;
     m_CursorPosition = CursorPosition;
     m_fgcolour = fg_colour;
@@ -62,42 +62,55 @@ void BasicVGA::SetCursorPosition(Position CursorPosition) {
     m_CursorPosition = CursorPosition;
 }
 
-void BasicVGA::SetForegroundColour(const uint32_t colour) {
+void BasicVGA::SetForegroundColour(const Colour& colour) {
     m_fgcolour = colour;
 }
 
-void BasicVGA::SetBackgroundColour(const uint32_t colour) {
+void BasicVGA::SetBackgroundColour(const Colour& colour) {
     m_bgcolour = colour;
 }
 
-void BasicVGA::ClearScreen(uint32_t ARGB) {
+void BasicVGA::ClearScreen(const Colour& colour) {
     for (uint64_t y = 0; y < m_FrameBuffer.FrameBufferHeight; y++) {
         for (uint64_t x = 0; x < m_FrameBuffer.FrameBufferWidth; x++) {
-            PlotPixel(x, y, ARGB);
+            PlotPixel(x, y, colour);
         }
     }
 }
 
-void BasicVGA::ClearScreen(uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
-    for (uint64_t y = 0; y < m_FrameBuffer.FrameBufferHeight; y++) {
-        for (uint64_t x = 0; x < m_FrameBuffer.FrameBufferWidth; x++) {
-            PlotPixel(x, y, a, r, g, b);
-        }
-    }
-}
-
-void BasicVGA::PlotPixel(uint64_t x, uint64_t y, uint32_t ARGB) {
+void BasicVGA::PlotPixel(uint64_t x, uint64_t y, const Colour& colour) {
+    uint8_t* buffer;
     if (m_DoubleBuffer)
-        *((uint32_t*)(m_buffer + 4 * m_FrameBuffer.FrameBufferWidth * y + 4 * x)) = ARGB;
+        buffer = m_buffer;
     else
-        *((uint32_t*)(m_FrameBuffer.FrameBufferAddress + 4 * m_FrameBuffer.FrameBufferWidth * y + 4 * x)) = ARGB;
-}
-
-void BasicVGA::PlotPixel(uint64_t x, uint64_t y, uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
-    uint32_t ARGB = (a << 8) | r;
-    ARGB = (ARGB << 8) | g;
-    ARGB = (ARGB << 8) | b;
-    PlotPixel(x, y, ARGB);
+        buffer = (uint8_t*)m_FrameBuffer.FrameBufferAddress;
+    uint64_t data = colour.render();
+    uint16_t bpp = m_FrameBuffer.bpp;
+    if (bpp <= 8)
+        buffer[m_FrameBuffer.FrameBufferWidth * y + x] = data & 0xFF;
+    else if (bpp <= 16)
+        *(uint16_t*)((uint64_t)buffer + 2 * m_FrameBuffer.FrameBufferWidth * y + 2 * x) = data & 0xFFFF;
+    else if (bpp <= 24) {
+        *(uint16_t*)((uint64_t)buffer + 3 * m_FrameBuffer.FrameBufferWidth * y + 3 * x) = data & 0xFFFF;
+        buffer[3 * m_FrameBuffer.FrameBufferWidth * y + 3 * x + 2] = (data & 0xFF0000) >> 16;
+    }
+    else if (bpp <= 32)
+        *(uint32_t*)((uint64_t)buffer + 4 * m_FrameBuffer.FrameBufferWidth * y + 4 * x) = data & 0xFFFFFFFF;
+    else if (bpp <= 40) {
+        *(uint32_t*)((uint64_t)buffer + 5 * m_FrameBuffer.FrameBufferWidth * y + 5 * x) = data & 0xFFFFFFFF;
+        buffer[5 * m_FrameBuffer.FrameBufferWidth * y + 5 * x + 4] = (data & 0xFF00000000) >> 32;
+    }
+    else if (bpp <= 48) {
+        *(uint32_t*)((uint64_t)buffer + 6 * m_FrameBuffer.FrameBufferWidth * y + 6 * x) = data & 0xFFFFFFFF;
+        *(uint16_t*)((uint64_t)buffer + 6 * m_FrameBuffer.FrameBufferWidth * y + 6 * x + 4) = (data & 0xFFFF00000000) >> 32;
+    }
+    else if (bpp <= 56) {
+        *(uint32_t*)((uint64_t)buffer + 7 * m_FrameBuffer.FrameBufferWidth * y + 7 * x) = data & 0xFFFFFFFF;
+        *(uint16_t*)((uint64_t)buffer + 7 * m_FrameBuffer.FrameBufferWidth * y + 7 * x + 4) = (data & 0xFFFF00000000) >> 32;
+        buffer[7 * m_FrameBuffer.FrameBufferWidth * y + 7 * x + 6] = (data & 0xFF000000000000) >> 48;
+    }
+    else if (bpp <= 64)
+        *(uint64_t*)((uint64_t)buffer + 8 * m_FrameBuffer.FrameBufferWidth * y + 8 * x) = data;
 }
 
 void BasicVGA::NewLine() {
@@ -193,11 +206,11 @@ FrameBuffer BasicVGA::GetFrameBuffer() {
     return m_FrameBuffer;
 }
 
-uint32_t BasicVGA::GetBackgroundColour() {
+const Colour& BasicVGA::GetBackgroundColour() {
     return m_bgcolour;
 }
 
-uint32_t BasicVGA::GetForegroundColour() {
+const Colour& BasicVGA::GetForegroundColour() {
     return m_fgcolour;
 }
 

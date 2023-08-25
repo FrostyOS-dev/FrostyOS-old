@@ -47,6 +47,7 @@ namespace WorldOS {
     Colour g_fgcolour;
     Colour g_bgcolour;
     uint64_t m_Stage;
+    ColourFormat g_ColourFormat;
 
     PageManager KPM;
 
@@ -63,12 +64,13 @@ namespace WorldOS {
     } Kernel_Stage2Params;
 
     extern "C" void StartKernel(KernelParams* params) {
-        g_fgcolour = Colour(0xFF, 0xFF, 0xFF);
-        g_bgcolour = Colour(0, 0, 0);
         m_Stage = EARLY_STAGE;
         m_InitialFrameBuffer = params->frameBuffer;
+        g_ColourFormat = ColourFormat(m_InitialFrameBuffer.bpp, m_InitialFrameBuffer.red_mask_shift, m_InitialFrameBuffer.red_mask_size, m_InitialFrameBuffer.green_mask_shift, m_InitialFrameBuffer.green_mask_size, m_InitialFrameBuffer.blue_mask_shift, m_InitialFrameBuffer.blue_mask_size);
+        g_fgcolour = Colour(g_ColourFormat, 0xFF, 0xFF, 0xFF);
+        g_bgcolour = Colour(g_ColourFormat, 0, 0, 0);
 
-        KBasicVGA.Init(m_InitialFrameBuffer, {0, 0}, g_fgcolour.as_ARGB(), g_bgcolour.as_ARGB());
+        KBasicVGA.Init(m_InitialFrameBuffer, {0, 0}, g_fgcolour, g_bgcolour);
 
         KTTY = TTY(&KBasicVGA, g_fgcolour, g_bgcolour); 
 
@@ -81,8 +83,8 @@ namespace WorldOS {
         g_KPM = &KPM;
         kmalloc_init();
 
-        if (params->frameBuffer.bpp != 32) {
-            Panic("Bootloader Frame Buffer Bits per Pixel is not 32", nullptr, false);
+        if (params->frameBuffer.bpp % 8 > 0 || params->frameBuffer.bpp > 64) {
+            Panic("Bootloader Frame Buffer Bits per Pixel is either not byte aligned or larger than 64", nullptr, false);
         }
 
         // Do any early initialisation

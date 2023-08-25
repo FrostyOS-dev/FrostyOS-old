@@ -21,27 +21,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 
 #include "Graphics.h"
+#include "Colour.hpp"
 
 #include <Memory/PageManager.hpp>
 
 class BasicVGA {
 public:
     BasicVGA();
-    BasicVGA(const FrameBuffer& buffer, Position CursorPosition, uint32_t fgcolour, uint32_t bgcolour, bool double_buffer = false, WorldOS::PageManager* pm = nullptr);
+    BasicVGA(const FrameBuffer& buffer, Position CursorPosition, const Colour& fgcolour, const Colour& bgcolour, bool double_buffer = false, WorldOS::PageManager* pm = nullptr);
     ~BasicVGA();
 
-    void Init(const FrameBuffer& buffer, Position CursorPosition, uint32_t fgcolour, uint32_t bgcolour, bool double_buffer = false, WorldOS::PageManager* pm = nullptr);
+    void Init(const FrameBuffer& buffer, Position CursorPosition, const Colour& fgcolour, const Colour& bgcolour, bool double_buffer = false, WorldOS::PageManager* pm = nullptr);
     bool HasBeenInitialised();
 
     void SetFrameBuffer(const FrameBuffer& fb);
     void SetCursorPosition(Position pos);
-    void SetForegroundColour(const uint32_t colour);
-    void SetBackgroundColour(const uint32_t colour);
+    void SetForegroundColour(const Colour& colour);
+    void SetBackgroundColour(const Colour& colour);
 
-    void ClearScreen(uint32_t colour);
-    void ClearScreen(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
-    void PlotPixel(uint64_t x, uint64_t y, uint32_t colour);
-    void PlotPixel(uint64_t x, uint64_t y, uint8_t a, uint8_t r, uint8_t g, uint8_t b);
+    void ClearScreen(const Colour& colour);
+    void PlotPixel(uint64_t x, uint64_t y, const Colour& colour);
 
     void NewLine();
     void Backspace();
@@ -51,8 +50,8 @@ public:
     Position GetCursorPosition();
     uint64_t GetScreenSizeBytes();
     FrameBuffer GetFrameBuffer();
-    uint32_t GetBackgroundColour();
-    uint32_t GetForegroundColour();
+    const Colour& GetBackgroundColour();
+    const Colour& GetForegroundColour();
     uint64_t GetAmountOfTextRows();
     uint64_t GetAmountOfTextColumns();
 
@@ -63,8 +62,8 @@ public:
 
 private:
     Position m_CursorPosition;
-    uint32_t m_bgcolour;
-    uint32_t m_fgcolour;
+    Colour m_bgcolour;
+    Colour m_fgcolour;
     FrameBuffer m_FrameBuffer;
     bool m_HasBeenInitialised;
     WorldOS::PageManager* m_pm;

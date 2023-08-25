@@ -1,6 +1,25 @@
 # Changes
 
-## Latest Changes - 16/08/2023
+## Latest Changes - 19/08/2023
+
+- Implemented support for panic register saving outside of interrupts/exceptions with a `x86_64_PrePanic` function
+- Added a `PANIC(reason)` macro for easier panic outside of interrupts/exceptions
+- Added a check inside `x86_64_Panic` to ensure we don't get a page fault due to a null panic reason
+
+## 18/08/2023 (Afternoon)
+
+- Removed unnecessary debug printing from `VirtualRegion` class
+- Added a global instance of the `VirtualPageManager` class for all address space
+- Fixed paging initialisation so ACPI memory map entries are not identity mapped
+
+## 18/08/2023
+
+- Added extra pixel information to the `Framebuffer` struct
+- Added a colour format class for better support with bits per pixel other than 32
+- Changed the `BasicVGA` class to use the `Colour` class with the new colour format support
+- Added support for 8, 16, 24, 40, 48, 56, 64 bits per pixel
+
+## 16/08/2023
 
 - Fixed ACPI tables code so all addresses are converted to HHDM addresses
 - Fixed `HAL_Stage2` so the PCI buses address is converted to a HHDM address

@@ -67,6 +67,7 @@ namespace WorldOS {
         VirtualRegion const* m_region;
     };
 
+    extern VirtualPageManager* g_VPM;
     extern VirtualPageManager* g_KVPM; // this is probably not the best place for this, but there are no other options
 }
 

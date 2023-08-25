@@ -28,9 +28,16 @@ struct x86_64_PanicArgs {
     bool type = false;
 };
 
+extern char const* g_panic_reason;
+
+#define PANIC(reason) __asm__ volatile ("movq %1, %0" : "=m" (g_panic_reason) : "p" (reason)); __asm__ volatile ("call x86_64_PrePanic")
+
 void x86_64_SetPanicVGADevice(BasicVGA* device);
 
 // reason = message to display, regs = registers at the time of error, type = the type of error (true for interrupt and false for other)
-void  __attribute__((noreturn)) x86_64_Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type = false);
+extern "C" void  __attribute__((noreturn)) x86_64_Panic(const char* reason, void* regs, const bool type = false);
+
+// message address should be placed on stack before call
+extern "C" void __attribute__((noreturn)) x86_64_PrePanic();
 
 #endif /* _KERNEL_PANIC_HPP */
