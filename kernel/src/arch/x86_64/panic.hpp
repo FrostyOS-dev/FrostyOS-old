@@ -30,7 +30,7 @@ struct x86_64_PanicArgs {
 
 extern char const* g_panic_reason;
 
-#define PANIC(reason) __asm__ volatile ("movq %1, %0" : "=m" (g_panic_reason) : "p" (reason)); __asm__ volatile ("call x86_64_PrePanic")
+#define PANIC(reason) __asm__ volatile ("movq %1, %0" : "=m" (g_panic_reason) : "p" (reason)); __asm__ volatile ("call x86_64_PrePanic"); __builtin_unreachable()
 
 void x86_64_SetPanicVGADevice(BasicVGA* device);
 
