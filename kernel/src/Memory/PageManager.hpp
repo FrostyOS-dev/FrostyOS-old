@@ -23,16 +23,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "PageObject.hpp"
 #include "Memory.hpp"
+#include "VirtualPageManager.hpp"
 
 namespace WorldOS {
 
     class PageManager {
     public:
         PageManager();
-        PageManager(void* virtual_region_start, size_t virtual_region_size, bool mode = false); // mode is false for supervisor and true for user
+        PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode); // mode is false for supervisor and true for user
         ~PageManager();
 
-        void InitPageManager(void* virtual_region_start, size_t virtual_region_size, bool mode = false); // Extra function for later initialisation. mode is false for supervisor and true for user
+        void InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode); // Extra function for later initialisation. mode is false for supervisor and true for user
         
         void* AllocatePage();
         void* AllocatePages(uint64_t count);
@@ -44,8 +45,8 @@ namespace WorldOS {
         PageObject* m_allocated_objects;
         uint64_t m_allocated_object_count;
         
-        void* m_Vregion_start;
-        size_t m_Vregion_size;
+        VirtualRegion m_Vregion;
+        VirtualPageManager* m_VPM; // uses a pointer to avoid wasted RAM
 
         bool m_mode;
 

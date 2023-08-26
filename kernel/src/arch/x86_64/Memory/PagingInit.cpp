@@ -166,7 +166,7 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     VAddressSpace = WorldOS::VirtualRegion((void*)0, (void*)(~UINT64_C(0)));
 
     // Setup kernel virtual MM
-    VPM.InitVPageMgr(nullptr, 0, nullptr, 0, nullptr, 0, VAddressSpace);
+    VPM.InitVPageMgr(VAddressSpace);
     WorldOS::VirtualRegion non_canonical((void*)0x10000000000000, (void*)0xFFF0000000000000);
     VPM.ReservePages(non_canonical.GetStart(), non_canonical.GetSize() >> 12); // reserve all non-canonical addresses
     VPM.ReservePage(nullptr); // reserve first page

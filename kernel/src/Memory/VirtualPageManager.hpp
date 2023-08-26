@@ -32,7 +32,8 @@ namespace WorldOS {
         VirtualPageManager();
         ~VirtualPageManager();
         void InitVPageMgr(MemoryMapEntry** MemoryMap, uint64_t MemoryMapEntryCount, void* kernel_virt_start, size_t kernel_size, void* fb_virt, uint64_t fb_size, const VirtualRegion& region);
-        
+        void InitVPageMgr(const VirtualRegion& region);
+
         void* FindFreePage();
         void* FindFreePages(uint64_t count);
 

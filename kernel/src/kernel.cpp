@@ -79,7 +79,7 @@ namespace WorldOS {
         uint64_t kernel_size = (uint64_t)_kernel_end_addr - (uint64_t)_text_start_addr;
 
         HAL_EarlyInit(params->MemoryMap, params->MemoryMapEntryCount, params->kernel_virtual_addr, params->kernel_physical_addr, kernel_size, params->hhdm_start_addr, m_InitialFrameBuffer);
-        KPM.InitPageManager((void*)(params->kernel_virtual_addr + kernel_size), UINT64_MAX - (params->kernel_virtual_addr + kernel_size), false);
+        KPM.InitPageManager(VirtualRegion((void*)(params->kernel_virtual_addr + kernel_size), (void*)UINT64_MAX), g_KVPM, false);
         g_KPM = &KPM;
         kmalloc_init();
 

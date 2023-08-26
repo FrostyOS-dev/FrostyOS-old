@@ -1,6 +1,14 @@
 # Changes
 
-## Latest Changes - 25/08/2023
+## Latest Changes - 26/08/2023
+
+- Fixed `VirtualPageManager::UnfreePages` function so it now can unfree pages with page counts that don't directly match a size
+- General VirtualPageManager cleanup
+- Switched PageManager to use a virtual region based system with a built in VirtualPageManager, making PageManager class more generic
+- Added an `InitVPageMgr` to the VirtualPageManager class for region-only initialisation
+- Changed `x86_64_InitPaging` to use the new initialisation function for the VPM
+
+## 25/08/2023
 
 - Changed `__assert_failed` to use new panic system
 - Changed PagingInit, PageManager and PhysicalPageFrameAllocator to use new panic system

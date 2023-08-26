@@ -27,27 +27,17 @@ namespace WorldOS {
 
     PageManager* g_KPM = nullptr;
 
-    PageManager::PageManager() {
-        m_allocated_objects = nullptr;
-        m_allocated_object_count = 0;
-        m_Vregion_size = 0;
-        m_Vregion_start = nullptr;
-        m_mode = false;
-        m_page_object_pool_used = false;
+    PageManager::PageManager() : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(), m_VPM(), m_mode(false), m_page_object_pool_used(false) {
+        
     }
 
-    PageManager::PageManager(void* virtual_region_start, size_t virtual_region_size, bool mode) {
-        InitPageManager(virtual_region_start, virtual_region_size, mode);
+    PageManager::PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode) : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(region), m_VPM(VPM), m_mode(mode), m_page_object_pool_used(false) {
+        if (!PageObjectPool_HasBeenInitialised())
+            PageObjectPool_Init();
     }
 
     PageManager::~PageManager() {
-        m_allocated_objects = nullptr;
-        m_allocated_object_count = 0;
-        m_Vregion_size = 0;
-        m_Vregion_start = nullptr;
-
-
-        // if page object pool was used then we call panic()
+        // if page object pool was used then we panic
         if (m_page_object_pool_used) {
             if (m_mode) {
                 PANIC("USER PageManager illegal destruction. PageManager cannot be destroyed if page object pool has been used.");
@@ -58,125 +48,122 @@ namespace WorldOS {
         }
     }
 
-    void PageManager::InitPageManager(void* virtual_region_start, size_t virtual_region_size, bool mode) {
-        m_Vregion_start = virtual_region_start;
-        m_Vregion_size = virtual_region_size;
+    void PageManager::InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode) {
+        m_allocated_objects = nullptr;
+        m_allocated_object_count = 0;
+        m_Vregion = region;
+        m_VPM = VPM;
         m_mode = mode;
+        m_page_object_pool_used = false;
         if (!PageObjectPool_HasBeenInitialised())
             PageObjectPool_Init();
     }
 
     void* PageManager::AllocatePage() {
+        if (m_mode)
+            return nullptr;
         void* phys_addr = g_PPFA->AllocatePage();
         if (phys_addr == nullptr)
             return nullptr;
-        if (!m_mode /* supervisor */) {
-            void* virt_addr = g_KVPM->AllocatePage();
-            if (virt_addr == nullptr) {
+        void* virt_addr = m_VPM->AllocatePage();
+        if (virt_addr == nullptr) {
+            g_PPFA->FreePage(phys_addr);
+            return nullptr;
+        }
+        PageObject* po = m_allocated_objects;
+        while (po != nullptr)
+            po = po->next;
+        if (NewDeleteInitialised())
+            po = new PageObject;
+        else {
+            po = PageObjectPool_Allocate();
+            m_page_object_pool_used = true;
+        }
+        if (po == nullptr) {
+            g_PPFA->FreePage(phys_addr);
+            m_VPM->UnallocatePage(virt_addr);
+            return nullptr;
+        }
+        PageObject_SetFlag(po, PO_ALLOCATED);
+        po->physical_address = phys_addr;
+        po->virtual_address = virt_addr;
+        po->page_count = 1;
+        if (m_allocated_object_count > 0) {
+            PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
+            if (previous == nullptr) {
+                if (PageObjectPool_IsInPool(po))
+                    PageObjectPool_Free(po);
+                else if (NewDeleteInitialised())
+                    delete po;
                 g_PPFA->FreePage(phys_addr);
+                m_VPM->UnallocatePage(virt_addr);
                 return nullptr;
-            }
-            PageObject* po = m_allocated_objects;
-            while (po != nullptr)
-                po = po->next;
-            if (NewDeleteInitialised())
-                po = new PageObject;
-            else {
-                po = PageObjectPool_Allocate();
-                m_page_object_pool_used = true;
-            }
-            if (po == nullptr) {
-                g_PPFA->FreePage(phys_addr);
-                g_KVPM->UnallocatePage(virt_addr);
-                return nullptr;
-            }
-            PageObject_SetFlag(po, PO_ALLOCATED);
-            po->physical_address = phys_addr;
-            po->virtual_address = virt_addr;
-            po->page_count = 1;
-            if (m_allocated_object_count > 0) {
-                PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-                if (previous == nullptr) {
-                    if (PageObjectPool_IsInPool(po))
-                        PageObjectPool_Free(po);
-                    else if (NewDeleteInitialised())
-                        delete po;
-                    g_PPFA->FreePage(phys_addr);
-                    g_KVPM->UnallocatePage(virt_addr);
-                    return nullptr;
-                }
-                else
-                    previous->next = po;
             }
             else
-                m_allocated_objects = po;
-            m_allocated_object_count++;
+                previous->next = po;
+        }
+        else
+            m_allocated_objects = po;
+        m_allocated_object_count++;
+        if (!m_mode /* supervisor */)
             MapPage(phys_addr, virt_addr, 0x8000003); // Read/Write, No execute, Present
-            return virt_addr;
-        }
-        else {
-            g_PPFA->FreePage(phys_addr);
-            return nullptr; // User mode, currently unsupported
-        }
-        return nullptr; // impossible position. only here to stop the compiler from complaining
+        return virt_addr;
     }
 
     void* PageManager::AllocatePages(uint64_t count) {
+        if (m_mode)
+            return nullptr;
         if (count == 1)
             return AllocatePage();
         void* phys_addr = g_PPFA->AllocatePages(count);
         if (phys_addr == nullptr)
             return nullptr;
-        if (!m_mode /* supervisor */) {
-            void* virt_addr = g_KVPM->AllocatePages(count);
-            if (virt_addr == nullptr) {
+        void* virt_addr = m_VPM->AllocatePages(count);
+        if (virt_addr == nullptr) {
+            g_PPFA->FreePages(phys_addr, count);
+            fprintf(VFS_DEBUG, "virt_addr == nullptr\n");
+            return nullptr;
+        }
+        PageObject* po = m_allocated_objects;
+        while (po != nullptr)
+            po = po->next;
+        if (NewDeleteInitialised())
+            po = new PageObject;
+        else {
+            po = PageObjectPool_Allocate();
+            m_page_object_pool_used = true;
+        }
+        if (po == nullptr) {
+            g_PPFA->FreePages(phys_addr, count);
+            m_VPM->UnallocatePages(virt_addr, count);
+            return nullptr;
+        }
+        PageObject_SetFlag(po, PO_ALLOCATED);
+        po->physical_address = phys_addr;
+        po->virtual_address = virt_addr;
+        po->page_count = count;
+        if (m_allocated_object_count > 0) {
+            PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
+            if (previous == nullptr) {
+                if (PageObjectPool_IsInPool(po))
+                    PageObjectPool_Free(po);
+                else if (NewDeleteInitialised())
+                    delete po;
                 g_PPFA->FreePages(phys_addr, count);
+                m_VPM->UnallocatePages(virt_addr, count);
                 return nullptr;
-            }
-            PageObject* po = m_allocated_objects;
-            while (po != nullptr)
-                po = po->next;
-            if (NewDeleteInitialised())
-                po = new PageObject;
-            else {
-                po = PageObjectPool_Allocate();
-                m_page_object_pool_used = true;
-            }
-            if (po == nullptr) {
-                g_PPFA->FreePages(phys_addr, count);
-                g_KVPM->UnallocatePages(virt_addr, count);
-                return nullptr;
-            }
-            PageObject_SetFlag(po, PO_ALLOCATED);
-            po->physical_address = phys_addr;
-            po->virtual_address = virt_addr;
-            po->page_count = count;
-            if (m_allocated_object_count > 0) {
-                PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-                if (previous == nullptr) {
-                    if (PageObjectPool_IsInPool(po))
-                        PageObjectPool_Free(po);
-                    else if (NewDeleteInitialised())
-                        delete po;
-                    g_PPFA->FreePages(phys_addr, count);
-                    g_KVPM->UnallocatePages(virt_addr, count);
-                    return nullptr;
-                }
-                else
-                    previous->next = po;
             }
             else
-                m_allocated_objects = po;
-            m_allocated_object_count++;
+                previous->next = po;
+        }
+        else
+            m_allocated_objects = po;
+        m_allocated_object_count++;
+        if (!m_mode /* supervisor */) {
             for (uint64_t i = 0; i < count; i++)
                 MapPage(phys_addr + i * 4096, virt_addr + i * 4096, 0x8000003); // Read/Write, No execute, Present
-            return virt_addr;
         }
-        else {
-            g_PPFA->FreePages(phys_addr, count);
-            return nullptr; // User mode, currently unsupported
-        }
-        return nullptr; // impossible position. only here to stop the compiler from complaining
+        return virt_addr;
     }
 
     void PageManager::FreePage(void* addr) {
@@ -184,7 +171,7 @@ namespace WorldOS {
         while (po != nullptr) {
             if (po->virtual_address == addr && po->page_count == 1) {
                 g_PPFA->FreePage(po->physical_address);
-                g_KVPM->UnallocatePage(addr);
+                m_VPM->UnallocatePage(addr);
                 UnmapPage(addr);
                 PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
                 if (previous != nullptr)
@@ -208,7 +195,7 @@ namespace WorldOS {
         while (po != nullptr) {
             if (po->virtual_address == addr && po->page_count > 1) {
                 g_PPFA->FreePages(po->physical_address, po->page_count);
-                g_KVPM->UnallocatePages(addr, po->page_count);
+                m_VPM->UnallocatePages(addr, po->page_count);
                 for (uint64_t i = 0; i < po->page_count; i++)
                     UnmapPage((void*)((uint64_t)addr + i * 0x1000));
                 PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
