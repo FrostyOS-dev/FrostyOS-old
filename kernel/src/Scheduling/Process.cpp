@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Scheduler.hpp"
 
+#include <Memory/VirtualPageManager.hpp>
+
 namespace Scheduling {
     Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr) {
 
@@ -29,9 +31,7 @@ namespace Scheduling {
     }
 
     Process::~Process() {
-        /*m_threads.remove(m_main_thread);
         delete m_main_thread;
-        m_main_thread_initialised = false;*/
     }
 
     void Process::SetEntry(ProcessEntry_t entry, void* entry_data) {
@@ -49,6 +49,14 @@ namespace Scheduling {
 
     void Process::SetPageManager(WorldOS::PageManager* pm) {
         m_pm = pm;
+    }
+
+    void Process::SetRegion(const WorldOS::VirtualRegion& region) {
+        m_region = region;
+    }
+
+    void Process::SetVirtualPageManager(WorldOS::VirtualPageManager* VPM) {
+        m_VPM = VPM;
     }
 
     ProcessEntry_t Process::GetEntry() const {
@@ -71,10 +79,24 @@ namespace Scheduling {
         return m_pm;
     }
 
+    const WorldOS::VirtualRegion& Process::GetRegion() const {
+        return m_region;
+    }
+
+    WorldOS::VirtualPageManager* Process::GetVirtualPageManager() const {
+        return m_VPM;
+    }
+
     void Process::Start() {
         if (m_main_thread_initialised)
             return;
         Scheduler::AddProcess(this);
+        if (m_flags & ALLOCATE_VIRTUAL_SPACE && m_pm == nullptr && m_VPM == nullptr) {
+            m_region = WorldOS::VirtualRegion(WorldOS::g_VPM->AllocatePages(MiB(16) >> 12), MiB(16));
+            m_VPM = new WorldOS::VirtualPageManager;
+            m_VPM->InitVPageMgr(m_region);
+            m_pm = new WorldOS::PageManager(m_region, m_VPM, m_Priority != Priority::KERNEL);
+        }
         m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags);
         m_threads.insert(m_main_thread);
         m_main_thread_initialised = true;

@@ -22,8 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stddef.h>
 
 #include <Memory/Memory.hpp>
-#include <stdio.hpp>
-#include <HAL/hal.hpp>
+#include <Graphics/Graphics.h>
 
 namespace WorldOS {
 

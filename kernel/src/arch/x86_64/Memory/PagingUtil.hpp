@@ -23,7 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // Defined in NASM Source file
 
 extern "C" void x86_64_FlushTLB();
-extern "C" void x86_64_LoadCR3(uint64_t value, uint64_t DEBUG);
+extern "C" void x86_64_LoadCR3(uint64_t value);
 extern "C" uint64_t x86_64_GetCR3();
 extern "C" uint64_t x86_64_GetCR2();
 

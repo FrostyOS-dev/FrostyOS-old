@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "FileStream.hpp"
 
 #include <assert.h>
-#include <stdio.hpp>
+#include <stdio.h>
 #include <string.h>
 #include <util.h>
 

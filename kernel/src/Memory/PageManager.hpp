@@ -27,19 +27,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace WorldOS {
 
+    enum class PagePermissions {
+        READ,
+        WRITE,
+        EXECUTE,
+        READ_WRITE,
+        READ_EXECUTE
+    };
+
     class PageManager {
     public:
         PageManager();
-        PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode); // mode is false for supervisor and true for user
+
+        /* mode is false for supervisor and true for user. auto_expand allows the page manager to try and expand the virtual region for user page managers. */
+        PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false);
         ~PageManager();
 
-        void InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode); // Extra function for later initialisation. mode is false for supervisor and true for user
+        void InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false); // Extra function for later initialisation. mode is false for supervisor and true for user
         
-        void* AllocatePage();
-        void* AllocatePages(uint64_t count);
+        void* AllocatePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
+        void* AllocatePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
 
         void FreePage(void* addr);
         void FreePages(void* addr);
+
+        bool ExpandVRegionToRight(size_t new_size);
 
     private:
         PageObject* m_allocated_objects;
@@ -51,6 +63,8 @@ namespace WorldOS {
         bool m_mode;
 
         bool m_page_object_pool_used;
+
+        bool m_auto_expand;
     };
 
     extern PageManager* g_KPM;

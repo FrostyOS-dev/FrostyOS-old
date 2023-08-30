@@ -47,25 +47,31 @@ namespace WorldOS {
 
         void* AllocatePage();
         void* AllocatePages(uint64_t count);
+        void* AllocatePage(void* addr);
+        void* AllocatePages(void* addr, uint64_t count);
         void UnallocatePage(void* addr);
         void UnallocatePages(void* addr, uint64_t count);
 
+        const VirtualRegion& GetVirtualRegion() const;
+
+        bool AttemptToExpandRight(size_t new_size);
+
     private:
-        void LockPage(void* addr);
-        void LockPages(void* addr, uint64_t count);
+        void LockPage(void* addr, bool unfree = true);
+        void LockPages(void* addr, uint64_t count, bool unfree = true);
         void UnlockPage(void* addr);
         void UnlockPages(void* addr, uint64_t count);
         void FreePage(void* addr);
         void FreePages(void* addr, uint64_t count);
-        void UnfreePage(void* addr);
-        void UnfreePages(void* addr, uint64_t count);
+        bool UnfreePage(void* addr);
+        bool UnfreePages(void* addr, uint64_t count);
     private:
         uint64_t m_FreePagesCount;
         AVLTree::Node* m_FreePagesSizeTree;
         AVLTree::Node* m_ReservedANDUsedPages; // highest bit in extra data determines if it reserved (1) or used (0)
         uint64_t m_ReservedPagesCount;
         uint64_t m_UsedPagesCount;
-        VirtualRegion const* m_region;
+        VirtualRegion m_region;
     };
 
     extern VirtualPageManager* g_VPM;

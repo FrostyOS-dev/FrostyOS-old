@@ -27,6 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <arch/x86_64/Memory/PagingInit.hpp>
 
+#include <arch/x86_64/Scheduling/syscall.h>
+
 #include "drivers/ACPI/RSDP.hpp"
 #include "drivers/ACPI/XSDT.hpp"
 #include "drivers/ACPI/MCFG.hpp"
@@ -39,7 +41,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <tty/TTY.hpp>
 
 #include <assert.h>
-#include <stdio.hpp>
+#include <stdio.h>
 #include <string.h>
 
 #include <Memory/PagingUtil.hpp>
@@ -87,6 +89,9 @@ namespace WorldOS {
             fprintf(VFS_DEBUG, "PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
             device = PCI::PCIDeviceList::GetPCIDevice(i);
         }
+
+        assert(x86_64_IsSystemCallSupported());
+        assert(x86_64_EnableSystemCalls(0x8, 0x18, x86_64_HandleSystemCall));
     }
 
 }

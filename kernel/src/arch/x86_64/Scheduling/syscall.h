@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2023  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,14 +15,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "assert.h"
+#ifndef _X86_64_SYSCALL_H
+#define _X86_64_SYSCALL_H
 
-#include <HAL/hal.hpp>
+#include <stdint.h>
 
-#include <stdio.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern __attribute__((noreturn)) void __assert_fail(const char* assertion, const char* file, unsigned int line, const char* function) {
-    // FIXME: change this function call so it outputs to stderr once that works properly
-    fprintf(VFS_DEBUG, "Assertion failed: \"%s\", file %s, line %u, function \"%s\"\n", assertion, file, line, function);
-    PANIC("Assertion failed. See debug log for more info.");
+
+bool x86_64_IsSystemCallSupported();
+
+uint64_t x86_64_HandleSystemCall();
+
+bool x86_64_EnableSystemCalls(uint16_t kernel_code_segment, uint16_t user_code_segment, uint64_t (*handler)(void));
+
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* _X86_64_SYSCALL_H */

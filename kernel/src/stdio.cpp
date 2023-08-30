@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "stdio.hpp"
+#include "stdio.h"
 
 #include <stdbool.h>
 
@@ -23,12 +23,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <tty/TTY.hpp>
 
-void putc(const char c) {
+#include <HAL/vfs.hpp>
+
+extern "C" void putc(const char c) {
     g_CurrentTTY->putc(c);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
-void puts(const char* str) {
+extern "C" void puts(const char* str) {
     g_CurrentTTY->puts(str);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
@@ -57,11 +59,11 @@ void internal_fputs(const fd_t file, const char* str, bool swap) {
         VFS_write(file, (uint8_t*)str, strlen(str));
 }
 
-void fputc(const fd_t file, const char c) {
+extern "C" void fputc(const fd_t file, const char c) {
     internal_fputc(file, c, true);
 }
 
-void fputs(const fd_t file, const char* str) {
+extern "C" void fputs(const fd_t file, const char* str) {
     internal_fputs(file, str, true);
 }
 
@@ -104,7 +106,7 @@ void fprintf_signed(const fd_t file, int64_t number, uint8_t radix) {
     else fprintf_unsigned(file, number, radix);
 }
 
-void vfprintf(const fd_t file, const char* format, va_list args) {
+extern "C" void vfprintf(const fd_t file, const char* format, va_list args) {
     int state = PRINTF_STATE_NORMAL;
     int length = PRINTF_LENGTH_DEFAULT;
     uint8_t radix = 10;
@@ -253,7 +255,7 @@ void vfprintf(const fd_t file, const char* format, va_list args) {
     }
 }
 
-void fprintf(const fd_t file, const char* format, ...) {
+extern "C" void fprintf(const fd_t file, const char* format, ...) {
     va_list args;
     va_start(args, format);
     vfprintf(file, format, args);
@@ -262,7 +264,7 @@ void fprintf(const fd_t file, const char* format, ...) {
         g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
-void printf(const char* format, ...) {
+extern "C" void printf(const char* format, ...) {
     va_list args;
     va_start(args, format);
     vfprintf(VFS_STDOUT, format, args);
@@ -270,12 +272,12 @@ void printf(const char* format, ...) {
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
-void vprintf(const char* format, va_list args) {
+extern "C" void vprintf(const char* format, va_list args) {
     vfprintf(VFS_STDOUT, format, args);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
-void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file) {
+extern "C" void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file) {
     uint8_t* out = (uint8_t*)ptr;
 
     for (uint64_t i = 0; i < count; i+=size) {

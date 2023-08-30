@@ -34,7 +34,7 @@ size_t g_kernel_length = 0;
 
 void* g_HHDM_start = nullptr;
 
-#include <stdio.hpp>
+#include <stdio.h>
 #include <util.h>
 
 #include <Memory/PhysicalPageFrameAllocator.hpp>

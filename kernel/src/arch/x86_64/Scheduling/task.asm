@@ -134,3 +134,55 @@ x86_64_kernel_thread_end:
     xor rbp, rbp
     push rax
     ret
+
+global x86_64_enter_user
+x86_64_enter_user:
+    cli ; disable interrupts
+
+    mov rdx, rdi
+    mov eax, edx
+    shr rdx, 32
+    mov rcx, 0xc0000102
+    wrmsr ; load structure address into Kernel GS Base
+
+    mov rbx, QWORD [rdi+8]   ; load rbx
+    mov rdx, QWORD [rdi+24]  ; load rdx
+    mov rsi, QWORD [rdi+32]  ; load rsi
+    mov rbp, QWORD [rdi+56]  ; load rbp
+    mov  r8, QWORD [rdi+64]  ; load r8
+    mov  r9, QWORD [rdi+72]  ; load r9
+    mov r10, QWORD [rdi+80]  ; load r10
+    mov r12, QWORD [rdi+96]  ; load r12
+    mov r13, QWORD [rdi+104] ; load r13
+    mov r14, QWORD [rdi+112] ; load r14
+    mov r15, QWORD [rdi+120] ; load r15
+
+    mov rax, QWORD [rdi+148]
+    mov cr3, rax ; load CR3
+
+    mov rsp, QWORD [rdi+48] ; load rsp
+
+    mov ax, WORD [rdi+138] ; load segment
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    mov r11, QWORD [rdi+140] ; load RFLAGS
+    mov rcx, QWORD [rdi+128] ; load RIP
+    
+    mov rax, QWORD [rdi] ; load rax
+    mov rdi, QWORD [rdi+40] ; load rdi
+
+    o64 sysret
+
+global x86_64_set_kernel_gs_base
+x86_64_set_kernel_gs_base:
+    xor rax, rax
+    xor rdx, rdx
+    mov eax, edi
+    shr rdi, 32
+    mov edx, edi
+    mov rcx, 0xc0000102
+    wrmsr
+    ret

@@ -31,13 +31,14 @@ namespace Scheduling {
 
     class Thread {
     public:
-        Thread(Process* parent, ThreadEntry_t entry = nullptr, void* entry_data = nullptr, uint8_t flags = THREAD_USER_DEFAULT);
+        Thread(Process* parent, ThreadEntry_t entry = nullptr, void* entry_data = nullptr, uint8_t flags = THREAD_USER_DEFAULT, uint64_t kernel_stack = 0);
         ~Thread();
 
         void SetEntry(ThreadEntry_t entry, void* entry_data);
         void SetFlags(uint8_t flags);
         void SetParent(Process* parent);
         void SetStack(uint64_t stack);
+        void SetKernelStack(uint64_t kernel_stack);
 
         ThreadEntry_t GetEntry() const;
         void* GetEntryData() const;
@@ -45,6 +46,7 @@ namespace Scheduling {
         Process* GetParent() const;
         CPU_Registers* GetCPURegisters() const;
         uint64_t GetStack() const;
+        uint64_t GetKernelStack() const;
 
         void Start();
 
@@ -54,7 +56,10 @@ namespace Scheduling {
         void* m_entry_data;
         uint8_t m_flags;
         uint64_t m_stack;
-        mutable CPU_Registers m_regs;
+        mutable struct Register_Frame {
+            CPU_Registers regs;
+            uint64_t kernel_stack;
+        } __attribute__((packed)) m_regs;
     };
 }
 

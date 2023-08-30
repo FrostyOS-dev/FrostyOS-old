@@ -38,14 +38,17 @@ namespace Scheduling {
         void __attribute__((noreturn)) Start();
 
         void __attribute__((noreturn)) Next();
+        void Next(void* iregs);
         void __attribute__((noreturn)) Next(Thread* thread);
 
         // Called when a thread ends. Responsible for cleanup
         void End();
 
+        void PickNext();
+
         Thread* GetCurrent();
 
-        void TimerTick(); // Only to be called in timer IRQ
+        void TimerTick(void* iregs); // Only to be called in timer IRQ
 
         bool isRunning();
 

@@ -25,6 +25,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Data-structures/LinkedList.hpp>
 
 #include <Memory/PageManager.hpp>
+#include <Memory/VirtualRegion.hpp>
+#include <Memory/VirtualPageManager.hpp>
 
 namespace Scheduling {
     class Thread;
@@ -53,12 +55,16 @@ namespace Scheduling {
         void SetPriority(Priority priority);
         void SetFlags(uint8_t flags);
         void SetPageManager(WorldOS::PageManager* pm);
+        void SetRegion(const WorldOS::VirtualRegion& region);
+        void SetVirtualPageManager(WorldOS::VirtualPageManager* VPM);
 
         ProcessEntry_t GetEntry() const;
         void* GetEntryData() const;
         Priority GetPriority() const;
         uint8_t GetFlags() const;
         WorldOS::PageManager* GetPageManager() const;
+        const WorldOS::VirtualRegion& GetRegion() const;
+        WorldOS::VirtualPageManager* GetVirtualPageManager() const;
 
         void Start();
         void ScheduleThread(Thread* thread);
@@ -72,6 +78,8 @@ namespace Scheduling {
         bool m_main_thread_initialised;
         LinkedList::SimpleLinkedList<Thread> m_threads;
         Thread* m_main_thread;
+        WorldOS::VirtualRegion m_region;
+        WorldOS::VirtualPageManager* m_VPM;
     };
 }
 

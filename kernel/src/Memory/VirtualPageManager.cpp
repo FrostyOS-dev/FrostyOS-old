@@ -251,7 +251,7 @@ namespace WorldOS {
 
     /* Public Methods */
 
-    VirtualPageManager::VirtualPageManager() : m_FreePagesCount(0), m_FreePagesSizeTree(nullptr), m_ReservedANDUsedPages(nullptr), m_ReservedPagesCount(0), m_UsedPagesCount(0), m_region(nullptr) {
+    VirtualPageManager::VirtualPageManager() : m_FreePagesCount(0), m_FreePagesSizeTree(nullptr), m_ReservedANDUsedPages(nullptr), m_ReservedPagesCount(0), m_UsedPagesCount(0) {
         // do nothing. just here so the compiler doesn't complain
     }
 
@@ -265,20 +265,20 @@ namespace WorldOS {
             AVLTree::NodePool_Init();
         if (!LinkedList::NodePool_HasBeenInitialised())
             LinkedList::NodePool_Init();
-        m_region = &region;
-        FreePages(m_region->GetStart(), m_region->GetSize() >> 12);
+        m_region = region;
+        FreePages(m_region.GetStart(), m_region.GetSize() >> 12);
         for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
             MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)MemoryMap + (i * MEMORY_MAP_ENTRY_SIZE));
-            if ((entry->type == WORLDOS_MEMORY_ACPI_NVS || entry->type == WORLDOS_MEMORY_ACPI_RECLAIMABLE) && m_region->IsInside((void*)(entry->Address), entry->length)) {
+            if ((entry->type == WORLDOS_MEMORY_ACPI_NVS || entry->type == WORLDOS_MEMORY_ACPI_RECLAIMABLE) && m_region.IsInside((void*)(entry->Address), entry->length)) {
                 uint64_t page_length = (((entry->length % 4096) > 0) ? ((entry->length / 4096) + 1) : (entry->length / 4096));
                 ReservePages((void*)entry->Address, page_length);
             }
         }
-        if (m_region->IsInside(kernel_virt_start, kernel_size)) {
+        if (m_region.IsInside(kernel_virt_start, kernel_size)) {
             kernel_size += 4095; // ensure none of the kernel isn't accounted for
             LockPages(kernel_virt_start, kernel_size / 4096);
         }
-        if (m_region->IsInside(fb_virt, fb_size)) {
+        if (m_region.IsInside(fb_virt, fb_size)) {
             fb_size += 4095;
             LockPages(fb_virt, fb_size / 4096);
         }
@@ -289,8 +289,8 @@ namespace WorldOS {
             AVLTree::NodePool_Init();
         if (!LinkedList::NodePool_HasBeenInitialised())
             LinkedList::NodePool_Init();
-        m_region = &region;
-        FreePages(m_region->GetStart(), m_region->GetSize() >> 12);
+        m_region = region;
+        FreePages(m_region.GetStart(), m_region.GetSize() >> 12);
     }
 
     void* VirtualPageManager::FindFreePage() {
@@ -354,7 +354,7 @@ namespace WorldOS {
 
     void VirtualPageManager::ReservePages(void* addr, uint64_t count) {
         size_t length = count << 12;
-        if (!m_region->EnsureIsInside(addr, length))
+        if (!m_region.EnsureIsInside(addr, length))
             return;
         count = length >> 12;
         uint64_t addr_i = (uint64_t)addr;
@@ -366,7 +366,7 @@ namespace WorldOS {
             return; // ignore request if entry with same address already exists
         AVLTree::insert(m_ReservedANDUsedPages, addr_i, (count | (UINT64_C(1) << 63)));
         m_ReservedPagesCount += count;
-        UnfreePages(addr, count);
+        (void)UnfreePages(addr, count);
     }
 
     void VirtualPageManager::UnreservePage(void* addr) {
@@ -375,7 +375,7 @@ namespace WorldOS {
 
     void VirtualPageManager::UnreservePages(void* addr, uint64_t count) {
         size_t length = count << 12;
-        if (!m_region->EnsureIsInside(addr, length))
+        if (!m_region.EnsureIsInside(addr, length))
             return;
         if (count == 0)
             return;
@@ -416,6 +416,21 @@ namespace WorldOS {
         return mem;
     }
 
+    // Allocate 1 memory page at requested address
+    void* VirtualPageManager::AllocatePage(void* addr) {
+        return AllocatePages(addr, 1);
+    }
+
+    // Allocate requested amount of pages at requested address. Returns nullptr if address is invalid.
+    void* VirtualPageManager::AllocatePages(void* addr, uint64_t count) {
+        if (count == 0 || !m_region.IsInside(addr, count << 12))
+            return nullptr;
+        if (!UnfreePages(addr, count))
+            return nullptr;
+        LockPages(addr, count, false);
+        return addr;
+    }
+
     void VirtualPageManager::UnallocatePage(void* addr) {
         UnallocatePages(addr, 1);
     }
@@ -424,15 +439,29 @@ namespace WorldOS {
         UnlockPages(addr, count);
     }
 
-    /* Private Methods */
-
-    void VirtualPageManager::LockPage(void* addr) {
-        LockPages(addr, 1);
+    const VirtualRegion& VirtualPageManager::GetVirtualRegion() const {
+        return m_region;
     }
 
-    void VirtualPageManager::LockPages(void* addr, uint64_t count) {
+    bool VirtualPageManager::AttemptToExpandRight(size_t new_size) {
+        if (new_size < m_region.GetSize())
+            return false;
+        void* old_end = m_region.GetEnd();
+        uint64_t extra_count = (new_size - m_region.GetSize()) >> 12;
+        m_region.ExpandRight(new_size);
+        FreePages(old_end, extra_count);
+        return true;
+    }
+
+    /* Private Methods */
+
+    void VirtualPageManager::LockPage(void* addr, bool unfree) {
+        LockPages(addr, 1, unfree);
+    }
+
+    void VirtualPageManager::LockPages(void* addr, uint64_t count, bool unfree) {
         size_t length = count << 12;
-        if (!m_region->EnsureIsInside(addr, length))
+        if (!m_region.EnsureIsInside(addr, length))
             return;
         count = length >> 12;
         uint64_t addr_i = (uint64_t)addr;
@@ -443,8 +472,9 @@ namespace WorldOS {
         if (node != nullptr)
             return; // ignore request if entry with same address already exists
         AVLTree::insert(m_ReservedANDUsedPages, addr_i, (count & ~(UINT64_C(1) << 63)));
-        m_FreePagesCount += count;
-        UnfreePages((void*)addr_i, count);
+        m_UsedPagesCount += count;
+        if (unfree)
+            (void)UnfreePages((void*)addr_i, count);
     }
 
     void VirtualPageManager::UnlockPage(void* addr) {
@@ -453,7 +483,7 @@ namespace WorldOS {
 
     void VirtualPageManager::UnlockPages(void* addr, uint64_t count) {
         size_t length = count << 12;
-        if (!m_region->EnsureIsInside(addr, length))
+        if (!m_region.EnsureIsInside(addr, length))
             return;
         count = length >> 12;
         uint64_t addr_i = (uint64_t)addr;
@@ -475,8 +505,9 @@ namespace WorldOS {
     // Mark pages as free
     void VirtualPageManager::FreePages(void* addr, uint64_t count) {
         size_t length = count << 12;
-        if (!m_region->EnsureIsInside(addr, length))
+        if (!m_region.EnsureIsInside(addr, length))
             return;
+        count = length >> 12;
         if (count == 0)
             return;
         uint64_t addr_i = (uint64_t)addr;
@@ -492,78 +523,82 @@ namespace WorldOS {
         m_FreePagesCount += count;
     }
 
-    void VirtualPageManager::UnfreePage(void* addr) {
-        UnfreePages(addr, 1);
+    bool VirtualPageManager::UnfreePage(void* addr) {
+        return UnfreePages(addr, 1);
     }
 
-    void VirtualPageManager::UnfreePages(void* addr, uint64_t count) {
+    bool VirtualPageManager::UnfreePages(void* addr, uint64_t count) {
         size_t length = count << 12;
-        if (!m_region->EnsureIsInside(addr, length))
-            return;
+        if (!m_region.EnsureIsInside(addr, length))
+            return false;
         count = length >> 12;
         uint64_t addr_i = (uint64_t)addr;
         if (count == 0)
-            return;
-        AVLTree::Node* node = nullptr;
-        node = AVLTree::findNodeOrHigher(m_FreePagesSizeTree, count);
-        if (node == nullptr)
-            return; // pages are already not free, so just return
-        LinkedList::Node* list = (LinkedList::Node*)node->extraData;
-        LinkedList::Node* sub_node = LinkedList::findNode(list, addr_i);
-        if (sub_node == nullptr) {
-            VirtualRegion region;
-            sub_node = list;
-            while (sub_node != nullptr) {
-                using namespace LinkedList;
-                region = VirtualRegion((void*)(sub_node->data), node->key << 12);
-                if (region.IsInside(addr, length)) {
-                    if (addr > region.GetStart()) {
-                        size_t new_count = (addr_i - sub_node->data) >> 12;
-                        m_FreePagesCount -= new_count;
-                        FreePages((void*)(sub_node->data), new_count);
-                        region.SetStart(addr);
-                    }
+            return false;
+        AVLTree::Node* node = AVLTree::findNodeOrHigher(m_FreePagesSizeTree, count);
+        uint64_t i_count = count;
+        bool found = false;
+        bool correct = false;
+        while (node != nullptr && !found) {
+            LinkedList::Node* list = (LinkedList::Node*)node->extraData;
+            LinkedList::Node* sub_node = LinkedList::findNode(list, addr_i);
+            if (sub_node == nullptr) {
+                VirtualRegion region;
+                sub_node = list;
+                while (sub_node != nullptr) {
+                    using namespace LinkedList;
+                    region = VirtualRegion((void*)(sub_node->data), node->key << 12);
+                    AVLTree::Node* new_node = node;
+                    if (region.IsInside(addr, length)) {
+                        if (addr > region.GetStart()) {
+                            m_FreePagesSizeTree = Internal_SplitFreeBlock(m_FreePagesSizeTree, region.GetStart(), node->key, (addr_i - sub_node->data) >> 12);
+                            region.SetStart(addr);
+                            new_node = AVLTree::findNodeOrHigher(m_FreePagesSizeTree, region.GetSize() >> 12);
+                        }
 
-                    if (length < region.GetSize()) {
-                        uint64_t new_addr_i = addr_i + length;
-                        size_t new_count = ((uint64_t)region.GetEnd() - new_addr_i) >> 12;
-                        m_FreePagesCount -= new_count;
-                        FreePages((void*)new_addr_i, new_count);
+                        if (length < region.GetSize()) {
+                            
+                            m_FreePagesSizeTree = Internal_SplitFreeBlock(m_FreePagesSizeTree, region.GetStart(), new_node->key, count);
+                            region.ExpandRight(region.GetSize() - length);
+                        }
+                        found = true;
+                        break;
                     }
-
-                    if (sub_node->next != nullptr)
-                        sub_node->next->previous = sub_node->previous;
-                    if (sub_node->previous != nullptr)
-                        sub_node->previous->next = sub_node->next;
-                    if (sub_node == list)
-                        list = nullptr;
-                    if (NodePool_IsInPool(sub_node))
-                        NodePool_FreeNode(sub_node);
-                    else if (NewDeleteInitialised())
-                        delete sub_node;
-                    break;
+                    sub_node = sub_node->next;
                 }
-                sub_node = sub_node->next;
             }
+            else { // perfect address match
+                if (node->key > count)
+                    m_FreePagesSizeTree = Internal_SplitFreeBlock(m_FreePagesSizeTree, addr, node->key, count);
+                else { // perfect match
+                    LinkedList::deleteNode(list, sub_node);
+                    found = true;
+                    correct = true;
+                }
+            }
+            i_count = node->key + 1;
+            if (list == nullptr)
+                AVLTree::deleteNode(m_FreePagesSizeTree, node->key);
+            else
+                node->extraData = (uint64_t)list;
+            node = AVLTree::findNodeOrHigher(m_FreePagesSizeTree, i_count);
         }
-        else {
-            using namespace LinkedList;
-            if (sub_node->next != nullptr)
-                sub_node->next->previous = sub_node->previous;
-            if (sub_node->previous != nullptr)
-                sub_node->previous->next = sub_node->next;
-            if (sub_node == list)
-                list = nullptr;
-            if (NodePool_IsInPool(sub_node))
-                NodePool_FreeNode(sub_node);
-            else if (NewDeleteInitialised())
-                delete sub_node;
+        if (!correct && found) {
+            node = AVLTree::findNode(m_FreePagesSizeTree, count);
+            if (node == nullptr)
+                return false;
+            LinkedList::Node* list = (LinkedList::Node*)node->extraData;
+            if (list == nullptr)
+                return false;
+            LinkedList::Node* sub_node = LinkedList::findNode(list, addr_i);
+            if (sub_node == nullptr) // we should have found and split the block by now
+                return false;
+            LinkedList::deleteNode(list, sub_node);
+            found = true;
         }
-        if (list == nullptr)
-            AVLTree::deleteNode(m_FreePagesSizeTree, count);
-        else
-            node->extraData = (uint64_t)list;
-        m_FreePagesCount -= count;
+        if (found)
+            m_FreePagesCount -= count;
+        return found;
     }
 
     VirtualPageManager* g_VPM = nullptr;

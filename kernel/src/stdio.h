@@ -15,14 +15,26 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _STDIO_HPP
-#define _STDIO_HPP
+#ifndef _STDIO_H
+#define _STDIO_H
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdarg.h>
 
-#include <HAL/vfs.hpp>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum OUT_TYPES {
+    VFS_STDIN            = 0,
+    VFS_STDOUT           = 1,
+    VFS_STDERR           = 2, // same as STDOUT for now
+    VFS_DEBUG            = 3,
+    VFS_DEBUG_AND_STDOUT = 4,
+};
+
+typedef uint8_t fd_t;
 
 void putc(const char c);
 inline void putchar(const char c) { putc(c); };
@@ -38,4 +50,9 @@ void vfprintf(const fd_t file, const char* format, va_list args);
 
 void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file);
 
-#endif /* _STDIO_HPP */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _STDIO_H */

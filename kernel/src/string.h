@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _CSTR_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,7 +29,10 @@ extern "C" {
 #define NULL ((void*)0)
 #endif
 
-// memcpy, memset, memcmp and memmove can be found in util.h
+void* memset(void* dst, const uint8_t value, const size_t n);
+void* memcpy(void* dst, const void* src, const size_t n);
+void* memmove(void* dst, const void* src, const size_t n);
+int memcmp(const void* s1, const void* s2, const size_t n);
 
 size_t strlen(const char* str);
 

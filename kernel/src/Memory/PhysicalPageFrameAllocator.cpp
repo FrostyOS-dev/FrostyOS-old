@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "PhysicalPageFrameAllocator.hpp"
 
 #include <util.h>
-#include <stdio.hpp>
+#include <stdio.h>
 
 
 #include <HAL/hal.hpp>

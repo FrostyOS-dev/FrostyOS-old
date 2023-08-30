@@ -27,7 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../Stack.hpp"
 #include "../io.h"
 
-#include <stdio.hpp>
+#include <stdio.h>
 
 WorldOS::PhysicalPageFrameAllocator PPFA;
 WorldOS::VirtualPageManager KVPM;
@@ -156,7 +156,7 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     fast_memset((void*)&cr3_layout, 0, sizeof(CR3Layout) / 8);
     cr3_layout.Address = PML4_phys >> 12;
 
-    x86_64_LoadCR3(*((uint64_t*)&cr3_layout), kernel_physical); // will flush the TLB, so it does not need to be done earlier
+    x86_64_LoadCR3(*((uint64_t*)&cr3_layout)); // will flush the TLB, so it does not need to be done earlier
 
     // Fully initialise physical MM
     PPFA.FullInit(MemoryMap[0], MMEntryCount, g_MemorySize);
@@ -167,8 +167,7 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
 
     // Setup kernel virtual MM
     VPM.InitVPageMgr(VAddressSpace);
-    WorldOS::VirtualRegion non_canonical((void*)0x10000000000000, (void*)0xFFF0000000000000);
-    VPM.ReservePages(non_canonical.GetStart(), non_canonical.GetSize() >> 12); // reserve all non-canonical addresses
+    VPM.ReservePages((void*)0x800000000000, 0xFFFF000000000); // reserve all non-canonical addresses (0x800000000000-0xFFFF7FFFFFFFFFFF)
     VPM.ReservePage(nullptr); // reserve first page
     VPM.ReservePages((void*)HHDM_start, 0x100000000); // Reserve from HHDM_start to HHDM_start + 0x100000000000
     VPM.ReservePages((void*)kernel_virtual, DIV_ROUNDUP((KVRegion.GetSize() + kernel_size), 0x1000)); // reserve kernel address space

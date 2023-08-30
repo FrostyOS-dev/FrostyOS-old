@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _LINKED_LIST_HPP
 
 #include <stdint.h>
-#include <stdio.hpp>
+#include <stdio.h>
 #include <assert.h>
 
 namespace LinkedList {
@@ -55,8 +55,11 @@ namespace LinkedList {
 	// Delete a node
 	void deleteNode(Node*& head, uint64_t key);
 
+	// Delete a specific node
+	void deleteNode(Node*& head, Node* node);
+
 	// print the Linked list
-	void print(Node* head);
+	void fprint(fd_t file, Node* head);
 
 	template <typename T> class SimpleLinkedList {
 	public:

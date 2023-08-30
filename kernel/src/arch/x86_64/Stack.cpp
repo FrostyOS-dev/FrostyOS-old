@@ -23,7 +23,7 @@ unsigned long int kernel_stack_size = KERNEL_STACK_SIZE;
 }
 
 #include <stdint.h>
-#include <stdio.hpp>
+#include <stdio.h>
 
 #include "ELFSymbols.hpp"
 

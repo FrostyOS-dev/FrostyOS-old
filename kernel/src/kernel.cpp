@@ -41,6 +41,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fs/VFS.hpp>
 #include <fs/initramfs.hpp>
 
+#include <SystemCalls/SystemCall.hpp>
+
 namespace WorldOS {
 
     FrameBuffer m_InitialFrameBuffer;
@@ -130,6 +132,8 @@ namespace WorldOS {
         Initialise_InitRAMFS(params->initramfs_addr, params->initramfs_size);
 
         fputs(VFS_DEBUG, "Initial RAMFS initialised.\n");
+
+        SystemCallInit();
 
         while (true) {
             

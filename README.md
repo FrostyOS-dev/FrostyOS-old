@@ -17,13 +17,23 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 26/08/2023
+## Latest Changes - 30/08/2023
 
-- Fixed `VirtualPageManager::UnfreePages` function so it now can unfree pages with page counts that don't directly match a size
-- General VirtualPageManager cleanup
-- Switched PageManager to use a virtual region based system with a built in VirtualPageManager, making PageManager class more generic
-- Added an `InitVPageMgr` to the VirtualPageManager class for region-only initialisation
-- Changed `x86_64_InitPaging` to use the new initialisation function for the VPM
+- Renamed `stdio.hpp` to `stdio.h` and marked all functions as `extern "C"`
+- Added `memset`, `memcpy`, `memmove` and `memcmp` declarations to `string.h`
+- Removed unnecessary includes from `kernel.hpp`
+- Improved `VirtualPageManager::Unfree` function so it should now support all possible scenarios
+- Added fixed address allocation to the VirtualPageManager and PageManager
+- Added proper mapping permission support to PageManager with user support
+- Added region expansion support to the VirtualPageManager and PageManager
+- Added region automatic expansion support for user PageManagers
+- Added multiple privilege level support to the Scheduler with the standard kernel priority and 3 different user priorities: LOW, NORMAL, HIGH. Each privilege level gets 80% more CPU time than the level below it. If there are no tasks at a certain level, the level below gets that rotation
+- Added basic system call support. Currently all 64 system calls just redirect to the same function which just prints the number and the arguments. The system call number is placed in `rax` and the arguments are parsed in `rdi`, `rsi` and `rdx`, return value is in `rax` (just like the System V x86_64 calling convention).
+- Added virtual region allocation support to the Process class. Currently, 16MiB is allocated, but this is not the preferred method for allocation
+- Added basic ELF executable loading and execution. Currently, relocation is not support.
+- Added a `LinkedList::deleteNode` function that can delete a specific node, instead of finding it based off its data.
+- Removed unused debugging argument from `x86_64_LoadCR3` function.
+- Updated `x86_64_InitPaging` function so it reserves all of non-canonical address space instead of a small section.
 
 ## Resources used
 

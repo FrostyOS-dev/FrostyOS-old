@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _KERNEL_VIRTUAL_MEMORY_REGION_HPP
 #define _KERNEL_VIRTUAL_MEMORY_REGION_HPP
 
-#include <stdio.hpp>
+#include <stdio.h>
 #include <stddef.h>
 
 namespace WorldOS {

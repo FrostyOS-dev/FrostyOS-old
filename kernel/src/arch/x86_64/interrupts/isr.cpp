@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 x86_64_ISRHandler_t g_ISRHandlers[256];
 
-#include <stdio.hpp>
+#include <stdio.h>
 
 static const char* const g_Exceptions[] = {
     "Divide by 0",

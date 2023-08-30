@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "AVLTree.hpp"
 #include "Bitmap.hpp"
 
-#include <stdio.hpp>
+#include <stdio.h>
 #include <math.h>
 #include <Memory/newdelete.hpp> // required for creating and deleting nodes
 #include <util.h>

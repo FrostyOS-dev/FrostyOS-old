@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "IRQ.hpp"
 #include "pic.hpp"
 #include "../io.h"
-#include <stdio.hpp>
+#include <stdio.h>
 
 #define PIC_REMAP_OFFSET 0x20
 

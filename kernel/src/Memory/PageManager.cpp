@@ -27,11 +27,11 @@ namespace WorldOS {
 
     PageManager* g_KPM = nullptr;
 
-    PageManager::PageManager() : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(), m_VPM(), m_mode(false), m_page_object_pool_used(false) {
+    PageManager::PageManager() : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(), m_VPM(), m_mode(false), m_page_object_pool_used(false), m_auto_expand(false) {
         
     }
 
-    PageManager::PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode) : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(region), m_VPM(VPM), m_mode(mode), m_page_object_pool_used(false) {
+    PageManager::PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand) : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(region), m_VPM(VPM), m_mode(mode), m_page_object_pool_used(false), m_auto_expand(mode && auto_expand) {
         if (!PageObjectPool_HasBeenInitialised())
             PageObjectPool_Init();
     }
@@ -48,27 +48,57 @@ namespace WorldOS {
         }
     }
 
-    void PageManager::InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode) {
+    void PageManager::InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand) {
         m_allocated_objects = nullptr;
         m_allocated_object_count = 0;
         m_Vregion = region;
         m_VPM = VPM;
         m_mode = mode;
         m_page_object_pool_used = false;
+        m_auto_expand = mode && auto_expand;
         if (!PageObjectPool_HasBeenInitialised())
             PageObjectPool_Init();
     }
 
-    void* PageManager::AllocatePage() {
-        if (m_mode)
-            return nullptr;
+    void* PageManager::AllocatePage(PagePermissions perms, void* addr) {
         void* phys_addr = g_PPFA->AllocatePage();
         if (phys_addr == nullptr)
             return nullptr;
-        void* virt_addr = m_VPM->AllocatePage();
+        void* virt_addr;
+        if (addr == nullptr)
+            virt_addr = m_VPM->AllocatePage();
+        else {
+            PageObject* object = m_allocated_objects;
+            for (uint64_t i = 0; i < m_allocated_object_count; i++) {
+                if (object == nullptr) { // should NEVER happen
+                    g_PPFA->FreePage(phys_addr);
+                    return nullptr;
+                }
+                if (object->virtual_address == addr) {
+                    g_PPFA->FreePage(phys_addr);
+                    return nullptr;
+                }
+                object = object->next;
+            }
+            virt_addr = m_VPM->AllocatePage(addr);
+        }
         if (virt_addr == nullptr) {
-            g_PPFA->FreePage(phys_addr);
-            return nullptr;
+            if (m_auto_expand) {
+                if (ExpandVRegionToRight(PAGE_SIZE + m_Vregion.GetSize())) {
+                    if (addr == nullptr)
+                        virt_addr = m_VPM->AllocatePage();
+                    else
+                        virt_addr = m_VPM->AllocatePage(addr);
+                }
+                if (virt_addr == nullptr) {
+                    g_PPFA->FreePage(phys_addr);
+                    return nullptr;
+                }
+            }
+            else {
+                g_PPFA->FreePage(phys_addr);
+                return nullptr;
+            }
         }
         PageObject* po = m_allocated_objects;
         while (po != nullptr)
@@ -105,24 +135,74 @@ namespace WorldOS {
         else
             m_allocated_objects = po;
         m_allocated_object_count++;
-        if (!m_mode /* supervisor */)
-            MapPage(phys_addr, virt_addr, 0x8000003); // Read/Write, No execute, Present
+        uint32_t page_perms = 1;
+        if (m_mode)
+            page_perms |= 4;
+        switch (perms) {
+        case PagePermissions::READ:
+            page_perms |= 0x8000000; // No execute
+            break; // not possible to set read flag
+        case PagePermissions::WRITE:
+        case PagePermissions::READ_WRITE:
+            page_perms |= 0x8000002; // Write, No execute
+            break;
+        case PagePermissions::EXECUTE:
+        case PagePermissions::READ_EXECUTE:
+            break;
+        default:
+            page_perms = 0;
+            break;
+        }
+        MapPage(phys_addr, virt_addr, page_perms);
         return virt_addr;
     }
 
-    void* PageManager::AllocatePages(uint64_t count) {
-        if (m_mode)
-            return nullptr;
+    void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* addr) {
         if (count == 1)
-            return AllocatePage();
+            return AllocatePage(perms, addr);
         void* phys_addr = g_PPFA->AllocatePages(count);
         if (phys_addr == nullptr)
             return nullptr;
-        void* virt_addr = m_VPM->AllocatePages(count);
+        void* virt_addr;
+        if (addr == nullptr)
+            virt_addr = m_VPM->AllocatePages(count);
+        else {
+            if (!m_Vregion.IsInside(addr, count * PAGE_SIZE)) {
+                g_PPFA->FreePage(phys_addr);
+                return nullptr;
+            }
+            PageObject* object = m_allocated_objects;
+            for (uint64_t i = 0; i < m_allocated_object_count; i++) {
+                if (object == nullptr) { // should NEVER happen
+                    g_PPFA->FreePages(phys_addr, count);
+                    return nullptr;
+                }
+                VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
+                if (temp_region.IsInside(addr, count * PAGE_SIZE)) {
+                    g_PPFA->FreePages(phys_addr, count);
+                    return nullptr;
+                }
+                object = object->next;
+            }
+            virt_addr = m_VPM->AllocatePages(addr, count);
+        }
         if (virt_addr == nullptr) {
-            g_PPFA->FreePages(phys_addr, count);
-            fprintf(VFS_DEBUG, "virt_addr == nullptr\n");
-            return nullptr;
+            if (m_auto_expand) {
+                if (ExpandVRegionToRight((PAGE_SIZE * count) + m_Vregion.GetSize())) {
+                    if (addr == nullptr)
+                        virt_addr = m_VPM->AllocatePages(count);
+                    else
+                        virt_addr = m_VPM->AllocatePages(addr, count);
+                }
+                if (virt_addr == nullptr) {
+                    g_PPFA->FreePages(phys_addr, count);
+                    return nullptr;
+                }
+            }
+            else {
+                g_PPFA->FreePages(phys_addr, count);
+                return nullptr;
+            }
         }
         PageObject* po = m_allocated_objects;
         while (po != nullptr)
@@ -159,10 +239,26 @@ namespace WorldOS {
         else
             m_allocated_objects = po;
         m_allocated_object_count++;
-        if (!m_mode /* supervisor */) {
-            for (uint64_t i = 0; i < count; i++)
-                MapPage(phys_addr + i * 4096, virt_addr + i * 4096, 0x8000003); // Read/Write, No execute, Present
+        uint32_t page_perms = 1;
+        if (m_mode)
+            page_perms |= 4;
+        switch (perms) {
+        case PagePermissions::READ:
+            page_perms |= 0x8000000; // No execute
+            break; // not possible to set read flag
+        case PagePermissions::WRITE:
+        case PagePermissions::READ_WRITE:
+            page_perms |= 0x8000002; // Write, No execute
+            break;
+        case PagePermissions::EXECUTE:
+        case PagePermissions::READ_EXECUTE:
+            break;
+        default:
+            page_perms = 0;
+            break;
         }
+        for (uint64_t i = 0; i < count; i++)
+            MapPage(phys_addr + i * 4096, virt_addr + i * 4096, page_perms);
         return virt_addr;
     }
 
@@ -213,6 +309,15 @@ namespace WorldOS {
             po = po->next;
         }
         return; // ignore invalid address
+    }
+
+    bool PageManager::ExpandVRegionToRight(size_t new_size) {
+        if (new_size <= m_Vregion.GetSize())
+            return false; // invalid size
+        if (!(m_VPM->AttemptToExpandRight(new_size)))
+            return false; // virtual page manager failed to expand
+        m_Vregion.ExpandRight(new_size);
+        return true;
     }
 
 }

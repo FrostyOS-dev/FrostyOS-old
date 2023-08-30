@@ -21,8 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Scheduling {
 
-    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0) {
+    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, uint64_t kernel_stack) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0) {
         fast_memset(&m_regs, 0, DIV_ROUNDUP(sizeof(m_regs), 8));
+        m_regs.kernel_stack = kernel_stack;
     }
 
     Thread::~Thread() {
@@ -44,6 +45,14 @@ namespace Scheduling {
 
     void Thread::SetStack(uint64_t stack) {
         m_stack = stack;
+        if (m_Parent != nullptr) {
+            if (m_Parent->GetPriority() == Priority::KERNEL)
+                m_regs.kernel_stack = stack;
+        }
+    }
+
+    void Thread::SetKernelStack(uint64_t kernel_stack) {
+        m_regs.kernel_stack = kernel_stack;
     }
 
     ThreadEntry_t Thread::GetEntry() const {
@@ -63,11 +72,15 @@ namespace Scheduling {
     }
 
     CPU_Registers* Thread::GetCPURegisters() const {
-        return &m_regs;
+        return &m_regs.regs;
     }
 
     uint64_t Thread::GetStack() const {
         return m_stack;
+    }
+
+    uint64_t Thread::GetKernelStack() const {
+        return m_regs.kernel_stack;
     }
 
     void Thread::Start() {

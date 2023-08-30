@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "LinkedList.hpp"
 #include "Bitmap.hpp"
 
-#include <stdio.hpp>
+#include <stdio.h>
 #include <util.h>
 #include <Memory/newdelete.hpp> // required for creating and deleting nodes
 
@@ -178,16 +178,42 @@ namespace LinkedList {
 			delete temp;
 	}
 
-	void print(Node* head) {
-		printf("Linked list order: ");
+	void deleteNode(Node*& head, Node* node) {
+		if (node == nullptr || head == nullptr)
+			return;
+		if (node->next != nullptr)
+			node->next->previous = node->previous;
+		if (node->previous != nullptr)
+			node->previous->next = node->next;
+		if (head == node)
+			head = nullptr;
+		if (NodePool_IsInPool(node))
+			NodePool_FreeNode(node);
+		else if (NewDeleteInitialised())
+			delete node;
+		/*
+		if (node->next != nullptr)
+			node->next->previous = node->previous;
+		if (node->previous != nullptr)
+			node->previous->next = node->next;
+		if (node == head)
+			head = nullptr;
+		if (NodePool_IsInPool(node))
+			NodePool_FreeNode(node);
+		else if (NewDeleteInitialised())
+			delete node;*/
+	}
+
+	void fprint(fd_t file, Node* head) {
+		fprintf(VFS_DEBUG, "Linked list order: ");
 
 		Node* current = head;
 		while (current != nullptr) {
-			printf(" %lu ", current->data);
+			fprintf(VFS_DEBUG, " %lu ", current->data);
 			current = current->next;
 		}
 
-		printf("\n");
+		fprintf(VFS_DEBUG, "\n");
 
 		// clear the value of current to protect the node it is pointing to from possible deletion
 		current = nullptr;

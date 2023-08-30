@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "newdelete.hpp"
 
 #include <stdint.h>
-#include <stdio.hpp>
+#include <stdio.h>
 #include <util.h>
 #include <assert.h>
 

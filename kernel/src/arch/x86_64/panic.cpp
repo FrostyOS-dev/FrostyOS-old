@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Scheduling/taskutil.hpp"
 
-#include <stdio.hpp>
+#include <stdio.h>
 
 #include <Graphics/VGA.hpp>
 
