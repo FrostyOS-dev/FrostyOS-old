@@ -46,6 +46,11 @@ namespace WorldOS {
                 PANIC("SUPERVISOR PageManager illegal destruction. PageManager cannot be destroyed if page object pool has been used.");
             }
         }
+        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
+            PageObject* object = m_allocated_objects;
+            m_allocated_objects = object->next;
+            delete object;
+        }
     }
 
     void PageManager::InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand) {
@@ -258,7 +263,7 @@ namespace WorldOS {
             break;
         }
         for (uint64_t i = 0; i < count; i++)
-            MapPage(phys_addr + i * 4096, virt_addr + i * 4096, page_perms);
+            MapPage((void*)((uint64_t)phys_addr + i * 0x1000), (void*)((uint64_t)virt_addr + i * 0x1000), page_perms);
         return virt_addr;
     }
 
@@ -283,7 +288,6 @@ namespace WorldOS {
             }
             po = po->next;
         }
-        return; // ignore invalid address
     }
 
     void PageManager::FreePages(void* addr) {
@@ -308,7 +312,38 @@ namespace WorldOS {
             }
             po = po->next;
         }
-        return; // ignore invalid address
+    }
+
+    void PageManager::Remap(void* addr, PagePermissions perms) {
+        PageObject* po = m_allocated_objects;
+        while (po != nullptr) {
+            if (po->virtual_address == addr && po->page_count > 1) {
+                for (uint64_t i = 0; i < po->page_count; i++)
+                    UnmapPage((void*)((uint64_t)addr + i * 0x1000));
+                uint32_t page_perms = 1;
+                if (m_mode)
+                    page_perms |= 4;
+                switch (perms) {
+                case PagePermissions::READ:
+                    page_perms |= 0x8000000; // No execute
+                    break; // not possible to set read flag
+                case PagePermissions::WRITE:
+                case PagePermissions::READ_WRITE:
+                    page_perms |= 0x8000002; // Write, No execute
+                    break;
+                case PagePermissions::EXECUTE:
+                case PagePermissions::READ_EXECUTE:
+                    break;
+                default:
+                    page_perms = 0;
+                    break;
+                }
+                for (uint64_t i = 0; i < po->page_count; i++)
+                    MapPage((void*)((uint64_t)po->physical_address + i * 0x1000), (void*)((uint64_t)addr + i * 0x1000), page_perms);
+                return;
+            }
+            po = po->next;
+        }
     }
 
     bool PageManager::ExpandVRegionToRight(size_t new_size) {

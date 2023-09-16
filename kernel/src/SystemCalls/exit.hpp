@@ -15,24 +15,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _SYSTEM_CALL_HPP
-#define _SYSTEM_CALL_HPP
+#ifndef _EXIT_HPP
+#define _EXIT_HPP
 
-#include <stdint.h>
+#include <Scheduling/Thread.hpp>
 
-typedef uint64_t (*SystemCallHandler_t)(uint64_t, uint64_t, uint64_t);
+void sys$exit(Scheduling::Thread* thread, int status);
 
-#define SYSTEM_CALL_COUNT 64
-
-extern "C" {
-    
-    enum SystemCalls {
-        SC_EXIT = 0
-    };
-
-    uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3);
-}
-
-void SystemCallInit();
-
-#endif /* _SYSTEM_CALL_HPP */
+#endif /* _EXIT_HPP */

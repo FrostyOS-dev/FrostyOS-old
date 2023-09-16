@@ -54,10 +54,11 @@ x86_64_kernel_switch:
 
     mov rax, QWORD [rdi+140]
     push rax
-    popf ; load RFLAGS
     
     mov rax, QWORD [rdi] ; load rax
     mov rdi, QWORD [rdi+40] ; load rdi
+
+    popf ; load RFLAGS
 
     retfq ; return to cs:RIP
 

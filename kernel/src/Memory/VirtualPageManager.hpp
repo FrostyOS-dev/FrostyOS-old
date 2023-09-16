@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _X86_64_VIRTUAL_PAGE_MGR_HPP
-#define _X86_64_VIRTUAL_PAGE_MGR_HPP
+#ifndef _VIRTUAL_PAGE_MGR_HPP
+#define _VIRTUAL_PAGE_MGR_HPP
 
 #include "Memory.hpp"
 #include "VirtualRegion.hpp"
@@ -57,14 +57,14 @@ namespace WorldOS {
         bool AttemptToExpandRight(size_t new_size);
 
     private:
-        void LockPage(void* addr, bool unfree = true);
-        void LockPages(void* addr, uint64_t count, bool unfree = true);
+        void LockPage(void* addr, bool unfree = true, bool check = true);
+        void LockPages(void* addr, uint64_t count, bool unfree = true, bool check = true);
         void UnlockPage(void* addr);
         void UnlockPages(void* addr, uint64_t count);
         void FreePage(void* addr);
         void FreePages(void* addr, uint64_t count);
-        bool UnfreePage(void* addr);
-        bool UnfreePages(void* addr, uint64_t count);
+        bool UnfreePage(void* addr, bool exact = false);
+        bool UnfreePages(void* addr, uint64_t count, bool exact = false);
     private:
         uint64_t m_FreePagesCount;
         AVLTree::Node* m_FreePagesSizeTree;
@@ -78,4 +78,4 @@ namespace WorldOS {
     extern VirtualPageManager* g_KVPM; // this is probably not the best place for this, but there are no other options
 }
 
-#endif /* _X86_64_VIRTUAL_PAGE_MGR_HPP */
+#endif /* _VIRTUAL_PAGE_MGR_HPP */

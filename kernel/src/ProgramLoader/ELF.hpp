@@ -60,13 +60,23 @@ struct ELF_ProgramHeader64 {
     uint64_t RequiredAlignment; // must be a power of 2
 } __attribute__((packed));
 
+struct ELF_entry_data {
+    int64_t argc; // should be int, but gets promoted to int64_t for simplicity
+    char** argv;
+    int64_t envc; // should be int, but gets promoted to int64_t for simplicity
+    char** envv;
+} __attribute__((packed));
+
 class ELF_Executable {
 public:
     ELF_Executable(void* addr, size_t size);
     ~ELF_Executable();
 
-    bool Load();
+    bool Load(ELF_entry_data* entry_data);
     bool Execute();
+
+private:
+    void End_Handler();
 
 private:
     void* m_addr;
@@ -77,6 +87,9 @@ private:
     Scheduling::Process* m_process;
     Scheduling::ProcessEntry_t m_entry;
     WorldOS::VirtualRegion m_region;
+    ELF_entry_data m_entry_data;
+    ELF_entry_data* m_new_entry_data;
+    size_t m_entry_data_size;
 };
 
 #endif /* _ELF_HPP */

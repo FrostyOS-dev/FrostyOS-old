@@ -51,6 +51,10 @@ namespace Scheduling {
             g_processes.insert(process);
         }
 
+        void RemoveProcess(Process* process) {
+            g_processes.remove(process);
+        }
+
         void ScheduleThread(Thread* thread) {
             assert(thread != nullptr);
             Priority thread_priority = thread->GetParent()->GetPriority();
@@ -60,7 +64,7 @@ namespace Scheduling {
             fast_memset(regs, 0, DIV_ROUNDUP(sizeof(CPU_Registers), 8));
 #ifdef __x86_64__
             if ((thread->GetFlags() & CREATE_STACK))
-                x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64));
+                x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64*4));
             else
                 regs->RSP = (uint64_t)x86_64_get_stack_ptr();
             thread->SetStack(regs->RSP);
@@ -105,12 +109,63 @@ namespace Scheduling {
             }
         }
 
+        void RemoveThread(Thread* thread) {
+            if (thread == nullptr)
+                return;
+            bool success = false;
+            switch (thread->GetParent()->GetPriority()) {
+                case Priority::KERNEL: {
+                    uint64_t i = g_kernel_threads.getIndex(thread);
+                    if (i != UINT64_MAX) {
+                        g_kernel_threads.remove(i);
+                        success = true;
+                    }
+                    break;
+                }
+                case Priority::HIGH: {
+                    uint64_t i = g_high_threads.getIndex(thread);
+                    if (i != UINT64_MAX) {
+                        g_high_threads.remove(i);
+                        success = true;
+                    }
+                    break;
+                }
+                case Priority::NORMAL: {
+                    uint64_t i = g_normal_threads.getIndex(thread);
+                    if (i != UINT64_MAX) {
+                        g_normal_threads.remove(i);
+                        success = true;
+                    }
+                    break;
+                }
+                case Priority::LOW: {
+                    uint64_t i = g_low_threads.getIndex(thread);
+                    if (i != UINT64_MAX) {
+                        g_low_threads.remove(i);
+                        success = true;
+                    }
+                    break;
+                }
+                default:
+                    return;
+            }
+            if (!success) {
+                if (thread == g_current) {
+                    g_current = nullptr;
+                    success = true;
+                    PickNext();
+                }
+            }
+        }
+
         void __attribute__((noreturn)) Start() {
 #ifdef __x86_64__
             x86_64_DisableInterrupts(); // task switch code re-enables them
 #endif
             PickNext();
-            assert(g_current != nullptr);
+            if (g_current == nullptr) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
             assert(g_current->GetCPURegisters() != nullptr);
             g_ticks = 0;
             g_running = true;
@@ -125,7 +180,9 @@ namespace Scheduling {
         }
 
         void __attribute__((noreturn)) Next() {
-            assert(g_current != nullptr);
+            if (g_current == nullptr) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
             assert(g_current->GetCPURegisters() != nullptr);
             g_ticks = 0;
 #ifdef __x86_64__
@@ -139,7 +196,9 @@ namespace Scheduling {
         }
 
         void Next(void* iregs) {
-            assert(g_current != nullptr);
+            if (g_current == nullptr) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
             assert(g_current->GetCPURegisters() != nullptr);
             g_ticks = 0;
 #ifdef __x86_64__
@@ -204,7 +263,7 @@ namespace Scheduling {
                         g_low_threads.insert(g_current);
                         break;
                     default:
-                        PANIC("Scheduler: A thread as run with an unkown priority.");
+                        PANIC("Scheduler: A thread has run with an unknown priority.");
                         return; // unnecessary, but only here to remove compiler warnings
                 }
             }
@@ -214,7 +273,6 @@ namespace Scheduling {
                         g_current = g_low_threads.get(0);
                         if (g_current == nullptr) {
                             g_normal_threads.fprint(VFS_DEBUG);
-                            PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
                         }
                         g_low_threads.remove(UINT64_C(0));
                         g_normal_run_count = 0;
@@ -233,10 +291,12 @@ namespace Scheduling {
             }
             else {
                 if (g_kernel_threads.getCount() == 0) {
-                    PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+                    g_current = nullptr;
                 }
-                g_current = g_kernel_threads.get(0);
-                g_kernel_threads.remove(UINT64_C(0));
+                else {
+                    g_current = g_kernel_threads.get(0);
+                    g_kernel_threads.remove(UINT64_C(0));
+                }
             }
         }
 
@@ -263,6 +323,18 @@ namespace Scheduling {
 
         void Stop() {
             g_running = false;
+        }
+
+        void Resume() {
+            g_running = true;
+            if (g_current == nullptr)
+                PickNext();
+            if (g_current == nullptr) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
+            g_ticks = TICKS_PER_SCHEDULER_CYCLE - 1; // make a switch occur sooner. should take < 10ms
+            while (true) // just hang until it is time to switch
+                __asm__ volatile("hlt");
         }
     }
 }

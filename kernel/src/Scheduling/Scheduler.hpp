@@ -33,7 +33,9 @@ namespace Scheduling {
     namespace Scheduler {
 
         void AddProcess(Process* process);
+        void RemoveProcess(Process* process);
         void ScheduleThread(Thread* thread);
+        void RemoveThread(Thread* thread);
 
         void __attribute__((noreturn)) Start();
 
@@ -53,6 +55,7 @@ namespace Scheduling {
         bool isRunning();
 
         void Stop();
+        void Resume();
     }
 
 }

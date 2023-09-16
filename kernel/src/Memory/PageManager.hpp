@@ -51,6 +51,8 @@ namespace WorldOS {
         void FreePage(void* addr);
         void FreePages(void* addr);
 
+        void Remap(void* addr, PagePermissions perms);
+
         bool ExpandVRegionToRight(size_t new_size);
 
     private:

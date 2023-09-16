@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Scheduling {
 
-    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, uint64_t kernel_stack) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0) {
+    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, uint64_t kernel_stack) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}) {
         fast_memset(&m_regs, 0, DIV_ROUNDUP(sizeof(m_regs), 8));
         m_regs.kernel_stack = kernel_stack;
     }
@@ -55,6 +55,10 @@ namespace Scheduling {
         m_regs.kernel_stack = kernel_stack;
     }
 
+    void Thread::SetCleanupFunction(ThreadCleanup_t cleanup) {
+        m_cleanup = cleanup;
+    }
+
     ThreadEntry_t Thread::GetEntry() const {
         return m_entry;
     }
@@ -81,6 +85,10 @@ namespace Scheduling {
 
     uint64_t Thread::GetKernelStack() const {
         return m_regs.kernel_stack;
+    }
+
+    ThreadCleanup_t Thread::GetCleanupFunction() const {
+        return m_cleanup;
     }
 
     void Thread::Start() {

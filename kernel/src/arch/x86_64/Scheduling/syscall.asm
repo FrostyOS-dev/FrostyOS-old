@@ -102,8 +102,7 @@ x86_64_EnableSystemCalls:
     pop rbp
     ret
 
-extern g_syscall_handlers
-extern g_syscall_count
+extern SystemCallHandler
 
 global x86_64_HandleSystemCall
 x86_64_HandleSystemCall:
@@ -145,15 +144,19 @@ x86_64_HandleSystemCall:
 
     pop rax ; restore rax
 
-    cmp rax, [g_syscall_count]
-    jl .success
-    mov rax, -1
-    jmp .end
+    ; setup blank stack frame so we don't accidently read the user stack when a stack trace is performed
+    xor rbp, rbp
+    push rbp ; rbp
 
-.success:
-    call [g_syscall_handlers+rax*8]
+    mov rcx, rdx
+    mov rdx, rsi
+    mov rsi, rdi
+    mov rdi, rax
 
-.end:
+    call SystemCallHandler
+
+    add rsp, 8 ; discard useless rbp value
+
     push rax ; save return value
 
     mov ax, 0x1b

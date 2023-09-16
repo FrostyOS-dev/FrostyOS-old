@@ -169,8 +169,8 @@ namespace LinkedList {
 		if (temp == nullptr)
 			return;
 		if (temp->next != nullptr)
-			temp->next->previous= temp->previous;
-		if (temp->previous!= nullptr)
+			temp->next->previous = temp->previous;
+		if (temp->previous != nullptr)
 			temp->previous->next = temp->next;
 		if (NodePool_IsInPool(temp))
 			NodePool_FreeNode(temp);
@@ -186,22 +186,11 @@ namespace LinkedList {
 		if (node->previous != nullptr)
 			node->previous->next = node->next;
 		if (head == node)
-			head = nullptr;
+			head = node->next;
 		if (NodePool_IsInPool(node))
 			NodePool_FreeNode(node);
 		else if (NewDeleteInitialised())
 			delete node;
-		/*
-		if (node->next != nullptr)
-			node->next->previous = node->previous;
-		if (node->previous != nullptr)
-			node->previous->next = node->next;
-		if (node == head)
-			head = nullptr;
-		if (NodePool_IsInPool(node))
-			NodePool_FreeNode(node);
-		else if (NewDeleteInitialised())
-			delete node;*/
 	}
 
 	void fprint(fd_t file, Node* head) {

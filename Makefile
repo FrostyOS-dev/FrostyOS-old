@@ -27,6 +27,7 @@ SHELL := env PATH=$(PATH) /bin/bash
 CC = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc
 CXX = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-g++
 LD = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld
+AR = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ar
 ASM = nasm
 
 all: boot-iso
@@ -114,10 +115,12 @@ clean-all:
 	@echo ------------
 	@$(MAKE) -C kernel clean-kernel
 	@$(MAKE) -C utils clean-utils
-	@rm -fr iso dist depend root/kernel.map
+	@$(MAKE) -C LibC distclean-libc
+	@rm -fr iso dist depend root/kernel.map root/data/include root/data/lib
 
 clean-os:
 	@$(MAKE) -C kernel clean-kernel
+	@$(MAKE) -C LibC clean-libc
 	@rm -fr iso dist root/kernel.map
 
 boot-iso: clean-os .WAIT dependencies toolchain
@@ -125,11 +128,19 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@echo Building Kernel
 	@echo ---------------
 	@$(MAKE) -C kernel kernel config=$(config)
+	@echo -------------
+	@echo Building LibC
+	@echo -------------
+	@$(MAKE) -C LibC libc config=$(config)
 	@echo --------------
 	@echo Building utils
 	@echo --------------
 	@$(MAKE) -C utils build
 	@utils/bin/buildsymboltable kernel/bin/kernel.elf root/kernel.map
+	@echo ----------
+	@echo Installing
+	@echo ----------
+	@$(MAKE) -C LibC install-libc config=$(config)
 	@$(MAKE) --no-print-directory initramfs
 	@echo -----------------
 	@echo Making disk image

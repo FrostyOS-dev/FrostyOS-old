@@ -65,9 +65,15 @@ namespace Scheduling {
         WorldOS::PageManager* GetPageManager() const;
         const WorldOS::VirtualRegion& GetRegion() const;
         WorldOS::VirtualPageManager* GetVirtualPageManager() const;
+        Thread* GetMainThread() const;
+        uint64_t GetThreadCount() const;
+        Thread* GetThread(uint64_t index) const;
 
+        void CreateMainThread();
         void Start();
         void ScheduleThread(Thread* thread);
+        void RemoveThread(Thread* thread);
+        void RemoveThread(uint64_t index);
 
     private:
         ProcessEntry_t m_Entry;
@@ -80,6 +86,7 @@ namespace Scheduling {
         Thread* m_main_thread;
         WorldOS::VirtualRegion m_region;
         WorldOS::VirtualPageManager* m_VPM;
+        bool m_main_thread_creation_requested;
     };
 }
 

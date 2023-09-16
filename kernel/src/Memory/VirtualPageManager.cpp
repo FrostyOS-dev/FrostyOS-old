@@ -206,28 +206,19 @@ namespace WorldOS {
     }
 
     void Internal_clearFreePagesSizeTree(AVLTree::Node* root) {
-        if (root == nullptr)
-            return;
-        if (root->left != nullptr)
-            Internal_clearFreePagesSizeTree(root->left);
-        if (root->right != nullptr)
-            Internal_clearFreePagesSizeTree(root->right);
-        LinkedList::Node* list = (LinkedList::Node*)root->extraData;
-        while (list != nullptr) {
-            using namespace LinkedList;
-            deleteNode(list, list->data); // will automatically assign list to the next node in line
+        while (root != nullptr) {// due to auto-balancing, this will clear the tree
+            LinkedList::Node* list = (LinkedList::Node*)root->extraData;
+            while (list != nullptr) {
+                using namespace LinkedList;
+                deleteNode(list, list); // will automatically assign list to the next node in line
+            }
+            AVLTree::deleteNode(root, root->key);
         }
-        AVLTree::deleteNode(root, root->key);
     }
 
     void Internal_clearUsedReservedPagesTree(AVLTree::Node* root) {
-        if (root == nullptr)
-            return;
-        if (root->left != nullptr)
-            Internal_clearUsedReservedPagesTree(root->left);
-        if (root->right != nullptr)
-            Internal_clearUsedReservedPagesTree(root->right);
-        AVLTree::deleteNode(root, root->key);
+        while (root != nullptr) // due to auto-balancing, this will clear the tree
+            AVLTree::deleteNode(root, root->key);
     }
 
     void Internal_OrganiseNewAVLTreeIntoFPST(AVLTree::Node* new_root, AVLTree::Node* root) {
@@ -409,10 +400,9 @@ namespace WorldOS {
             return nullptr;
         // END FindFreePages code
         void* mem = (void*)list->data;
-        if (node->key > count) {
+        if (node->key > count)
             m_FreePagesSizeTree = Internal_SplitFreeBlock(m_FreePagesSizeTree, mem, node->key, count);
-        }
-        LockPages(mem, count);
+        LockPages(mem, count, true, false); // checks have already been performed and there should be an exact block match
         return mem;
     }
 
@@ -427,7 +417,7 @@ namespace WorldOS {
             return nullptr;
         if (!UnfreePages(addr, count))
             return nullptr;
-        LockPages(addr, count, false);
+        LockPages(addr, count, false, false); // no need to check as everything is already safe
         return addr;
     }
 
@@ -455,15 +445,17 @@ namespace WorldOS {
 
     /* Private Methods */
 
-    void VirtualPageManager::LockPage(void* addr, bool unfree) {
-        LockPages(addr, 1, unfree);
+    void VirtualPageManager::LockPage(void* addr, bool unfree, bool check) {
+        LockPages(addr, 1, unfree, check);
     }
 
-    void VirtualPageManager::LockPages(void* addr, uint64_t count, bool unfree) {
-        size_t length = count << 12;
-        if (!m_region.EnsureIsInside(addr, length))
-            return;
-        count = length >> 12;
+    void VirtualPageManager::LockPages(void* addr, uint64_t count, bool unfree, bool check) {
+        if (check) {
+            size_t length = count << 12;
+            if (!m_region.EnsureIsInside(addr, length))
+                return;
+            count = length >> 12;
+        }
         uint64_t addr_i = (uint64_t)addr;
         if (count == 0)
             return;
@@ -474,7 +466,7 @@ namespace WorldOS {
         AVLTree::insert(m_ReservedANDUsedPages, addr_i, (count & ~(UINT64_C(1) << 63)));
         m_UsedPagesCount += count;
         if (unfree)
-            (void)UnfreePages((void*)addr_i, count);
+            (void)UnfreePages((void*)addr_i, count, !check);
     }
 
     void VirtualPageManager::UnlockPage(void* addr) {
@@ -523,11 +515,11 @@ namespace WorldOS {
         m_FreePagesCount += count;
     }
 
-    bool VirtualPageManager::UnfreePage(void* addr) {
-        return UnfreePages(addr, 1);
+    bool VirtualPageManager::UnfreePage(void* addr, bool exact) {
+        return UnfreePages(addr, 1, exact);
     }
 
-    bool VirtualPageManager::UnfreePages(void* addr, uint64_t count) {
+    bool VirtualPageManager::UnfreePages(void* addr, uint64_t count, bool exact) {
         size_t length = count << 12;
         if (!m_region.EnsureIsInside(addr, length))
             return false;
@@ -535,7 +527,27 @@ namespace WorldOS {
         uint64_t addr_i = (uint64_t)addr;
         if (count == 0)
             return false;
+        if (exact) { // must exactly match. no splitting allowed
+            AVLTree::Node* node = AVLTree::findNode(m_FreePagesSizeTree, count);
+            if (node == nullptr)
+                return false;
+            LinkedList::Node* list = (LinkedList::Node*)(node->extraData);
+            if (list == nullptr)
+                return false;
+            LinkedList::Node* sub_node = LinkedList::findNode(list, addr_i);
+            if (sub_node == nullptr)
+                return false;
+            LinkedList::deleteNode(list, sub_node);
+            if (list == nullptr)
+                AVLTree::deleteNode(m_FreePagesSizeTree, node->key);
+            else
+                node->extraData = (uint64_t)list;
+            m_FreePagesCount -= count;
+            return true;
+        }
         AVLTree::Node* node = AVLTree::findNodeOrHigher(m_FreePagesSizeTree, count);
+        if (node == nullptr)
+            return false; // no free regions large enough
         uint64_t i_count = count;
         bool found = false;
         bool correct = false;
@@ -568,37 +580,42 @@ namespace WorldOS {
                 }
             }
             else { // perfect address match
+                found = true;
                 if (node->key > count)
                     m_FreePagesSizeTree = Internal_SplitFreeBlock(m_FreePagesSizeTree, addr, node->key, count);
                 else { // perfect match
                     LinkedList::deleteNode(list, sub_node);
-                    found = true;
+                    if (list == nullptr)
+                        AVLTree::deleteNode(m_FreePagesSizeTree, node->key);
+                    else
+                        node->extraData = (uint64_t)list;
                     correct = true;
                 }
+                break;
             }
             i_count = node->key + 1;
-            if (list == nullptr)
-                AVLTree::deleteNode(m_FreePagesSizeTree, node->key);
-            else
-                node->extraData = (uint64_t)list;
             node = AVLTree::findNodeOrHigher(m_FreePagesSizeTree, i_count);
         }
         if (!correct && found) {
             node = AVLTree::findNode(m_FreePagesSizeTree, count);
             if (node == nullptr)
                 return false;
-            LinkedList::Node* list = (LinkedList::Node*)node->extraData;
+            LinkedList::Node* list = (LinkedList::Node*)(node->extraData);
             if (list == nullptr)
                 return false;
             LinkedList::Node* sub_node = LinkedList::findNode(list, addr_i);
             if (sub_node == nullptr) // we should have found and split the block by now
                 return false;
             LinkedList::deleteNode(list, sub_node);
-            found = true;
+            if (list == nullptr)
+                AVLTree::deleteNode(m_FreePagesSizeTree, node->key);
+            else
+                node->extraData = (uint64_t)list;
+            correct = true;
         }
-        if (found)
+        if (found && correct)
             m_FreePagesCount -= count;
-        return found;
+        return found && correct;
     }
 
     VirtualPageManager* g_VPM = nullptr;

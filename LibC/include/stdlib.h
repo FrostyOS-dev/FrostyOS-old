@@ -54,6 +54,8 @@ char* getenv(const char* name);
 
 int abs(int n);
 
+void exit(int status);
+
 #ifdef __cplusplus
 }
 #endif

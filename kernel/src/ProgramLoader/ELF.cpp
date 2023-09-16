@@ -19,19 +19,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <util.h>
 
-
+#include <Scheduling/Thread.hpp>
 
 #ifdef __x86_64__
 #include <arch/x86_64/io.h>
 #endif
 
-ELF_Executable::ELF_Executable(void* addr, size_t size) : m_addr(addr), m_header(nullptr), m_fileSize(size), m_VPM(nullptr), m_process(nullptr), m_entry(nullptr) {
+ELF_Executable::ELF_Executable(void* addr, size_t size) : m_addr(addr), m_header(nullptr), m_fileSize(size), m_VPM(nullptr), m_process(nullptr), m_entry(nullptr), m_entry_data({0, nullptr, 0, nullptr}), m_new_entry_data(nullptr), m_entry_data_size(0) {
 
 }
 
 ELF_Executable::~ELF_Executable() {
+    if (m_new_entry_data != nullptr && m_PM != nullptr) {
+        if (m_entry_data_size > PAGE_SIZE)
+            m_PM->FreePages(m_new_entry_data);
+        else
+            m_PM->FreePage(m_new_entry_data);
+    }
     if (m_VPM != nullptr) {
         delete m_VPM;
         delete m_PM;
@@ -40,7 +47,7 @@ ELF_Executable::~ELF_Executable() {
         delete m_process;
 }
 
-bool ELF_Executable::Load() {
+bool ELF_Executable::Load(ELF_entry_data* entry_data) {
     {
         ELF_Header64* header = (ELF_Header64*)m_addr;
         char magic[4] = { 0x7F, 'E', 'L', 'F' };
@@ -124,22 +131,12 @@ bool ELF_Executable::Load() {
 #ifdef __x86_64__
                     x86_64_EnableInterrupts();
 #endif
+                    fprintf(VFS_DEBUG, "[%s] WARNING: first allocation failed. page_count = %lu, i = %lu, page_start = %lp, m_region = {%lp, %lp, %lu}\n", __extension__ __PRETTY_FUNCTION__, page_count, i, page_start, m_region.GetStart(), m_region.GetEnd(), m_region.GetSize());
                     return false;
                 }
                 fast_memset(start, 0, mem_size >> 3);
                 fast_memcpy(start, (void*)(ALIGN_DOWN(((uint64_t)m_addr + prog_header->OffsetWithinFile), 8)), ALIGN_UP(file_size, 8));
-                if (page_count > 1)
-                    m_PM->FreePages(data);
-                else
-                    m_PM->FreePage(data);
-                data = m_PM->AllocatePages(page_count, perms, page_start);
-                if (data == nullptr) { // this is very bad. We have copied the data, but we could not allocate the region again. This should NEVER happen, and if it does, something is very wrong
-#ifdef __x86_64__
-                    x86_64_EnableInterrupts();
-#endif
-                    fprintf(VFS_DEBUG, "[%s] WARNING: second allocation failed. Something very serious has gone wrong. This should be impossible.\n", __extension__ __PRETTY_FUNCTION__);
-                    return false;
-                }
+                m_PM->Remap(page_start, perms);
 #ifdef __x86_64__
                 x86_64_EnableInterrupts();
 #endif
@@ -150,6 +147,65 @@ bool ELF_Executable::Load() {
         }
     }
     m_entry = (Scheduling::ProcessEntry_t)(m_header->ProgramEntryPosition);
+    fast_memcpy(&m_entry_data, entry_data, sizeof(ELF_entry_data));
+    uint64_t total_size = sizeof(ELF_entry_data);
+    total_size += (m_entry_data.argc + 1) * sizeof(char*);
+    total_size += (m_entry_data.envc + 1) * sizeof(char*);
+    for (int64_t i = 0; i < m_entry_data.argc; i++)
+        total_size += strlen(m_entry_data.argv[i]) + 1;
+    total_size += 1;
+    for (int64_t i = 0; i < m_entry_data.envc; i++)
+        total_size += strlen(m_entry_data.envv[i]) + 1;
+    total_size += 1;
+    char* entry_data_address = (char*)m_PM->AllocatePages(DIV_ROUNDUP(total_size, PAGE_SIZE));
+    if (entry_data_address == nullptr) {
+        fprintf(VFS_DEBUG, "entry_data_address == nullptr, total_size = %lu.\n", total_size);
+        return false;
+    }
+    ELF_entry_data* new_entry_data = (ELF_entry_data*)entry_data_address;
+    fast_memset(entry_data_address, 0, (ALIGN_UP(total_size, PAGE_SIZE)) >> 3);
+    uint64_t current_offset = 0;
+    fast_memcpy(entry_data_address, &m_entry_data, sizeof(ELF_entry_data));
+    current_offset += sizeof(ELF_entry_data);
+    new_entry_data->argv = (char**)&(entry_data_address[current_offset]);
+    fast_memcpy(&(entry_data_address[current_offset]), m_entry_data.argv, m_entry_data.argc * sizeof(char*));
+    current_offset += (m_entry_data.argc + 1) * sizeof(char*);
+    new_entry_data->envv = (char**)&(entry_data_address[current_offset]);
+    fast_memcpy(&(entry_data_address[current_offset]), m_entry_data.envv, m_entry_data.envc * sizeof(char*));
+    current_offset += (m_entry_data.envc + 1) * sizeof(char*);
+    for (int64_t i = 0; i < m_entry_data.argc; i++, current_offset++) {
+        uint64_t j = 0;
+        char c = m_entry_data.argv[i][j];
+        new_entry_data->argv[i] = &(entry_data_address[current_offset]);
+        while (1) {
+            entry_data_address[current_offset] = c;
+            j++;
+            current_offset++;
+            if (c == 0) // still copy the termination and increment counters
+                break;
+            c = m_entry_data.argv[i][j];
+        }
+    }
+    entry_data_address[current_offset] = 0;
+    current_offset++;
+    for (int64_t i = 0; i < m_entry_data.envc; i++, current_offset++) {
+        uint64_t j = 0;
+        char c = m_entry_data.envv[i][j];
+        new_entry_data->envv[i] = &(entry_data_address[current_offset]);
+        while (1) {
+            entry_data_address[current_offset] = c;
+            j++;
+            current_offset++;
+            if (c == 0) // still copy the termination and increment counters
+                break;
+            c = m_entry_data.envv[i][j];
+        }
+    }
+    entry_data_address[current_offset] = 0;
+    current_offset++;
+    fast_memcpy(&m_entry_data, new_entry_data, sizeof(ELF_entry_data));
+    m_new_entry_data = new_entry_data;
+    m_entry_data_size = total_size;
     return true;
 }
 
@@ -161,8 +217,26 @@ bool ELF_Executable::Execute() {
     m_process->SetVirtualPageManager(m_VPM);
     m_process->SetRegion(m_region);
     m_process->SetFlags(Scheduling::USER_DEFAULT);
-    m_process->SetEntry(m_entry, nullptr);
+    m_process->SetEntry(m_entry, m_new_entry_data);
     m_process->SetPriority(Scheduling::Priority::NORMAL);
+    m_process->CreateMainThread();
+    m_process->GetMainThread()->SetCleanupFunction({(void (*)(void*))&ELF_Executable::End_Handler, (void*)this});
     m_process->Start();
     return true;
+}
+
+void ELF_Executable::End_Handler() {
+    m_process = nullptr;
+    if (m_new_entry_data != nullptr && m_PM != nullptr) {
+        if (m_entry_data_size > PAGE_SIZE)
+            m_PM->FreePages(m_new_entry_data);
+        else
+            m_PM->FreePage(m_new_entry_data);
+    }
+    if (m_VPM != nullptr) {
+        delete m_VPM;
+        delete m_PM;
+        WorldOS::g_VPM->UnallocatePages(m_region.GetStart(), DIV_ROUNDUP((m_region.GetSize()), PAGE_SIZE));
+    }
+    kfree(this);
 }

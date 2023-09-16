@@ -15,24 +15,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _SYSTEM_CALL_HPP
-#define _SYSTEM_CALL_HPP
+#include "init.h"
 
-#include <stdint.h>
+char** environ;
 
-typedef uint64_t (*SystemCallHandler_t)(uint64_t, uint64_t, uint64_t);
-
-#define SYSTEM_CALL_COUNT 64
-
-extern "C" {
-    
-    enum SystemCalls {
-        SC_EXIT = 0
-    };
-
-    uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3);
+void __init_libc(int argc, char** argv, int envc, char** envv) {
+    environ = envv;
+    (void)argc;
+    (void)argv;
+    (void)envc;
 }
-
-void SystemCallInit();
-
-#endif /* _SYSTEM_CALL_HPP */

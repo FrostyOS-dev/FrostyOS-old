@@ -17,23 +17,32 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 30/08/2023
+## Latest Changes - 16/09/2023
 
-- Renamed `stdio.hpp` to `stdio.h` and marked all functions as `extern "C"`
-- Added `memset`, `memcpy`, `memmove` and `memcmp` declarations to `string.h`
-- Removed unnecessary includes from `kernel.hpp`
-- Improved `VirtualPageManager::Unfree` function so it should now support all possible scenarios
-- Added fixed address allocation to the VirtualPageManager and PageManager
-- Added proper mapping permission support to PageManager with user support
-- Added region expansion support to the VirtualPageManager and PageManager
-- Added region automatic expansion support for user PageManagers
-- Added multiple privilege level support to the Scheduler with the standard kernel priority and 3 different user priorities: LOW, NORMAL, HIGH. Each privilege level gets 80% more CPU time than the level below it. If there are no tasks at a certain level, the level below gets that rotation
-- Added basic system call support. Currently all 64 system calls just redirect to the same function which just prints the number and the arguments. The system call number is placed in `rax` and the arguments are parsed in `rdi`, `rsi` and `rdx`, return value is in `rax` (just like the System V x86_64 calling convention).
-- Added virtual region allocation support to the Process class. Currently, 16MiB is allocated, but this is not the preferred method for allocation
-- Added basic ELF executable loading and execution. Currently, relocation is not support.
-- Added a `LinkedList::deleteNode` function that can delete a specific node, instead of finding it based off its data.
-- Removed unused debugging argument from `x86_64_LoadCR3` function.
-- Updated `x86_64_InitPaging` function so it reserves all of non-canonical address space instead of a small section.
+- Added `stdint.h` include to `utils/src/buildsymboltable.cpp` so it compiles on all platforms instead of just Gentoo Linux
+- Started working on a very simple statically linked LibC. This includes the various crt*.o start and end files
+- Moved system headers to LibC includes, instead of being in the root filesystem by default
+- Implemented basic stack smashing protector support in the kernel
+- Fix a spelling mistake in `Scheduler.cpp`
+- Implemented RemoveThread and RemoveProcess functions in scheduler
+- Added a scheduler resume function
+- Changed the way the scheduler detects when there is nothing left to run so it will only check when it actually needs to run something
+- Scheduler now panics when `g_current == nullptr` instead of just doing some weird assertion
+- Updated include guards in `stdarg.h`
+- Added a RemoveThread function to the process class
+- Changed how system calls behave so they all go to one function, which then calls the appropriate function with the correct arguments
+- Fixed VirtualPageManager and PageManager destructors so they perform proper cleanup
+- Fixed ELF_Executable destructor and added an end_handler cleanup function
+- Added proper argument and environment variable passing support to the ELF loader
+- Added a Remap function to the PageManager class so permissions can be changed
+- Added a thread cleanup function system
+- Add support for main thread creation requesting to the Process class
+- Added an extra argument to the `VirtualPageManager::LockPage(s)` functions that is used for optimisation
+- Improved the `VirtualPageManager::UnfreePages` function for hopefully the last time
+- Cleaned up various parts of the `PageManager` class
+- Minor bug fixes to the `LinkedList::deleteNode` functions
+- Changed `x86_64_kernel_switch` function so RFLAGS is set after RAX and RDI are set
+- Implemented exit system call (Syscall 0)
 
 ## Resources used
 

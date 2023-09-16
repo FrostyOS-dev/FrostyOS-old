@@ -25,6 +25,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace Scheduling {
 
     typedef void (*ThreadEntry_t)(void*);
+    struct ThreadCleanup_t {
+        void (*function)(void*);
+        void* data;
+    };
 
     constexpr uint8_t THREAD_KERNEL_DEFAULT = CREATE_STACK;
     constexpr uint8_t THREAD_USER_DEFAULT = CREATE_STACK;
@@ -39,6 +43,7 @@ namespace Scheduling {
         void SetParent(Process* parent);
         void SetStack(uint64_t stack);
         void SetKernelStack(uint64_t kernel_stack);
+        void SetCleanupFunction(ThreadCleanup_t cleanup);
 
         ThreadEntry_t GetEntry() const;
         void* GetEntryData() const;
@@ -47,6 +52,7 @@ namespace Scheduling {
         CPU_Registers* GetCPURegisters() const;
         uint64_t GetStack() const;
         uint64_t GetKernelStack() const;
+        ThreadCleanup_t GetCleanupFunction() const;
 
         void Start();
 
@@ -60,6 +66,7 @@ namespace Scheduling {
             CPU_Registers regs;
             uint64_t kernel_stack;
         } __attribute__((packed)) m_regs;
+        ThreadCleanup_t m_cleanup;
     };
 }
 

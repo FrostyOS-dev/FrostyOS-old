@@ -15,24 +15,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _SYSTEM_CALL_HPP
-#define _SYSTEM_CALL_HPP
-
 #include <stdint.h>
 
-typedef uint64_t (*SystemCallHandler_t)(uint64_t, uint64_t, uint64_t);
+extern char* g_panic_reason;
 
-#define SYSTEM_CALL_COUNT 64
+#ifndef PANIC
+#ifdef __x86_64__
+#define PANIC(reason) __asm__ volatile ("movq %1, %0" : "=m" (g_panic_reason) : "p" (reason)); __asm__ volatile ("call x86_64_PrePanic"); __builtin_unreachable()
+#else
+#error Unknown Architecture
+#endif
+#endif
 
-extern "C" {
-    
-    enum SystemCalls {
-        SC_EXIT = 0
-    };
+#define STACK_CHK_GUARD 0x595e9fbd94fda766
 
-    uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3);
+uintptr_t __stack_chk_guard = STACK_CHK_GUARD;
+
+__attribute__((noreturn))
+void __stack_chk_fail(void) {
+    PANIC("Stack smashing detected");
 }
-
-void SystemCallInit();
-
-#endif /* _SYSTEM_CALL_HPP */

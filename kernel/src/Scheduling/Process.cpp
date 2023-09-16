@@ -22,11 +22,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Memory/VirtualPageManager.hpp>
 
 namespace Scheduling {
-    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr) {
+    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false) {
 
     }
 
-    Process::Process(ProcessEntry_t entry, void* entry_data, Priority priority, uint8_t flags, WorldOS::PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr) {
+    Process::Process(ProcessEntry_t entry, void* entry_data, Priority priority, uint8_t flags, WorldOS::PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false) {
 
     }
 
@@ -87,8 +87,27 @@ namespace Scheduling {
         return m_VPM;
     }
 
+    Thread* Process::GetMainThread() const {
+        return m_main_thread_initialised ? m_main_thread : nullptr;
+    }
+
+    uint64_t Process::GetThreadCount() const {
+        return m_threads.getCount();
+    }
+
+    Thread* Process::GetThread(uint64_t index) const {
+        return m_threads.get(index);
+    }
+
+    void Process::CreateMainThread() {
+        m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags);
+        m_threads.insert(m_main_thread);
+        m_main_thread_initialised = true;
+        m_main_thread_creation_requested = true;
+    }
+
     void Process::Start() {
-        if (m_main_thread_initialised)
+        if (m_main_thread_initialised && !m_main_thread_creation_requested)
             return;
         Scheduler::AddProcess(this);
         if (m_flags & ALLOCATE_VIRTUAL_SPACE && m_pm == nullptr && m_VPM == nullptr) {
@@ -97,9 +116,11 @@ namespace Scheduling {
             m_VPM->InitVPageMgr(m_region);
             m_pm = new WorldOS::PageManager(m_region, m_VPM, m_Priority != Priority::KERNEL);
         }
-        m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags);
-        m_threads.insert(m_main_thread);
-        m_main_thread_initialised = true;
+        if (!m_main_thread_initialised) {
+            m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags);
+            m_threads.insert(m_main_thread);
+            m_main_thread_initialised = true;
+        }
         m_main_thread->Start();
     }
 
@@ -109,5 +130,26 @@ namespace Scheduling {
         m_threads.insert(thread);
         thread->SetParent(this);
         thread->Start();
+    }
+
+    void Process::RemoveThread(Thread* thread) {
+        if (thread == nullptr)
+            return;
+        uint64_t i = m_threads.getIndex(thread); // verify the thread is actually valid
+        if (i == UINT64_MAX)
+            return;
+        bool is_main_thread = m_main_thread == thread;
+        m_threads.remove(thread);
+        thread->SetParent(nullptr);
+        if (is_main_thread)
+            m_main_thread = nullptr;
+    }
+
+    void Process::RemoveThread(uint64_t index) {
+        Thread* thread = m_threads.get(index);
+        if (thread == nullptr)
+            return;
+        m_threads.remove(index);
+        thread->SetParent(nullptr);
     }
 }

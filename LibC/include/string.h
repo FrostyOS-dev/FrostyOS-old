@@ -43,9 +43,12 @@ char* strncpy(char* dst, const char* src, size_t n);
 int strcmp(const char* str1, const char* str2);
 int strncmp(const char* str1, const char* str2, size_t n);
 
-char* strcat(char* dest, char* src);
+char* strcat(char* dest, const char* src);
+char* strncat(char* dest, const char* src, size_t num);
 
 char* strchr(const char* str, int character);
+
+char* strrchr(const char* str, int character);
 
 #ifdef __cplusplus
 }
