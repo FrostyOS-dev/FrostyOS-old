@@ -55,7 +55,7 @@ bool VFS::MountRoot(FileSystemType type) {
 }
 
 bool VFS::Mount(const char* path, FileSystemType type) {
-    fprintf(VFS_DEBUG, "[%s(%s, %u)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, (unsigned int)type);
+    dbgprintf("[%s(%s, %u)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, (unsigned int)type);
     return false;
 }
 
@@ -366,6 +366,6 @@ VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) {
 }
 
 bool VFS::isMountpoint(const char* path, size_t len) {
-    fprintf(VFS_DEBUG, "[%s(%lp, %lu)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, len);
+    dbgprintf("[%s(%lp, %lu)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, len);
     return false;
 }

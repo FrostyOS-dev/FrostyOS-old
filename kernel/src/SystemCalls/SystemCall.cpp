@@ -29,7 +29,7 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
         sys$exit(Scheduling::Scheduler::GetCurrent(), (int)arg1);
         return 0;
     default:
-        fprintf(VFS_DEBUG, "Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
+        dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;
     }
 }

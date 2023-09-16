@@ -35,7 +35,7 @@ extern "C" void HAL_TimeInit() {
         sleep(10); // minimum wait time
         RTCTime time2 = RTC_getCurrentTime();
         if (time == time2) {
-            fprintf(VFS_DEBUG, "RTC Initialised Successfully. It is %s the %hhu of %s %hu, %hhu:%hhu:%hhu UTC\n", days_of_week[time.WeekDay - 1], time.DayOfMonth, months[time.Month - 1], time.Year, time.Hours, time.Minutes, time.Seconds);
+            dbgprintf("RTC Initialised Successfully. It is %s the %hhu of %s %hu, %hhu:%hhu:%hhu UTC\n", days_of_week[time.WeekDay - 1], time.DayOfMonth, months[time.Month - 1], time.Year, time.Hours, time.Minutes, time.Seconds);
             break;
         }
     }

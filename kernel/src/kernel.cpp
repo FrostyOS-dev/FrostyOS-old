@@ -94,7 +94,7 @@ namespace WorldOS {
         uint8_t* ELF_map_data;
         uint64_t ELF_map_size = TarFS::USTAR_Lookup((uint8_t*)(params->initramfs_addr), "kernel.map", &ELF_map_data);
         if (ELF_map_size == 0)
-            fprintf(VFS_DEBUG, "WARN: Cannot find kernel symbol file\n");
+            dbgprintf("WARN: Cannot find kernel symbol file\n");
         else
             g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size);
 
@@ -127,11 +127,11 @@ namespace WorldOS {
         g_VFS = KVFS;
         assert(KVFS->MountRoot(FileSystemType::TMPFS));
 
-        fputs(VFS_DEBUG, "VFS root mounted.\n");
+        dbgputs("VFS root mounted.\n");
 
         Initialise_InitRAMFS(params->initramfs_addr, params->initramfs_size);
 
-        fputs(VFS_DEBUG, "Initial RAMFS initialised.\n");
+        dbgputs("Initial RAMFS initialised.\n");
 
         SystemCallInit();
 

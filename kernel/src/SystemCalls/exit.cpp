@@ -24,7 +24,6 @@ void sys$exit(Scheduling::Thread* thread, int status) {
     using namespace Scheduling;
     Process* parent = thread->GetParent();
     if (parent == nullptr) {
-        fprintf(VFS_DEBUG, "parent == nullptr.\n");
         ThreadCleanup_t cleanup = thread->GetCleanupFunction();
         delete thread;
         if (cleanup.function != nullptr)
@@ -45,7 +44,6 @@ void sys$exit(Scheduling::Thread* thread, int status) {
             Thread* i_thread = parent->GetThread(0);
             if (i_thread == nullptr)
                 break; // should never happen
-            fprintf(VFS_DEBUG, "sub thread %lu == %lp.\n", i, i_thread);
             if (i_thread->GetFlags() & CREATE_STACK)
                 parent->GetPageManager()->FreePages((void*)(i_thread->GetStack() - KiB(64)));
             cleanup = i_thread->GetCleanupFunction();

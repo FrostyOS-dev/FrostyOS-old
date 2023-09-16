@@ -86,7 +86,7 @@ namespace WorldOS {
         }
         PCI::Header0* device = PCI::PCIDeviceList::GetPCIDevice(0);
         for (uint64_t i = 1; device != nullptr; i++) {
-            fprintf(VFS_DEBUG, "PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
+            dbgprintf("PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
             device = PCI::PCIDeviceList::GetPCIDevice(i);
         }
 

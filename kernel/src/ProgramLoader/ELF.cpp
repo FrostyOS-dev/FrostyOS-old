@@ -131,7 +131,7 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
 #ifdef __x86_64__
                     x86_64_EnableInterrupts();
 #endif
-                    fprintf(VFS_DEBUG, "[%s] WARNING: first allocation failed. page_count = %lu, i = %lu, page_start = %lp, m_region = {%lp, %lp, %lu}\n", __extension__ __PRETTY_FUNCTION__, page_count, i, page_start, m_region.GetStart(), m_region.GetEnd(), m_region.GetSize());
+                    dbgprintf("[%s] WARNING: first allocation failed. page_count = %lu, i = %lu, page_start = %lp, m_region = {%lp, %lp, %lu}\n", __extension__ __PRETTY_FUNCTION__, page_count, i, page_start, m_region.GetStart(), m_region.GetEnd(), m_region.GetSize());
                     return false;
                 }
                 fast_memset(start, 0, mem_size >> 3);
@@ -159,7 +159,7 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
     total_size += 1;
     char* entry_data_address = (char*)m_PM->AllocatePages(DIV_ROUNDUP(total_size, PAGE_SIZE));
     if (entry_data_address == nullptr) {
-        fprintf(VFS_DEBUG, "entry_data_address == nullptr, total_size = %lu.\n", total_size);
+        dbgprintf("entry_data_address == nullptr, total_size = %lu.\n", total_size);
         return false;
     }
     ELF_entry_data* new_entry_data = (ELF_entry_data*)entry_data_address;

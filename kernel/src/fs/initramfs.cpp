@@ -35,7 +35,7 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
     while (memcmp(&(header->ID), "ustar", 5) == 0 && ((uint64_t)header - (uint64_t)address) < size) {
         assert(header->filepath[99] == 0);
         uint64_t size = ASCII_OCT_To_UInt(header->size, 12);
-        fprintf(VFS_DEBUG, "initramfs item: path=\"%s\", size=%lu, type=%c\n", header->filepath, size, header->TypeFlag);
+        dbgprintf("initramfs item: path=\"%s\", size=%lu, type=%c\n", header->filepath, size, header->TypeFlag);
 
         uint8_t last_separator = 255;
         for (uint8_t i = 0; i < 99 && header->filepath[i]; i++) {
@@ -128,12 +128,12 @@ namespace TarFS {
         while (memcmp(&(header->ID), "ustar", 5) == 0) {
             
             uint64_t size = ASCII_OCT_To_UInt(header->size, 12);
-            fprintf(VFS_DEBUG, "USTAR item: path=\"%s\", size=%lu, type=%c\n", header->filepath, size, header->TypeFlag);
+            dbgprintf("USTAR item: path=\"%s\", size=%lu, type=%c\n", header->filepath, size, header->TypeFlag);
 
             if ((header->TypeFlag - '0') == 0) {
-                fputs(VFS_DEBUG, "File contents:\n\n");
+                dbgputs("File contents:\n\n");
                 fwrite((const void*)((uint64_t)header + 512), 1, size, VFS_DEBUG);
-                fputs(VFS_DEBUG, "\n\n");
+                dbgputs("\n\n");
             }
 
             header = (USTARItemHeader*)((uint64_t)header + 512 + ALIGN_UP(size, 512));

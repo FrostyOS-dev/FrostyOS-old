@@ -71,7 +71,7 @@ namespace LinkedList {
 
 		void insert(const T* obj) {
 			/*if (findNode(m_start, (uint64_t)&obj) != nullptr) {
-				fprintf(VFS_DEBUG, "[%s] WARN: object already exists. Not inserting.\n", __extension__ __PRETTY_FUNCTION__);
+				dbgprintf("[%s] WARN: object already exists. Not inserting.\n", __extension__ __PRETTY_FUNCTION__);
 				return; // object already exists
 			}*/
 			insertNode(m_start, (uint64_t)obj);
@@ -111,7 +111,7 @@ namespace LinkedList {
 		}
 		void rotateLeft() {
 			if (m_count < 2) {
-				fprintf(VFS_DEBUG, "[%s] WARN: not enough nodes to rotate.\n", __extension__ __PRETTY_FUNCTION__);
+				dbgprintf("[%s] WARN: not enough nodes to rotate.\n", __extension__ __PRETTY_FUNCTION__);
 				return; // not enough nodes to rotate
 			}
 			Node* end = m_start;

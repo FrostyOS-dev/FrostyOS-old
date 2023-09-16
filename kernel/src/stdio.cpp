@@ -59,6 +59,14 @@ void internal_fputs(const fd_t file, const char* str, bool swap) {
         VFS_write(file, (uint8_t*)str, strlen(str));
 }
 
+extern "C" void dbgputc(const char c) {
+    VFS_write(VFS_DEBUG, (uint8_t*)&c, 1);
+}
+
+extern "C" void dbgputs(const char* str) {
+    VFS_write(VFS_DEBUG, (uint8_t*)str, strlen(str));
+}
+
 extern "C" void fputc(const fd_t file, const char c) {
     internal_fputc(file, c, true);
 }
@@ -275,6 +283,17 @@ extern "C" void printf(const char* format, ...) {
 extern "C" void vprintf(const char* format, va_list args) {
     vfprintf(VFS_STDOUT, format, args);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
+}
+
+extern "C" void dbgprintf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    vfprintf(VFS_DEBUG, format, args);
+    va_end(args);
+}
+
+extern "C" void dbgvprintf(const char* format, va_list args) {
+    vfprintf(VFS_DEBUG, format, args);
 }
 
 extern "C" void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file) {

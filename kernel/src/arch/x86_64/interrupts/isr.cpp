@@ -71,7 +71,7 @@ extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers regs) {
     if (g_ISRHandlers[p_regs->interrupt] != nullptr)
         return g_ISRHandlers[p_regs->interrupt](p_regs);
 
-    fprintf(VFS_DEBUG, "Interrupt occurred. RIP: %lx Interrupt number: %hhx\n", regs.rip, regs.interrupt);
+    dbgprintf("Interrupt occurred. RIP: %lx Interrupt number: %hhx\n", regs.rip, regs.interrupt);
 
     // prevent spam panic messages
     if (in_interrupt) {

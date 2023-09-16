@@ -26,7 +26,7 @@ void* operator new(size_t size) throw() {
         return kcalloc(DIV_ROUNDUP(size, 8), 8);
     }
     else {
-        fprintf(VFS_DEBUG, "operator new attempted when unavailable. returning a null pointer.\n");
+        dbgprintf("operator new attempted when unavailable. returning a null pointer.\n");
     }
     return nullptr;
 }
@@ -36,7 +36,7 @@ void* operator new[](size_t size) throw() {
         return kcalloc(DIV_ROUNDUP(size, 8), 8);
     }
     else {
-        fprintf(VFS_DEBUG, "operator new[] attempted when unavailable. returning a null pointer.\n");
+        dbgprintf("operator new[] attempted when unavailable. returning a null pointer.\n");
     }
     return nullptr;
 }
@@ -46,7 +46,7 @@ void operator delete(void* p) {
         return kfree(p);
     }
     else {
-        fprintf(VFS_DEBUG, "operator delete attempted when unavailable. doing nothing.\n");
+        dbgprintf("operator delete attempted when unavailable. doing nothing.\n");
     }
 }
 
@@ -55,7 +55,7 @@ void operator delete[](void* p) {
         return kfree(p);
     }
     else {
-        fprintf(VFS_DEBUG, "operator delete[] attempted when unavailable. doing nothing.\n");
+        dbgprintf("operator delete[] attempted when unavailable. doing nothing.\n");
     }
 }
 
@@ -64,7 +64,7 @@ void operator delete(void* p, size_t) {
         return kfree(p);
     }
     else {
-        fprintf(VFS_DEBUG, "operator delete attempted when unavailable. doing nothing.\n");
+        dbgprintf("operator delete attempted when unavailable. doing nothing.\n");
     }
 }
 
@@ -73,7 +73,7 @@ void operator delete[](void* p, size_t) {
         return kfree(p);
     }
     else {
-        fprintf(VFS_DEBUG, "operator delete[] attempted when unavailable. doing nothing.\n");
+        dbgprintf("operator delete[] attempted when unavailable. doing nothing.\n");
     }
 }
 

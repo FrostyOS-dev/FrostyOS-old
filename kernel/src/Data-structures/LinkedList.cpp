@@ -194,15 +194,15 @@ namespace LinkedList {
 	}
 
 	void fprint(fd_t file, Node* head) {
-		fprintf(VFS_DEBUG, "Linked list order: ");
+		fprintf(file, "Linked list order: ");
 
 		Node* current = head;
 		while (current != nullptr) {
-			fprintf(VFS_DEBUG, " %lu ", current->data);
+			fprintf(file, " %lu ", current->data);
 			current = current->next;
 		}
 
-		fprintf(VFS_DEBUG, "\n");
+		fprintf(file, "\n");
 
 		// clear the value of current to protect the node it is pointing to from possible deletion
 		current = nullptr;

@@ -38,13 +38,19 @@ typedef uint8_t fd_t;
 
 void putc(const char c);
 inline void putchar(const char c) { putc(c); };
+void dbgputc(const char c);
 void fputc(const fd_t file, const char c);
 
 void puts(const char* str);
+void dbgputs(const char* str);
 void fputs(const fd_t file, const char* str);
 
 void printf(const char* format, ...);
 void vprintf(const char* format, va_list args);
+
+void dbgprintf(const char* format, ...);
+void dbgvprintf(const char* format, va_list args);
+
 void fprintf(const fd_t file, const char* format, ...);
 void vfprintf(const fd_t file, const char* format, va_list args);
 

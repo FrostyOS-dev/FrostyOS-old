@@ -31,7 +31,7 @@ void x86_64_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
         g_IRQHandlers[irq](regs);
     }
     else {
-        fprintf(VFS_DEBUG, "Unhandled IRQ %d...\n", irq);
+        dbgprintf("Unhandled IRQ %d...\n", irq);
     }
 
     x86_64_PIC_sendEOI(irq);
