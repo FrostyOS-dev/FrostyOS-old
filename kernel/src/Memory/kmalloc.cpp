@@ -377,6 +377,8 @@ void kmalloc_init() {
 }
 
 extern "C" void* kcalloc(size_t num, size_t size) {
+    if (!g_kmalloc_initialised)
+        return nullptr;
     size = ALIGN_UP((size * num), MIN_SIZE);
     void* mem = mrvn_malloc(size);
     if (mem == nullptr)
@@ -390,7 +392,7 @@ extern "C" void kfree(void* addr) {
 }
 
 extern "C" void* kmalloc(size_t size) {
-    if (size == 0)
+    if (size == 0 || !g_kmalloc_initialised)
         return nullptr;
     return mrvn_malloc(ALIGN_UP(size, MIN_SIZE));
 }
@@ -400,6 +402,8 @@ extern "C" void* krealloc(void* ptr, size_t size) {
         kfree(ptr);
         return nullptr;
     }
+    if (ptr == nullptr)
+        return kmalloc(size);
     if (ptr < g_mem_start || ptr > g_mem_end)
         return nullptr;
     size = ALIGN_UP(size, MIN_SIZE);

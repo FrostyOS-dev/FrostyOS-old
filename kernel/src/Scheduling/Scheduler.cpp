@@ -63,8 +63,10 @@ namespace Scheduling {
             CPU_Registers* regs = thread->GetCPURegisters();
             fast_memset(regs, 0, DIV_ROUNDUP(sizeof(CPU_Registers), 8));
 #ifdef __x86_64__
-            if ((thread->GetFlags() & CREATE_STACK))
-                x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64*4));
+            if ((thread->GetFlags() & CREATE_STACK)) {
+                x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64));
+                thread->GetParent()->SyncRegion();
+            }
             else
                 regs->RSP = (uint64_t)x86_64_get_stack_ptr();
             thread->SetStack(regs->RSP);
@@ -170,7 +172,7 @@ namespace Scheduling {
             g_ticks = 0;
             g_running = true;
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetCPURegisters()));
+            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetStackRegisterFrame()));
             if (g_current->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(g_current->GetCPURegisters());
             else
@@ -186,7 +188,7 @@ namespace Scheduling {
             assert(g_current->GetCPURegisters() != nullptr);
             g_ticks = 0;
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetCPURegisters()));
+            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetStackRegisterFrame()));
             if (g_current->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(g_current->GetCPURegisters());
             else
@@ -202,7 +204,7 @@ namespace Scheduling {
             assert(g_current->GetCPURegisters() != nullptr);
             g_ticks = 0;
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetCPURegisters()));
+            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetStackRegisterFrame()));
             if (g_current->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(g_current->GetCPURegisters());
             else {
@@ -222,7 +224,7 @@ namespace Scheduling {
             assert(thread->GetCPURegisters() != nullptr);
             g_ticks = 0;
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(thread->GetCPURegisters()));
+            x86_64_set_kernel_gs_base((uint64_t)(thread->GetStackRegisterFrame()));
             if (thread->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(thread->GetCPURegisters());
             else
@@ -271,9 +273,6 @@ namespace Scheduling {
                 if ((g_high_run_count >= 4 || g_high_threads.getCount() == 0) && (g_normal_threads.getCount() > 0 || g_low_threads.getCount() > 0)) { // time to select a normal thread
                     if ((g_normal_run_count >= 4 || g_normal_threads.getCount() == 0) && g_low_threads.getCount() > 0) { // time to select a low thread
                         g_current = g_low_threads.get(0);
-                        if (g_current == nullptr) {
-                            g_normal_threads.fprint(VFS_DEBUG);
-                        }
                         g_low_threads.remove(UINT64_C(0));
                         g_normal_run_count = 0;
                     }

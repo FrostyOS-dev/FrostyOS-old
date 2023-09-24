@@ -22,12 +22,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "exit.hpp"
 
 #include <Scheduling/Scheduler.hpp>
+#include <Scheduling/Thread.hpp>
 
-extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3) {
+extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3, CPU_Registers* regs) {
+    fast_memcpy(Scheduling::Scheduler::GetCurrent()->GetCPURegisters(), regs, sizeof(CPU_Registers)); // save the registers
     switch (num) {
     case SC_EXIT:
         sys$exit(Scheduling::Scheduler::GetCurrent(), (int)arg1);
         return 0;
+    case SC_READ:
+        return (uint64_t)(Scheduling::Scheduler::GetCurrent()->sys$read((fd_t)arg1, (void*)arg2, arg3));
+    case SC_WRITE:
+        return (uint64_t)(Scheduling::Scheduler::GetCurrent()->sys$write((fd_t)arg1, (const void*)arg2, arg3));
+    case SC_OPEN:
+        return (uint64_t)(Scheduling::Scheduler::GetCurrent()->sys$open((const char*)arg1, arg2));
+    case SC_CLOSE:
+        return (uint64_t)(Scheduling::Scheduler::GetCurrent()->sys$close((fd_t)arg1));
+    case SC_SEEK:
+        return (uint64_t)(Scheduling::Scheduler::GetCurrent()->sys$seek((fd_t)arg1, (long)arg2));
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

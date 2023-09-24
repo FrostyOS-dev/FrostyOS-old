@@ -55,6 +55,10 @@ namespace WorldOS {
 
         bool ExpandVRegionToRight(size_t new_size);
 
+        bool isWritable(void* addr, size_t size) const;
+
+        const VirtualRegion& GetRegion() const;
+
     private:
         PageObject* m_allocated_objects;
         uint64_t m_allocated_object_count;

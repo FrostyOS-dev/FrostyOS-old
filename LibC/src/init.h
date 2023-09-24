@@ -18,6 +18,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _LIBC_INIT_H
 #define _LIBC_INIT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void __init_libc(int argc, char** argv, int envc, char** env);
+
+void __stdio_init();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _LIBC_INIT_H */

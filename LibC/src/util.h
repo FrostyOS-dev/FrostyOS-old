@@ -72,6 +72,11 @@ int memcmp(const void* s1, const void* s2, const size_t n);
 #define FLAG_SET(x, flag) x |= (flag)
 #define FLAG_UNSET(x, flag) x &= ~(flag)
 
+#define __SET_ERRNO(value) errno = value < 0 ? -value : 0
+#define __RETURN_WITH_ERRNO(value) int _return_value = value; __SET_ERRNO(_return_value); return _return_value
+#define __RETURN_VOID_WITH_ERRNO(value) __SET_ERRNO(value); return
+#define __RETURN_NULL_WITH_ERRNO(value) __SET_ERRNO(value); return NULL
+
 #ifdef __cplusplus
 }
 #endif

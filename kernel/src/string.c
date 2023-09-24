@@ -74,3 +74,41 @@ int strncmp(const char* str1, const char* str2, size_t n) {
     }
     return 0;
 }
+
+char* strchr(const char* str, int character) {
+    if (str == NULL)
+        return (char*)str;
+    size_t i = 0;
+    char c = str[i];
+    while (c) {
+        if (c == (char)character)
+            return &(((char*)str)[i]);
+        i++;
+        c = str[i];
+    }
+    return NULL;
+}
+
+#include <stdio.h>
+
+char* strrchr(const char* str, int character) {
+    if (str == NULL)
+        return NULL;
+    size_t i = 0;
+    size_t last = 0;
+    int found = 0;
+    char c = str[i];
+    while (c) {
+        if (c == (char)character) {
+            found = 1;
+            last = i;
+        }
+        i++;
+        c = str[i];
+    }
+    if (found) {
+        dbgprintf("found = %d. last = %lu, str = \"%s\"", found, last, str);
+        return &(((char*)str)[last]);
+    }
+    return NULL;
+}

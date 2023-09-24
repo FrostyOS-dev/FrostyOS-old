@@ -20,17 +20,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 
-typedef uint64_t (*SystemCallHandler_t)(uint64_t, uint64_t, uint64_t);
-
-#define SYSTEM_CALL_COUNT 64
+#include <HAL/hal.hpp>
 
 extern "C" {
     
     enum SystemCalls {
-        SC_EXIT = 0
+        SC_EXIT = 0,
+        SC_READ = 1,
+        SC_WRITE = 2,
+        SC_OPEN = 3,
+        SC_CLOSE = 4,
+        SC_SEEK = 5
     };
 
-    uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3);
+    uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3, CPU_Registers* regs);
 }
 
 void SystemCallInit();

@@ -24,4 +24,5 @@ void __init_libc(int argc, char** argv, int envc, char** envv) {
     (void)argc;
     (void)argv;
     (void)envc;
+    __stdio_init();
 }

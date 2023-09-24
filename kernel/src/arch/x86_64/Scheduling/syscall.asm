@@ -106,86 +106,106 @@ extern SystemCallHandler
 
 global x86_64_HandleSystemCall
 x86_64_HandleSystemCall:
-    cli
-    swapgs ; get the offset to register save point
+    swapgs ; get kernel gs base
 
-    mov QWORD [gs:48], rsp ; save user stack
-    mov rsp, QWORD [gs:156] ; load kernel stack
+    mov QWORD [gs:0], rsp ; save user stack
+    mov rsp, QWORD [gs:8] ; get kernel stack
 
-    mov QWORD [gs:0], rax    ; save rax
-    mov QWORD [gs:8], rbx    ; save rbx
-    mov QWORD [gs:16], rcx   ; save rcx
-    mov QWORD [gs:24], rdx   ; save rdx
-    mov QWORD [gs:32], rsi   ; save rsi
-    mov QWORD [gs:40], rdi   ; save rdi
-    mov QWORD [gs:56], rbp   ; save rbp
-    mov QWORD [gs:64],  r8   ; save r8
-    mov QWORD [gs:72],  r9   ; save r9
-    mov QWORD [gs:80], r10   ; save r10
-    mov QWORD [gs:88], r11   ; save r11
-    mov QWORD [gs:96], r12   ; save r12
-    mov QWORD [gs:104], r13  ; save r13
-    mov QWORD [gs:112], r14  ; save r14
-    mov QWORD [gs:120], r15  ; save r15
-    mov QWORD [gs:128], rcx  ; save rip
-    mov  WORD [gs:136], 0x23 ; save cs
-    mov  WORD [gs:138], 0x1b ; save ds
-    mov QWORD [gs:140], r11  ; save rflags
+    sub rsp, 4 ; used to fix alignment later
+    push 0 ; dummy cr3 value until week can actual save it
+    push r11 ; rflags
 
-    push rax ; preserve rax
+    sub rsp, 2
+    mov WORD [rsp], 0x23 ; DS
+    sub rsp, 2
+    mov WORD [rsp], 0x1b ; CS
+
+    push rcx ; rip
+    push r15
+    push r14
+
+    ; we now have at least 1 free GPRs, so we can save the kernel stack better
+    lea r14, QWORD [rsp+36]
+
+    ; don't need gs base anymore, so we can restore it
+    swapgs
+
+    push r13
+    push r12
+    push r11
+    push r10
+    push r9
+    push r8
+    push rbp
+    push r15 ; user stack
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    push rbx
+    push rax
 
     mov rax, cr3
-    mov QWORD [gs:148], rax  ; save cr3
+    mov QWORD [r14], rax ; save cr3
 
-    mov ax, 0x10
+    mov ax, 0x10 ; load segment
     mov ds, ax
     mov es, ax
     mov fs, ax
+    mov gs, ax
 
-    pop rax ; restore rax
+    sti ; safe to enable interrupts
 
-    ; setup blank stack frame so we don't accidently read the user stack when a stack trace is performed
-    xor rbp, rbp
-    push rbp ; rbp
+    mov rcx, rdx ; arg3
+    mov rdx, rsi ; arg2
+    mov rsi, rdi ; arg1
+    mov rdi, QWORD [rsp] ; restore the syscall number
+    mov r8, rsp ; save address
 
-    mov rcx, rdx
-    mov rdx, rsi
-    mov rsi, rdi
-    mov rdi, rax
+    xor rbp, rbp ; create a blank stack frame
 
     call SystemCallHandler
 
-    add rsp, 8 ; discard useless rbp value
+    cli ; interrupts must be disabled again
 
-    push rax ; save return value
+    mov QWORD [rsp], rax ; save rax
+
+    add rsp, 8 ; skip restoring rax
+    pop rbx
+    add rsp, 8 ; don't restore rcx twice
+    pop rdx
+    pop rsi
+    pop rdi
+    add rsp, 8 ; skip restore user stack for now
+    pop rbp
+    pop r8
+    pop r9
+    pop r10
+    add rsp, 8 ; don't restore r11 twice
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+    pop rcx ; return address
+    add rsp, 4 ; don't need to restore cs and ds as they are known values
+    pop r11 ; rflags
+    pop rax
+    mov cr3, rax
+
+    add rsp, 4 ; restore alignment changes
 
     mov ax, 0x1b
     mov ds, ax
     mov es, ax
     mov fs, ax
+    mov gs, ax
 
-    mov QWORD rbx, [gs:8]    ; load rbx
-    mov QWORD rcx, [gs:16]   ; load rcx and rip
-    mov QWORD rdx, [gs:24]   ; load rdx
-    mov QWORD rsi, [gs:32]   ; load rsi
-    mov QWORD rdi, [gs:40]   ; load rdi
-    mov QWORD rbp, [gs:56]   ; load rbp
-    mov QWORD r8, [gs:64]   ; load r8
-    mov QWORD r9, [gs:72]   ; load r9
-    mov QWORD r10, [gs:80]   ; load r10
-    mov QWORD r11, [gs:88]   ; load r11 and rflags
-    mov QWORD r12, [gs:96]   ; load r12
-    mov QWORD r13, [gs:104]  ; load r13
-    mov QWORD r14, [gs:112]  ; load r14
-    mov QWORD r15, [gs:120]  ; load r15
+    mov rax, QWORD [rsp-160] ; get return value
 
-    mov rax, QWORD [gs:148]  ; load cr3
-    mov cr3, rax
+    swapgs ; get offset again
 
-    pop rax ; restore return value
+    mov rsp, QWORD [gs:0]
 
-    mov QWORD [gs:156], rsp ; save kernel stack
-    mov rsp, QWORD [gs:48] ; load user stack
+    swapgs ; restore gs base
 
-    swapgs ; restore user GS base
     o64 sysret

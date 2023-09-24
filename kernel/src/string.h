@@ -42,6 +42,10 @@ char* strncpy(char* dst, const char* src, size_t n);
 int strcmp(const char* str1, const char* str2);
 int strncmp(const char* str1, const char* str2, size_t n);
 
+char* strchr(const char* str, int character);
+
+char* strrchr(const char* str, int character);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2023  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,18 +15,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_HAL_VFS_HPP
-#define _KERNEL_HAL_VFS_HPP
-
 #include <stdint.h>
-#include <stddef.h>
+#include <assert.h>
 
-extern "C" {
+#define STACK_CHK_GUARD 0x595e9fbd94fda766
 
-typedef uint8_t fd_t;
+uintptr_t __stack_chk_guard = STACK_CHK_GUARD;
 
+__attribute__((noreturn)) void __stack_chk_fail(void) {
+#ifndef NDEBUG
+    __assert_fail("Stack smashing detected", "N/A", 0, "N/A");
+    __builtin_unreachable();
+#endif
+    while (1) {}
 }
-
-void VFS_write(const fd_t file, const uint8_t* bytes, const size_t length);
-
-#endif /* _KERNEL_HAL_VFS_HPP */

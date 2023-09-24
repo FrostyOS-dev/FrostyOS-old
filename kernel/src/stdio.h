@@ -19,25 +19,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _STDIO_H
 
 #include <stddef.h>
-#include <stdint.h>
 #include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum OUT_TYPES {
-    VFS_STDIN            = 0,
-    VFS_STDOUT           = 1,
-    VFS_STDERR           = 2, // same as STDOUT for now
-    VFS_DEBUG            = 3,
-    VFS_DEBUG_AND_STDOUT = 4,
-};
+#define stdin 0L
+#define stdout 1L
+#define stderr 2L
+#define stddebug 3L
 
-typedef uint8_t fd_t;
+#define SEEK_SET 0
+// FIXME: implement SEEK_CUR and SEEK_END
+
+typedef long fd_t;
 
 void putc(const char c);
-inline void putchar(const char c) { putc(c); };
+inline void putchar(const char c) { putc(c); }
 void dbgputc(const char c);
 void fputc(const fd_t file, const char c);
 
@@ -54,8 +53,20 @@ void dbgvprintf(const char* format, va_list args);
 void fprintf(const fd_t file, const char* format, ...);
 void vfprintf(const fd_t file, const char* format, va_list args);
 
-void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file);
+size_t fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file);
+size_t fread(void* ptr, size_t size, size_t count, const fd_t file);
 
+fd_t fopen(const char* file, const char* mode);
+int fclose(const fd_t file);
+
+int fseek(const fd_t file, long int offset, int origin);
+
+void rewind(const fd_t file);
+
+
+// Non ISO C functions
+
+size_t fgetsize(const fd_t file);
 
 #ifdef __cplusplus
 }

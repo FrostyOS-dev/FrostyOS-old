@@ -68,7 +68,8 @@
         "streambuf": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "hal.hpp": "c"
+        "file.h": "c",
+        "stdio.h": "c"
     },
     "makefile.dryrunSwitches": [
         "boot-iso"
@@ -87,6 +88,7 @@
         "libgcc",
         "PPFA",
         "RSDP",
+        "stddebug",
         "TMPFS",
         "Unallocate",
         "Unreserve",
@@ -97,7 +99,9 @@
     "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
         "clang-diagnostic-implicit-exception-spec-mismatch",
         "clang-diagnostic-incompatible-library-redeclaration",
-        "clang-diagnostic-error"
+        "clang-diagnostic-error",
+        "clang-diagnostic-error",
+        "clang-diagnostic-switch"
     ],
     "C_Cpp.files.exclude": {
         "**/toolchain" : true,

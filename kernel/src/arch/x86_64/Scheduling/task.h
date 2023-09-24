@@ -46,6 +46,7 @@ struct x86_64_Registers {
     uint16_t DS;
     uint64_t RFLAGS;
     uint64_t CR3;
+    uint32_t _alignment; // used to fix alignment
 } __attribute__((packed));
 
 // Switch to another kernel thread. Does not save any registers and will not return.

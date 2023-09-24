@@ -116,6 +116,8 @@ namespace Scheduling {
             m_VPM->InitVPageMgr(m_region);
             m_pm = new WorldOS::PageManager(m_region, m_VPM, m_Priority != Priority::KERNEL);
         }
+        else
+            m_region = m_pm->GetRegion(); // ensure the region is up to date
         if (!m_main_thread_initialised) {
             m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags);
             m_threads.insert(m_main_thread);
@@ -151,5 +153,29 @@ namespace Scheduling {
             return;
         m_threads.remove(index);
         thread->SetParent(nullptr);
+    }
+
+    bool Process::ValidateRead(const void* buf, size_t size) const {
+        return m_region.IsInside(buf, size);
+    }
+
+    bool Process::ValidateStringRead(const char* str) const {
+        if (!m_region.IsInside(str, sizeof(char)))
+            return false;
+        if (str[0] == '\0')
+            return true;
+        return ValidateStringRead((const char*)((uint64_t)str + sizeof(char)));
+    }
+    
+    bool Process::ValidateWrite(void* buf, size_t size) const {
+        if (!m_region.IsInside(buf, size))
+            return false;
+        if (m_pm == nullptr)
+            return false; // no way to check
+        return m_pm->isWritable(buf, size);
+    }
+
+    void Process::SyncRegion() {
+        m_region = m_pm->GetRegion();
     }
 }

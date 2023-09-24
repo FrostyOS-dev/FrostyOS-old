@@ -83,7 +83,7 @@ namespace WorldOS {
         m_end = (void*)((size_t)m_start + new_size);
     }
 
-    bool VirtualRegion::IsInside(void* mem, size_t size) const {
+    bool VirtualRegion::IsInside(const void* mem, size_t size) const {
         return (mem >= m_start) && ((void*)((size_t)mem + size) <= m_end);
     }
 

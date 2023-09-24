@@ -75,6 +75,12 @@ namespace Scheduling {
         void RemoveThread(Thread* thread);
         void RemoveThread(uint64_t index);
 
+        bool ValidateRead(const void* buf, size_t size) const;
+        bool ValidateStringRead(const char* str) const;
+        bool ValidateWrite(void* buf, size_t size) const;
+
+        void SyncRegion(); // ensure the region matches the page manager's region
+
     private:
         ProcessEntry_t m_Entry;
         void* m_entry_data;

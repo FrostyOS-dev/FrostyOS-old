@@ -185,14 +185,4 @@ enum ErrorCodes {
 #define EPROTOTYPE EPROTOTYPE
 #define EOVERFLOW EOVERFLOW
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern int errno;
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif /* _ERRNO_H */

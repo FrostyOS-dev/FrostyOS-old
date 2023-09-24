@@ -17,54 +17,187 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "stdio.h"
 
-#include <stdbool.h>
-
 #include <string.h> // just used for strlen function
+#include <errno.h>
 
 #include <tty/TTY.hpp>
 
-#include <HAL/vfs.hpp>
+#include <fs/FileDescriptorManager.hpp>
+
+void internal_read(fd_t file, void* data, size_t size) {
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
+    if (descriptor == nullptr)
+        return;
+    descriptor->Read((uint8_t*)data, size);
+}
+
+void internal_write(fd_t file, const void* data, size_t size) {
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
+    if (descriptor == nullptr)
+        return;
+    descriptor->Write((const uint8_t*)data, size);
+}
+
+fd_t internal_open(const char* path, unsigned long mode) {
+    bool create = mode & O_CREATE;
+    if (create)
+        mode &= ~O_CREATE;
+
+    FileDescriptorMode new_mode;
+    uint8_t vfs_modes;
+    if (mode == O_READ) {
+        new_mode = FileDescriptorMode::READ;
+        vfs_modes = VFS_READ;
+    }
+    else if (mode == O_APPEND) {
+        new_mode = FileDescriptorMode::APPEND;
+        vfs_modes = VFS_WRITE;
+    }
+    else if (mode == O_WRITE) {
+        new_mode = FileDescriptorMode::WRITE;
+        vfs_modes = VFS_WRITE;
+    }
+    else if (mode == (O_READ | O_WRITE)) {
+        new_mode = FileDescriptorMode::READ_WRITE;
+        vfs_modes = VFS_READ | VFS_WRITE;
+    }
+    else
+        return -EINVAL;
+
+    bool valid_path = g_VFS->IsValidPath(path);
+    if (create) {
+        if (!valid_path) {
+            char* end = strrchr(path, PATH_SEPARATOR);
+            char* child_start = (char*)((uint64_t)end + sizeof(char));
+            char const* parent;
+            if (end != nullptr) {
+                size_t parent_name_size = (size_t)child_start - (size_t)path;
+                char* i_parent = new char[parent_name_size + 1];
+                memcpy(i_parent, path, parent_name_size);
+                i_parent[parent_name_size] = '\0';
+                if (!g_VFS->IsValidPath(path)) {
+                    delete[] i_parent;
+                    return -ENOENT;
+                }
+                parent = i_parent;
+            }
+            else
+                parent = "/";
+            bool successful = g_VFS->CreateFile(parent, end == nullptr ? path : child_start);
+            if (end != nullptr)
+                delete[] parent;
+            if (!successful) {
+                switch (g_VFS->GetLastError()) {
+                case FileSystemError::INVALID_ARGUMENTS:
+                    return -ENOTDIR;
+                case FileSystemError::ALLOCATION_FAILED:
+                    return -ENOMEM;
+                default:
+                    assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+                }
+            }
+        }
+    }
+    else if (!valid_path)
+        return -ENOENT;
+    
+    FileStream* stream = g_VFS->OpenStream(path, vfs_modes);
+    if (stream == nullptr) {
+        switch (g_VFS->GetLastError()) {
+        case FileSystemError::ALLOCATION_FAILED:
+            return -ENOMEM;
+        default:
+            assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+        }
+    }
+
+    fd_t fd = g_KFDManager->AllocateFileDescriptor(FileDescriptorType::FILE_STREAM, stream, new_mode);
+    if (fd < 0) {
+        (void)(g_VFS->CloseStream(stream)); // we are cleaning up, return value is irrelevant
+        return -ENOMEM;
+    }
+
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(fd);
+    if (descriptor == nullptr) {
+        (void)(g_KFDManager->FreeFileDescriptor(fd));
+        (void)(g_VFS->CloseStream(stream)); // we are cleaning up, return value is irrelevant
+        assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+    }
+
+    if (!descriptor->Open()) {
+        assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+    }
+
+    return fd;
+}
+
+int internal_close(fd_t file) {
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
+    if (descriptor == nullptr)
+        return -EBADF;
+
+    (void)descriptor->Close(); // return value is irrelevant
+    if (descriptor->GetType() == FileDescriptorType::FILE_STREAM) {
+        FileStream* stream = (FileStream*)descriptor->GetData();
+        if (stream != nullptr)
+            delete stream;
+    }
+    (void)g_KFDManager->FreeFileDescriptor(file); // return value is irrelevant
+    delete descriptor;
+    return ESUCCESS;
+}
+
+long internal_seek(fd_t file, long offset) {
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
+    if (descriptor == nullptr)
+        return -EBADF;
+
+    if (offset < 0)
+        return -EINVAL;
+
+    if (!descriptor->Seek((uint64_t)offset)) {
+        switch (descriptor->GetLastError()) {
+        case FileDescriptorError::INVALID_ARGUMENTS:
+            return -EINVAL;
+        case FileDescriptorError::INVALID_MODE:
+        case FileDescriptorError::STREAM_ERROR:
+            return -EBADF;
+        default:
+            assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+        }
+    }
+
+    return offset;
+}
 
 extern "C" void putc(const char c) {
-    g_CurrentTTY->putc(c);
+    internal_write(stdout, &c, 1);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 extern "C" void puts(const char* str) {
-    g_CurrentTTY->puts(str);
+    internal_write(stdout, str, strlen(str));
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 void internal_fputc(const fd_t file, const char c, bool swap) {
-    if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT) {
-        g_CurrentTTY->putc(c);
-        if (swap)
-            g_CurrentTTY->GetVGADevice()->SwapBuffers();
-        if (file == VFS_DEBUG_AND_STDOUT)
-            VFS_write(VFS_DEBUG, (uint8_t*)&c, 1);
-    }
-    else
-        VFS_write(file, (uint8_t*)&c, 1);
+    internal_write(file, &c, 1);
+    if (file == stdout && swap)
+        g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 void internal_fputs(const fd_t file, const char* str, bool swap) {
-    if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT) {
-        g_CurrentTTY->puts(str);
-        if (swap)
-            g_CurrentTTY->GetVGADevice()->SwapBuffers();
-        if (file == VFS_DEBUG_AND_STDOUT)
-            VFS_write(VFS_DEBUG, (uint8_t*)str, strlen(str));
-    }
-    else
-        VFS_write(file, (uint8_t*)str, strlen(str));
+    internal_write(file, str, strlen(str));
+    if (file == stdout && swap)
+        g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 extern "C" void dbgputc(const char c) {
-    VFS_write(VFS_DEBUG, (uint8_t*)&c, 1);
+    internal_write(stddebug, &c, 1);
 }
 
 extern "C" void dbgputs(const char* str) {
-    VFS_write(VFS_DEBUG, (uint8_t*)str, strlen(str));
+    internal_write(stddebug, str, strlen(str));
 }
 
 extern "C" void fputc(const fd_t file, const char c) {
@@ -268,40 +401,98 @@ extern "C" void fprintf(const fd_t file, const char* format, ...) {
     va_start(args, format);
     vfprintf(file, format, args);
     va_end(args);
-    if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT)
+    if (file == stdout)
         g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 extern "C" void printf(const char* format, ...) {
     va_list args;
     va_start(args, format);
-    vfprintf(VFS_STDOUT, format, args);
+    vfprintf(stdout, format, args);
     va_end(args);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 extern "C" void vprintf(const char* format, va_list args) {
-    vfprintf(VFS_STDOUT, format, args);
+    vfprintf(stdout, format, args);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
 extern "C" void dbgprintf(const char* format, ...) {
     va_list args;
     va_start(args, format);
-    vfprintf(VFS_DEBUG, format, args);
+    vfprintf(stddebug, format, args);
     va_end(args);
 }
 
 extern "C" void dbgvprintf(const char* format, va_list args) {
-    vfprintf(VFS_DEBUG, format, args);
+    vfprintf(stddebug, format, args);
 }
 
-extern "C" void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file) {
+extern "C" size_t fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file) {
     uint8_t* out = (uint8_t*)ptr;
 
-    for (uint64_t i = 0; i < count; i+=size) {
-        VFS_write(file, (uint8_t*)((uint64_t)out + i), size);
-    }
-    if (file == VFS_STDOUT || file == VFS_DEBUG_AND_STDOUT)
+    for (uint64_t i = 0; i < count; i+=size)
+        internal_write(file, (void*)((uint64_t)out + i), size);
+    if (file == stdout)
         g_CurrentTTY->GetVGADevice()->SwapBuffers();
+
+    return count;
+}
+
+extern "C" size_t fread(void* ptr, const size_t size, const size_t count, const fd_t file) {
+    for (uint64_t i = 0; i < count; i+=size)
+        internal_read(file, (void*)((uint64_t)ptr + i), size);
+
+    return count;
+}
+
+extern "C" fd_t fopen(const char* file, const char* mode) {
+    if (file == nullptr || mode == nullptr)
+        return -EFAULT;
+    
+    unsigned long i_modes;
+
+    if (strcmp(mode, "r") == 0)
+        i_modes = O_READ;
+    else if (strcmp(mode, "w") == 0)
+        i_modes = O_WRITE | O_CREATE;
+    else if (strcmp(mode, "a") == 0)
+        i_modes = O_APPEND;
+    else if (strcmp(mode, "r+") == 0)
+        i_modes = O_READ | O_WRITE;
+    else if (strcmp(mode, "w+") == 0)
+        i_modes = O_READ | O_WRITE | O_CREATE;
+    else // FIXME: implement support for binary files and append/update mode
+        return -EINVAL;
+
+    return internal_open(file, i_modes);
+}
+
+extern "C" int fclose(const fd_t file) {
+    return internal_close(file);
+}
+
+extern "C" int fseek(const fd_t file, long int offset, int origin) {
+    if (origin != SEEK_SET)
+        return -EINVAL;
+    
+    return internal_seek(file, offset);
+}
+
+extern "C" void rewind(const fd_t file) {
+    (void)internal_seek(file, 0);
+}
+
+
+size_t fgetsize(const fd_t file) {
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
+    if (descriptor == nullptr)
+        return 0;
+    if (descriptor->GetType() != FileDescriptorType::FILE_STREAM)
+        return 0;
+    FileStream* stream = (FileStream*)descriptor->GetData();
+    if (stream == nullptr)
+        return 0;
+    return stream->GetSize();
 }

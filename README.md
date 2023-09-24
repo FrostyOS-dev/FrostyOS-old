@@ -17,32 +17,28 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 16/09/2023
+## Latest Changes - 24/09/2023
 
-- Added `stdint.h` include to `utils/src/buildsymboltable.cpp` so it compiles on all platforms instead of just Gentoo Linux
-- Started working on a very simple statically linked LibC. This includes the various crt*.o start and end files
-- Moved system headers to LibC includes, instead of being in the root filesystem by default
-- Implemented basic stack smashing protector support in the kernel
-- Fix a spelling mistake in `Scheduler.cpp`
-- Implemented RemoveThread and RemoveProcess functions in scheduler
-- Added a scheduler resume function
-- Changed the way the scheduler detects when there is nothing left to run so it will only check when it actually needs to run something
-- Scheduler now panics when `g_current == nullptr` instead of just doing some weird assertion
-- Updated include guards in `stdarg.h`
-- Added a RemoveThread function to the process class
-- Changed how system calls behave so they all go to one function, which then calls the appropriate function with the correct arguments
-- Fixed VirtualPageManager and PageManager destructors so they perform proper cleanup
-- Fixed ELF_Executable destructor and added an end_handler cleanup function
-- Added proper argument and environment variable passing support to the ELF loader
-- Added a Remap function to the PageManager class so permissions can be changed
-- Added a thread cleanup function system
-- Add support for main thread creation requesting to the Process class
-- Added an extra argument to the `VirtualPageManager::LockPage(s)` functions that is used for optimisation
-- Improved the `VirtualPageManager::UnfreePages` function for hopefully the last time
-- Cleaned up various parts of the `PageManager` class
-- Minor bug fixes to the `LinkedList::deleteNode` functions
-- Changed `x86_64_kernel_switch` function so RFLAGS is set after RAX and RDI are set
-- Implemented exit system call (Syscall 0)
+- Changed syscall entry so interrupts can be enabled while in system calls. This also means that the Kernel GS base is only accessible when needed.
+- No longer set kernel gs base in `x86_64_enter_user` because it is redundant as the scheduler already does this.
+- Added alignment member to the end of the `x86_64_Registers` structure
+- Implemented `div`, `udiv`, `ldiv` and `uldiv` functions in assembly in kernel instead of in C due to inconsistencies in the compiler
+- Improved bitmap class so the code is nicer and more efficient
+- Changed RegisterFrame layout in Thread class to allow user stack to be saved easier and for the kernel stack to be accessed easier
+- Added some read/write validation functions to the process class so userspace pointers/strings can be checked before being used by the kernel
+- Added a SyncRegion function to the Process class to ensure the VirtualRegion of the Process matches the VirtualRegion of the Process's PageManager
+- Added an `IsValidPath` function to the VFS to check if a path exists or not
+- Marked the `VFS::GetMountpoint` function has `const` so it can be called in more places
+- Copied `strchr` and `strrchr` functions from LibC over to the kernel
+- Added all the C++11 errno values to `LibC/include/errno.h` and copied them over to the kernel
+- Added read function to TTY that simply zeros the buffer provided as no user input mechanism is support
+- Added proper file descriptor management. A file descriptor is a non-zero 64-bit signed integer that represents a TTY, a FileStream or Debug
+- Converted all the kernel stdio functions to use this new system and implemented `fopen`, `fclose`, `fread` and `fseek` functions.
+- Added a FileDescriptorManager to the Thread class. By default stdin is opened as read-only with ID 0 to KTTY, stdout and stderr as write-only with ID 1 and 2, respectively, to KTTY and stddebug as write-only with ID 3 to Debug
+- Implemented `open`, `close`, `read`, `write` and `seek` system calls
+- Copied over kernel stdio code to LibC with minor modifications. Currently only 8 streams can be opened simultaneously, not including stdin, stdout, stderr and stddebug. No streams are buffered as userland memory allocation is not supported yet.
+- Implemented basic C assertions in LibC. Currently only prints to debug, but can print to stdout if a line is uncommented.
+- Implemented stack protector in LibC
 
 ## Resources used
 
@@ -51,6 +47,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
 - [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful. rand function from this
 - [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
+- [SerenityOS](https://github.com/SerenityOS/serenity) - inspired system call entry and file descriptor management
 
 ## Prerequisites
 

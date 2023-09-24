@@ -15,27 +15,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _SYS_SYSCALL_H
-#define _SYS_SYSCALL_H
+#include <errno.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-enum SystemCalls {
-    SC_EXIT = 0,
-    SC_READ = 1,
-    SC_WRITE = 2,
-    SC_OPEN = 3,
-    SC_CLOSE = 4,
-    SC_SEEK = 5
-};
-
-unsigned long system_call(unsigned long num, unsigned long arg1, unsigned long arg2, unsigned arg3);
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _SYS_SYSCALL_H */
+int errno = 0;

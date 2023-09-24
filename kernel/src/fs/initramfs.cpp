@@ -132,7 +132,7 @@ namespace TarFS {
 
             if ((header->TypeFlag - '0') == 0) {
                 dbgputs("File contents:\n\n");
-                fwrite((const void*)((uint64_t)header + 512), 1, size, VFS_DEBUG);
+                fwrite((const void*)((uint64_t)header + 512), 1, size, stddebug);
                 dbgputs("\n\n");
             }
 

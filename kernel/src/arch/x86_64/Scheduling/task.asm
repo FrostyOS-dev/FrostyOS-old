@@ -140,12 +140,6 @@ global x86_64_enter_user
 x86_64_enter_user:
     cli ; disable interrupts
 
-    mov rdx, rdi
-    mov eax, edx
-    shr rdx, 32
-    mov rcx, 0xc0000102
-    wrmsr ; load structure address into Kernel GS Base
-
     mov rbx, QWORD [rdi+8]   ; load rbx
     mov rdx, QWORD [rdi+24]  ; load rdx
     mov rsi, QWORD [rdi+32]  ; load rsi

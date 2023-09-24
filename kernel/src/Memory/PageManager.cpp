@@ -120,6 +120,9 @@ namespace WorldOS {
             return nullptr;
         }
         PageObject_SetFlag(po, PO_ALLOCATED);
+        if (m_mode)
+            PageObject_SetFlag(po, PO_USER);
+        PageObject_SetFlag(po, PO_INUSE);
         po->physical_address = phys_addr;
         po->virtual_address = virt_addr;
         po->page_count = 1;
@@ -158,6 +161,7 @@ namespace WorldOS {
             page_perms = 0;
             break;
         }
+        po->perms = perms;
         MapPage(phys_addr, virt_addr, page_perms);
         return virt_addr;
     }
@@ -224,6 +228,9 @@ namespace WorldOS {
             return nullptr;
         }
         PageObject_SetFlag(po, PO_ALLOCATED);
+        if (m_mode)
+            PageObject_SetFlag(po, PO_USER);
+        PageObject_SetFlag(po, PO_INUSE);
         po->physical_address = phys_addr;
         po->virtual_address = virt_addr;
         po->page_count = count;
@@ -262,6 +269,7 @@ namespace WorldOS {
             page_perms = 0;
             break;
         }
+        po->perms = perms;
         for (uint64_t i = 0; i < count; i++)
             MapPage((void*)((uint64_t)phys_addr + i * 0x1000), (void*)((uint64_t)virt_addr + i * 0x1000), page_perms);
         return virt_addr;
@@ -338,6 +346,7 @@ namespace WorldOS {
                     page_perms = 0;
                     break;
                 }
+                po->perms = perms;
                 for (uint64_t i = 0; i < po->page_count; i++)
                     MapPage((void*)((uint64_t)po->physical_address + i * 0x1000), (void*)((uint64_t)addr + i * 0x1000), page_perms);
                 return;
@@ -353,6 +362,28 @@ namespace WorldOS {
             return false; // virtual page manager failed to expand
         m_Vregion.ExpandRight(new_size);
         return true;
+    }
+
+    bool PageManager::isWritable(void* addr, size_t size) const {
+        PageObject* po = m_allocated_objects;
+        while (po != nullptr) {
+            if (addr >= po->virtual_address && (uint64_t)addr <= ((uint64_t)(po->virtual_address) + po->page_count * PAGE_SIZE)) {
+                if (!(po->perms == PagePermissions::WRITE || po->perms == PagePermissions::READ_WRITE))
+                    return false;
+                if ((po->page_count * PAGE_SIZE) < size) {
+                    size -= po->page_count * PAGE_SIZE;
+                    addr = (void*)((uint64_t)addr + po->page_count * PAGE_SIZE);
+                    return isWritable(addr, size);
+                }
+                return true;
+            }
+            po = po->next;
+        }
+        return false;
+    }
+
+    const VirtualRegion& PageManager::GetRegion() const {
+        return m_Vregion;
     }
 
 }

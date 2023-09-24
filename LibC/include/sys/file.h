@@ -15,27 +15,31 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _SYS_SYSCALL_H
-#define _SYS_SYSCALL_H
+#ifndef _SYS_FILE_H
+#define _SYS_FILE_H
+
+typedef long fd_t;
+
+#define O_READ 1UL
+#define O_WRITE 2UL
+#define O_CREATE 4UL
+#define O_APPEND 8UL
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum SystemCalls {
-    SC_EXIT = 0,
-    SC_READ = 1,
-    SC_WRITE = 2,
-    SC_OPEN = 3,
-    SC_CLOSE = 4,
-    SC_SEEK = 5
-};
+fd_t open(const char* path, unsigned long mode);
 
-unsigned long system_call(unsigned long num, unsigned long arg1, unsigned long arg2, unsigned arg3);
+long read(fd_t file, void* buf, unsigned long count);
+long write(fd_t file, const void* buf, unsigned long count);
 
+int close(fd_t file);
+
+long seek(fd_t file, long offset);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _SYS_SYSCALL_H */
+#endif /* _SYS_FILE_H */

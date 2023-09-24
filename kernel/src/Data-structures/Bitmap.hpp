@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_BITMAP_HPP
-#define _KERNEL_BITMAP_HPP
+#ifndef _BITMAP_HPP
+#define _BITMAP_HPP
 
 #include <stddef.h>
 #include <stdint.h>
@@ -33,22 +33,14 @@ namespace WorldOS {
         void Set(uint64_t index, bool value);
 
         // Set size in bytes
-        inline void SetSize(size_t size) {
-            m_Size = size;
-        }
+        void SetSize(size_t size);
 
-        inline void SetBuffer(uint8_t* buffer) {
-            m_Buffer = buffer;
-        }
+        void SetBuffer(uint8_t* buffer);
 
         // Get size in bytes
-        inline size_t GetSize() const {
-            return m_Size;
-        }
+        size_t GetSize() const;
 
-        inline uint8_t* GetBuffer() const {
-            return m_Buffer;
-        }
+        uint8_t* GetBuffer() const;
 
     private:
         size_t m_Size;
@@ -57,4 +49,4 @@ namespace WorldOS {
 
 }
 
-#endif /* _KERNEL_BITMAP_HPP */
+#endif /* _BITMAP_HPP */

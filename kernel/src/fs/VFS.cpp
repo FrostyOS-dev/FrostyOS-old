@@ -264,9 +264,20 @@ bool VFS::CloseStream(FileStream* stream) {
     return false;
 }
 
+bool VFS::IsValidPath(const char* path) const {
+    Inode* inode = nullptr;
+    VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
+    if (mountPoint == nullptr || inode == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return false;
+    }
+    SetLastError(FileSystemError::SUCCESS);
+    return true;
+}
+
 /* Private functions */
 
-VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) {
+VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) const {
     if (path == nullptr) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return nullptr;

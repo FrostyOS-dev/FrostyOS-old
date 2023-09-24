@@ -40,6 +40,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <fs/VFS.hpp>
 #include <fs/initramfs.hpp>
+#include <fs/FileDescriptorManager.hpp>
 
 #include <SystemCalls/SystemCall.hpp>
 
@@ -59,6 +60,13 @@ namespace WorldOS {
 
     TTY KTTY;
 
+    FileDescriptorManager KFDManager;
+    uint8_t KFDManager_BitmapData[8]; // allows up to 64 file descriptors
+    FileDescriptor Kstdin;
+    FileDescriptor Kstdout;
+    FileDescriptor Kstderr;
+    FileDescriptor Kstddebug;
+
     struct Stage2_Params {
         void* RSDP_addr;
         void* initramfs_addr;
@@ -77,6 +85,20 @@ namespace WorldOS {
         KTTY = TTY(&KBasicVGA, g_fgcolour, g_bgcolour); 
 
         g_CurrentTTY = &KTTY;
+
+        LinkedList::NodePool_Init();
+
+        KFDManager = FileDescriptorManager(KFDManager_BitmapData, 8);
+        Kstdin = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::READ, 0); // currently TTYs will just output 0 when read from
+        Kstdout = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::WRITE, 1);
+        Kstderr = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::WRITE, 2);
+        Kstddebug = FileDescriptor(FileDescriptorType::DEBUG, nullptr, FileDescriptorMode::WRITE, 3);
+        assert(KFDManager.ReserveFileDescriptor(&Kstdin));
+        assert(KFDManager.ReserveFileDescriptor(&Kstdout));
+        assert(KFDManager.ReserveFileDescriptor(&Kstderr));
+        assert(KFDManager.ReserveFileDescriptor(&Kstddebug));
+
+        g_KFDManager = &KFDManager;
 
         uint64_t kernel_size = (uint64_t)_kernel_end_addr - (uint64_t)_text_start_addr;
 
@@ -115,7 +137,8 @@ namespace WorldOS {
     }
 
     void Kernel_Stage2(void* params_addr) {
-        fputs(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
+        dbgputs("Starting WorldOS!\n");
+        puts("Starting WorldOS!\n");
 
         m_Stage = STAGE2;
 

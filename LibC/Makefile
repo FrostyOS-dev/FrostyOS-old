@@ -29,9 +29,9 @@ libc_start_object_files := startfiles/bin-int/arch/x86_64/crt0.o startfiles/bin-
 libc_end_source_files := startfiles/src/arch/x86_64/crtn.asm
 libc_end_object_files := startfiles/bin-int/arch/x86_64/crtn.o
 
-LIBC_CXXFLAGS = -std=c++20 -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wunused-parameter -nostdlib -ffreestanding -fno-stack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-use-cxa-atexit -fno-rtti -fno-omit-frame-pointer
+LIBC_CXXFLAGS = -std=c++20 -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wunused-parameter -nostdlib -ffreestanding -fstack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-use-cxa-atexit -fno-rtti -fno-omit-frame-pointer
 LIBC_ASMFLAGS = -f elf64
-LIBC_CFLAGS = -std=c17 -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wunused-parameter -nostdlib -ffreestanding -fno-stack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-omit-frame-pointer
+LIBC_CFLAGS = -std=c17 -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wunused-parameter -nostdlib -ffreestanding -fstack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-omit-frame-pointer
 LIBC_TARGET = bin/libc.a
 
 ifeq ($(config), release)

@@ -33,6 +33,9 @@ TTY::~TTY() {
 
 }
 
+char TTY::getc() {
+    return '\0';
+}
 
 void TTY::putc(char c) {
     if (m_VGADevice == nullptr)

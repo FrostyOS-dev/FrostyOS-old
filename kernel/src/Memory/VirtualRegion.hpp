@@ -40,7 +40,7 @@ namespace WorldOS {
         void ExpandLeft(size_t new_size); // Adjust the start to compensate for the new size
         void ExpandRight(size_t new_size); // Adjust the end to compensate for the new size
 
-        bool IsInside(void* mem, size_t size = 1) const;
+        bool IsInside(const void* mem, size_t size = 1) const;
 
         bool EnsureIsInside(void*& mem, size_t& size) const;
 

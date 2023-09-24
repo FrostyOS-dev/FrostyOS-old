@@ -57,8 +57,10 @@ public:
     FileStream* OpenStream(const char* path, uint8_t modes);
     bool CloseStream(FileStream* stream);
 
+    bool IsValidPath(const char* path) const;
+
 private:
-    VFS_MountPoint* GetMountPoint(const char* path, Inode** inode = nullptr);
+    VFS_MountPoint* GetMountPoint(const char* path, Inode** inode = nullptr) const;
 
     bool isMountpoint(const char* path, size_t len); // When false is returned, the caller **MUST** check for any errors.
 

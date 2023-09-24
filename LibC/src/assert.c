@@ -15,27 +15,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _SYS_SYSCALL_H
-#define _SYS_SYSCALL_H
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-enum SystemCalls {
-    SC_EXIT = 0,
-    SC_READ = 1,
-    SC_WRITE = 2,
-    SC_OPEN = 3,
-    SC_CLOSE = 4,
-    SC_SEEK = 5
-};
-
-unsigned long system_call(unsigned long num, unsigned long arg1, unsigned long arg2, unsigned arg3);
-
-
-#ifdef __cplusplus
+void __assert_fail(const char* assertion, const char* file, unsigned int line, const char* function) {
+    dbgprintf("Assertion failed: \"%s\", file %s, line %u, function \"%s\"\n", assertion, file, line, function);
+    //printf("Assertion failed: \"%s\", file %s, line %u, function \"%s\"\n", assertion, file, line, function);
+    abort();
 }
-#endif
-
-#endif /* _SYS_SYSCALL_H */
