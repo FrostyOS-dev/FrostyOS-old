@@ -30,7 +30,10 @@ extern "C" {
         SC_WRITE = 2,
         SC_OPEN = 3,
         SC_CLOSE = 4,
-        SC_SEEK = 5
+        SC_SEEK = 5,
+        SC_MMAP = 6,
+        SC_MUNMAP = 7,
+        SC_MPROTECT = 8
     };
 
     uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3, CPU_Registers* regs);

@@ -57,6 +57,8 @@ namespace WorldOS {
 
         bool isWritable(void* addr, size_t size) const;
 
+        bool isValidAllocation(void* addr, size_t size) const;
+
         const VirtualRegion& GetRegion() const;
 
     private:

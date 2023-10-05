@@ -29,10 +29,14 @@ libc_start_object_files := startfiles/bin-int/arch/x86_64/crt0.o startfiles/bin-
 libc_end_source_files := startfiles/src/arch/x86_64/crtn.asm
 libc_end_object_files := startfiles/bin-int/arch/x86_64/crtn.o
 
+libc_ssp_source_files := ssp/src/stack_protector.c
+libc_ssp_object_files := ssp/bin-int/stack_protector.o
+
 LIBC_CXXFLAGS = -std=c++20 -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wunused-parameter -nostdlib -ffreestanding -fstack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-use-cxa-atexit -fno-rtti -fno-omit-frame-pointer
 LIBC_ASMFLAGS = -f elf64
 LIBC_CFLAGS = -std=c17 -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wunused-parameter -nostdlib -ffreestanding -fstack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-omit-frame-pointer
 LIBC_TARGET = bin/libc.a
+LIBSSP_TARGET = bin/libssp_nonshared.a
 
 ifeq ($(config), release)
 	LIBC_CXXFLAGS += -DNDEBUG=1
@@ -41,12 +45,13 @@ endif
 
 .PHONY: libc clean-libc libc-dependencies install-start-files install-libc install-libc-headers
 
-libc: $(libc_cxx_object_files) $(libc_c_object_files) $(libc_asm_object_files) $(libc_start_object_files) $(libc_end_object_files)
+libc: $(libc_cxx_object_files) $(libc_c_object_files) $(libc_asm_object_files) $(libc_start_object_files) $(libc_end_object_files) $(libc_ssp_object_files)
 	@mkdir -p bin
 	@echo ------------
 	@echo Linking LibC
 	@echo ------------
-	$(AR) rcs $(LIBC_TARGET) $(libc_asm_object_files) $(libc_c_object_files) $(libc_cxx_object_files)
+	$(AR) rcs $(LIBC_TARGET) $(libc_asm_object_files) $(libc_c_object_files) $(libc_cxx_object_files) $(libc_ssp_object_files)
+	$(AR) rcs $(LIBSSP_TARGET) $(libc_ssp_object_files) bin-int/arch/x86_64/sys/syscall.asm.o
 
 install-start-files: $(libc_start_object_files) $(libc_end_object_files)
 	@mkdir -p ../root/data/lib
@@ -57,6 +62,7 @@ install-start-files: $(libc_start_object_files) $(libc_end_object_files)
 install-libc: install-start-files install-libc-headers
 	@mkdir -p ../root/data/lib
 	@cp $(LIBC_TARGET) ../root/data/lib/
+	@cp $(LIBSSP_TARGET) ../root/data/lib/
 
 install-libc-headers:
 	@mkdir -p ../root/data/include
@@ -65,6 +71,7 @@ install-libc-headers:
 clean-libc:
 	@rm -fr bin-int bin
 	@rm -fr startfiles/bin-int startfiles/bin
+	@rm -fr ssp/bin-int
 
 distclean-libc: clean-libc
 	@rm ../root/data/lib/libc.a ../root/data/lib/crt0.o ../root/data/lib/crti.o ../root/data/lib/crtn.o
@@ -92,3 +99,7 @@ $(libc_start_object_files): startfiles/bin-int/%.o : startfiles/src/%.asm
 $(libc_end_object_files): startfiles/bin-int/%.o : startfiles/src/%.asm
 	@mkdir -p $(dir $@)
 	$(ASM) $(patsubst startfiles/bin-int/%.o, startfiles/src/%.asm, $@) $(LIBC_ASMFLAGS) -o $@
+
+$(libc_ssp_object_files): ssp/bin-int/%.o : ssp/src/%.c
+	@mkdir -p $(dir $@)
+	$(CC) -o $@ -c $(patsubst ssp/bin-int/%.o, ssp/src/%.c, $@) $(LIBC_CFLAGS)

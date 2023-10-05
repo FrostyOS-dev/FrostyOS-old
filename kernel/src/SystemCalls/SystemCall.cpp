@@ -16,10 +16,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "SystemCall.hpp"
+#include "exit.hpp"
+#include "memory.hpp"
 
 #include <stdio.h>
-
-#include "exit.hpp"
 
 #include <Scheduling/Scheduler.hpp>
 #include <Scheduling/Thread.hpp>
@@ -40,6 +40,12 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
         return (uint64_t)(Scheduling::Scheduler::GetCurrent()->sys$close((fd_t)arg1));
     case SC_SEEK:
         return (uint64_t)(Scheduling::Scheduler::GetCurrent()->sys$seek((fd_t)arg1, (long)arg2));
+    case SC_MMAP:
+        return (uint64_t)sys$mmap(arg1, arg2, (void*)arg3);
+    case SC_MUNMAP:
+        return (uint64_t)sys$munmap((void*)arg1, arg2);
+    case SC_MPROTECT:
+        return (uint64_t)sys$mprotect((void*)arg1, arg2, arg3);
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

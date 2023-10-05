@@ -28,7 +28,10 @@ enum SystemCalls {
     SC_WRITE = 2,
     SC_OPEN = 3,
     SC_CLOSE = 4,
-    SC_SEEK = 5
+    SC_SEEK = 5,
+    SC_MMAP = 6,
+    SC_MUNMAP = 7,
+    SC_MPROTECT = 8
 };
 
 unsigned long system_call(unsigned long num, unsigned long arg1, unsigned long arg2, unsigned arg3);

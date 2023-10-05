@@ -78,7 +78,7 @@ ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld -v 2>/dev/null | grep 2
 	@$(MAKE) -C toolchain/binutils/build install
 	@rm -fr toolchain/binutils
 endif
-ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion)", "13.2.0")
+ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion 2>/dev/null)", "13.2.0")
 	@echo ------------
 	@echo Building GCC
 	@echo ------------

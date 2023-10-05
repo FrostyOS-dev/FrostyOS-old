@@ -118,11 +118,11 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
                 else
                     perms = PagePermissions::READ;
                 uint64_t RequiredAlignment = ALIGN_UP(prog_header->RequiredAlignment, 8);
-                void* start = (void*)(ALIGN_DOWN(((uint64_t)prog_header->VirtualAddress), RequiredAlignment));
+                void* start = ALIGN_ADDRESS_DOWN(prog_header->VirtualAddress, 8);
                 uint64_t mem_size = ALIGN_UP(prog_header->SizeInMemory, RequiredAlignment);
                 uint64_t file_size = prog_header->SizeInFile;
                 uint64_t page_count = DIV_ROUNDUP(mem_size, PAGE_SIZE);
-                void* page_start = (void*)(ALIGN_DOWN(((uint64_t)start), PAGE_SIZE));
+                void* page_start = ALIGN_ADDRESS_DOWN(start, (ALIGN_UP(RequiredAlignment, PAGE_SIZE)));
 #ifdef __x86_64__
                 x86_64_DisableInterrupts();
 #endif
@@ -131,10 +131,9 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
 #ifdef __x86_64__
                     x86_64_EnableInterrupts();
 #endif
-                    dbgprintf("[%s] WARNING: first allocation failed. page_count = %lu, i = %lu, page_start = %lp, m_region = {%lp, %lp, %lu}\n", __extension__ __PRETTY_FUNCTION__, page_count, i, page_start, m_region.GetStart(), m_region.GetEnd(), m_region.GetSize());
                     return false;
                 }
-                fast_memset(start, 0, mem_size >> 3);
+                fast_memset(page_start, 0, mem_size >> 3);
                 fast_memcpy(start, (void*)(ALIGN_DOWN(((uint64_t)m_addr + prog_header->OffsetWithinFile), 8)), ALIGN_UP(file_size, 8));
                 m_PM->Remap(page_start, perms);
 #ifdef __x86_64__
@@ -158,10 +157,8 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
         total_size += strlen(m_entry_data.envv[i]) + 1;
     total_size += 1;
     char* entry_data_address = (char*)m_PM->AllocatePages(DIV_ROUNDUP(total_size, PAGE_SIZE));
-    if (entry_data_address == nullptr) {
-        dbgprintf("entry_data_address == nullptr, total_size = %lu.\n", total_size);
+    if (entry_data_address == nullptr)
         return false;
-    }
     ELF_entry_data* new_entry_data = (ELF_entry_data*)entry_data_address;
     fast_memset(entry_data_address, 0, (ALIGN_UP(total_size, PAGE_SIZE)) >> 3);
     uint64_t current_offset = 0;

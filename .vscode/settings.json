@@ -69,7 +69,9 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "file.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "memory.h": "c",
+        "syscall.h": "c"
     },
     "makefile.dryrunSwitches": [
         "boot-iso"

@@ -382,6 +382,16 @@ namespace WorldOS {
         return false;
     }
 
+    bool PageManager::isValidAllocation(void* addr, size_t size) const {
+        PageObject* po = m_allocated_objects;
+        while (po != nullptr) {
+            if (addr >= po->virtual_address && size == (po->page_count * PAGE_SIZE))
+                return true;
+            po = po->next;
+        }
+        return false;
+    }
+
     const VirtualRegion& PageManager::GetRegion() const {
         return m_Vregion;
     }

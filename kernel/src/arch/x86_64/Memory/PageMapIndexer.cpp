@@ -103,7 +103,7 @@ void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags) 
 
     PageMapLevel4Entry PML4 = PML4_Array.entries[pml4];
     if (PML4.Present == 0) {
-        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40)));
+        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML4 = *(PageMapLevel4Entry*)(&temp);
         PML4.Present = 1;
         PML4.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
@@ -114,13 +114,13 @@ void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags) 
     else {
         uint64_t temp = *(uint64_t*)(&PML4);
         temp |= flags & 0xFFF;
-        temp |= (uint64_t)(flags & 0xFFF0000) << 40;
+        temp |= (uint64_t)(flags & 0x7FF0000) << 36;
         PML4_Array.entries[pml4] = *(PageMapLevel4Entry*)&temp;
     }
 
     PageMapLevel3Entry PML3 = ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr];
     if (PML3.Present == 0) {
-        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40)));
+        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML3 = *(PageMapLevel3Entry*)(&temp);
         PML3.Present = 1;
         PML3.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
@@ -131,13 +131,13 @@ void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags) 
     else {
         uint64_t temp = *(uint64_t*)(&PML3);
         temp |= flags & 0xFFF;
-        temp |= (uint64_t)(flags & 0xFFF0000) << 40;
+        temp |= (uint64_t)(flags & 0x7FF0000) << 36;
         ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = *(PageMapLevel3Entry*)&temp;
     }
 
     PageMapLevel2Entry PML2 = ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd];
     if (PML2.Present == 0) {
-        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40)));
+        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML2 = *(PageMapLevel2Entry*)(&temp);
         PML2.Present = 1;
         PML2.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
@@ -148,13 +148,13 @@ void x86_64_map_page_noflush(void* physaddr, void* virtualaddr, uint32_t flags) 
     else {
         uint64_t temp = *(uint64_t*)(&PML2);
         temp |= flags & 0xFFF;
-        temp |= (uint64_t)(flags & 0xFFF0000) << 40;
+        temp |= (uint64_t)(flags & 0x7FF0000) << 36;
        ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = *(PageMapLevel2Entry*)&temp;
     }
     if (PML2.PageSize)
         return; // Using 2MiB pages, stop
 
-    uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40)));
+    uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x0FFF0000) << 36)));
     PageMapLevel1Entry PML1 = *(PageMapLevel1Entry*)(&temp);
     PML1.Address = (physical_addr >> 12);
 
@@ -222,7 +222,7 @@ void x86_64_map_large_page_noflush(void* physaddr, void* virtualaddr, uint32_t f
 
     PageMapLevel4Entry PML4 = PML4_Array.entries[pml4];
     if (PML4.Present == 0) {
-        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40)));
+        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML4 = *(PageMapLevel4Entry*)(&temp);
         PML4.Present = 1;
         PML4.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
@@ -233,13 +233,13 @@ void x86_64_map_large_page_noflush(void* physaddr, void* virtualaddr, uint32_t f
     else {
         uint64_t temp = *(uint64_t*)(&PML4);
         temp |= flags & 0xFFF;
-        temp |= (uint64_t)(flags & 0xFFF0000) << 40;
+        temp |= (uint64_t)(flags & 0x7FF0000) << 36;
         PML4_Array.entries[pml4] = *(PageMapLevel4Entry*)&temp;
     }
 
     PageMapLevel3Entry PML3 = ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr];
     if (PML3.Present == 0) {
-        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40)));
+        uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML3 = *(PageMapLevel3Entry*)(&temp);
         PML3.Present = 1;
         PML3.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
@@ -250,11 +250,11 @@ void x86_64_map_large_page_noflush(void* physaddr, void* virtualaddr, uint32_t f
     else {
         uint64_t temp = *(uint64_t*)(&PML3);
         temp |= flags & 0xFFF;
-        temp |= (uint64_t)(flags & 0xFFF0000) << 40;
+        temp |= (uint64_t)(flags & 0x7FF0000) << 36;
         ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = *(PageMapLevel3Entry*)&temp;
     }
 
-    uint64_t temp = ((uint64_t)((flags & 0x1FFF) | ((uint64_t)(flags & 0x0FFF0000) << 40))); // allow extra flags bit for large page mappings
+    uint64_t temp = ((uint64_t)((flags & 0x1FFF) | ((uint64_t)(flags & 0x0FFF0000) << 36))); // allow extra flags bit for large page mappings
     PageMapLevel2Entry_LargePages PML2 = *(PageMapLevel2Entry_LargePages*)(&temp);
     PML2.Address = (physical_addr >> 21);
     PML2.PageSize = 1;

@@ -1,6 +1,20 @@
 # Changes
 
-## Latest Changes - 24/09/2023
+## Latest Changes - 05/10/2023
+
+- Added address alignment and division macros to kernel util header
+- Setting upper 12-bits of page mapping flags actually works. This means that no-execute protection is actually active
+- Only set NX bit for lowest page table level for the relevant page size
+- Updating kernel mapping to use noflush variant of the `x86_64_map_page` function to avoid unnecessary TLB flushing
+- Added `isValidAllocation` function to PageManager
+- Removed unnecessary debug print statement from ELF loader
+- Implemented mmap, mprotect and munmap system calls. Region expansion for mmap with an address request is not supported. Splitting of allocations is unsupported in mprotect and munmap.
+- Moved LibC stack_protector to separate library due to GCC requirements
+- Updated GCC patch so libgcc actually builds
+- Updated Makefile so gcc version check stderr is discarded
+- Removed old libgcc patch
+
+## 24/09/2023
 
 - Changed syscall entry so interrupts can be enabled while in system calls. This also means that the Kernel GS base is only accessible when needed.
 - No longer set kernel gs base in `x86_64_enter_user` because it is redundant as the scheduler already does this.
