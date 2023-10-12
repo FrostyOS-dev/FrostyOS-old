@@ -103,7 +103,8 @@
         "clang-diagnostic-incompatible-library-redeclaration",
         "clang-diagnostic-error",
         "clang-diagnostic-error",
-        "clang-diagnostic-switch"
+        "clang-diagnostic-switch",
+        "clang-diagnostic-error"
     ],
     "C_Cpp.files.exclude": {
         "**/toolchain" : true,

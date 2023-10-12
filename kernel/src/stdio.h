@@ -44,14 +44,14 @@ void puts(const char* str);
 void dbgputs(const char* str);
 void fputs(const fd_t file, const char* str);
 
-void printf(const char* format, ...);
-void vprintf(const char* format, va_list args);
+int printf(const char* format, ...);
+int vprintf(const char* format, va_list args);
 
-void dbgprintf(const char* format, ...);
-void dbgvprintf(const char* format, va_list args);
+int dbgprintf(const char* format, ...);
+int dbgvprintf(const char* format, va_list args);
 
-void fprintf(const fd_t file, const char* format, ...);
-void vfprintf(const fd_t file, const char* format, va_list args);
+int fprintf(const fd_t file, const char* format, ...);
+int vfprintf(const fd_t file, const char* format, va_list args);
 
 size_t fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file);
 size_t fread(void* ptr, size_t size, size_t count, const fd_t file);

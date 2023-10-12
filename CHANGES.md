@@ -1,6 +1,14 @@
 # Changes
 
-## Latest Changes - 05/10/2023
+## Latest Changes - 13/10/2023
+
+- Updated the `printf` family of functions in kernel and LibC to support force_sign and zero_pad flags, width specifier, keeping track of characters printed, uppercase printing
+- Improved panic screen layout
+- Updated panic screen to use new printf functionality
+- Updated ISR handler to use new printf functionality
+- Updated stack tracing to use new printf functionality
+
+## 05/10/2023
 
 - Added address alignment and division macros to kernel util header
 - Setting upper 12-bits of page mapping flags actually works. This means that no-execute protection is actually active

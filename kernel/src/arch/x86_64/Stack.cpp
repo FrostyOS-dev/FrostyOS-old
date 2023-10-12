@@ -46,7 +46,7 @@ void x86_64_walk_stack_frames(void* RBP) {
         char const* name = nullptr;
         if (g_KernelSymbols != nullptr)
             name = g_KernelSymbols->LookupSymbol(frame->RIP);
-        dbgprintf("%lx", frame->RIP);
+        dbgprintf("%016lx", frame->RIP);
         if (name != nullptr)
             dbgprintf(": %s\n", name);
         else

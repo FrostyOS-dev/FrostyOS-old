@@ -208,225 +208,373 @@ extern "C" void fputs(const fd_t file, const char* str) {
     internal_fputs(file, str, true);
 }
 
-#define PRINTF_STATE_NORMAL         0
-#define PRINTF_STATE_LENGTH         1
-#define PRINTF_STATE_LENGTH_SHORT   2
-#define PRINTF_STATE_LENGTH_LONG    3
-#define PRINTF_STATE_SPEC           4
+enum class CUSTOM_PRINTF_MODES {
+    NORMAL,
+    FLAGS,
+    WIDTH,
+    LEN,
+    SPEC
+};
 
-#define PRINTF_LENGTH_DEFAULT       0
-#define PRINTF_LENGTH_SHORT_SHORT   1
-#define PRINTF_LENGTH_SHORT         2
-#define PRINTF_LENGTH_LONG          3
-#define PRINTF_LENGTH_LONG_LONG     4
+enum class CUSTOM_PRINTF_LENGTH {
+    L_CHAR,
+    L_SHORT,
+    L_NORMAL,
+    L_LONG,
+    L_LONG_LONG,
+    L_INTMAX,
+    L_SIZET,
+    L_PTRDIFFT
+};
 
-const char g_HexChars[] = "0123456789abcdef";
+const char g_HexCharsLOWER[] = "0123456789abcdef";
+const char g_HexCharsUPPER[] = "0123456789ABCDEF";
 
-void fprintf_unsigned(const fd_t file, uint64_t number, uint8_t radix) {
-    char buffer[32];
-    int pos = 0;
+int fprintf_uint(fd_t file, int min_length, uint64_t num, int radix, bool padding_type, bool uppercase) {
+    char buffer[64] = {0}; // max size of a valid integer. Supports a full 64-bit integer in base-2
+    int64_t pos = 0;
+    int chars_printed = 0;
 
-    // convert number to ASCII
-    do 
-    {
-        unsigned long long rem = number % radix;
-        number /= radix;
-        buffer[pos++] = g_HexChars[rem];
-    } while (number > 0);
+    do {
+        uint64_t rem = num % radix;
+        num /= radix;
+        if (uppercase)
+            buffer[pos++] = g_HexCharsUPPER[rem];
+        else
+            buffer[pos++] = g_HexCharsLOWER[rem];
+    } while (num > 0);
 
-    // print number in reverse order
-    while (--pos >= 0)
-        internal_fputc(file, buffer[pos], false);
-}
-
-void fprintf_signed(const fd_t file, int64_t number, uint8_t radix) {
-    if (number < 0) {
-        internal_fputc(file, '-', false);
-        fprintf_unsigned(file, -number, radix);
+    if (min_length > pos) {
+        min_length -= pos;
+        for (int i = 0; i < min_length; i++) {
+            if (padding_type)
+                internal_fputc(file, '0', false);
+            else
+                internal_fputc(file, ' ', false);
+            chars_printed++;
+        }
+        for (pos--; pos >= 0; pos--) {
+            internal_fputc(file, buffer[pos], false);
+            chars_printed++;
+        }
     }
-    else fprintf_unsigned(file, number, radix);
+    else {
+        pos--;
+        for (; pos >= 0; pos--) {
+            internal_fputc(file, buffer[pos], false);
+            chars_printed++;
+        }
+    }
+    return chars_printed;
 }
 
-extern "C" void vfprintf(const fd_t file, const char* format, va_list args) {
-    int state = PRINTF_STATE_NORMAL;
-    int length = PRINTF_LENGTH_DEFAULT;
-    uint8_t radix = 10;
+int fprintf_int(fd_t file, int64_t num, bool force_sign, int min_length, int radix, bool padding_type, bool uppercase) {
+    int chars_printed = 0;
+    if (num < 0) {
+        internal_fputc(file, '-', false);
+        chars_printed++;
+        min_length--;
+        num *= -1;
+    }
+    else if (force_sign) {
+        internal_fputc(file, '+', false);
+        chars_printed++;
+        min_length--;
+    }
+    return fprintf_uint(file, min_length, num, radix, padding_type, uppercase) + chars_printed;
+}
+
+extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
+    int mode = (int)CUSTOM_PRINTF_MODES::NORMAL;
+    int radix = 10;
+    int len = (int)CUSTOM_PRINTF_LENGTH::L_NORMAL;
     bool sign = false;
+    bool force_sign = false;
+    bool zero_pad = false;
+    bool gotoNextChar = false;
     bool number = false;
-    bool gotoNextChar = true;
-
+    bool upper = false;
+    int symbols_printed = 0;
     uint64_t i = 0;
-
     char c = format[i];
+    int width = 0;
 
     while (c != 0) {
-        switch (state) {
-            case PRINTF_STATE_NORMAL:
-                switch (c) {
-                    case '%':
-                        state = PRINTF_STATE_LENGTH;
-                        gotoNextChar = true;
-                        break;
-                    default:
-                        internal_fputc(file, c, false);
-                        gotoNextChar = true;
-                        break;
-                }
-                break;
-
-            case PRINTF_STATE_LENGTH:
-                switch (c) {
-                    case 'h':
-                        length = PRINTF_LENGTH_SHORT;
-                        state = PRINTF_STATE_LENGTH_SHORT;
-                        gotoNextChar = true;
-                        break;
-                    case 'l':
-                        length = PRINTF_LENGTH_LONG;
-                        state = PRINTF_STATE_LENGTH_LONG;
-                        gotoNextChar = true;
-                        break;
-                    default:
-                        state = PRINTF_STATE_SPEC;
-                        gotoNextChar = false;
-                        break;
-                }
-                break;
-
-            case PRINTF_STATE_LENGTH_SHORT:
-                if (c == 'h') {
-                    length = PRINTF_LENGTH_SHORT_SHORT;
-                    gotoNextChar = true;
-                }
-                else gotoNextChar = false;
-                state = PRINTF_STATE_SPEC;
-                break;
-
-            case PRINTF_STATE_LENGTH_LONG:
-                if (c == 'h') {
-                    length = PRINTF_LENGTH_LONG_LONG;
-                    gotoNextChar = true;
-                }
-                else gotoNextChar = false;
-                state = PRINTF_STATE_SPEC;
-                break;
-
-            case PRINTF_STATE_SPEC:
-                switch (c) {
-                    case 'c':
-                        internal_fputc(file, (char)va_arg(args, int), false);
-                        break;
-
-                    case 's':   
-                        internal_fputs(file, va_arg(args, const char*), false);
-                        break;
-
-                    case '%':
-                        internal_fputc(file, '%', false);
-                        break;
-
-                    case 'd':
-                    case 'i':
-                        radix = 10; sign = true; number = true;
-                        break;
-
-                    case 'u':
-                        radix = 10; sign = false; number = true;
-                        break;
-
-                    case 'X':
-                    case 'x':
-                    case 'p':
-                        radix = 16; sign = false; number = true;
-                        break;
-
-                    case 'o':
-                        radix = 8; sign = false; number = true;
-                        break;
-
-                    // ignore invalid spec
-                    default:
-                        break;
-                }
-
-                // actually print arg
-                if (number) {
-                    if (sign) {
-                        switch (length) {
-                        case PRINTF_LENGTH_SHORT_SHORT:
-                        case PRINTF_LENGTH_SHORT:
-                        case PRINTF_LENGTH_DEFAULT:     fprintf_signed(file, va_arg(args, int), radix);
-                                                        break;
-
-                        case PRINTF_LENGTH_LONG:        fprintf_signed(file, va_arg(args, long), radix);
-                                                        break;
-
-                        case PRINTF_LENGTH_LONG_LONG:   fprintf_signed(file, va_arg(args, long long), radix);
-                                                        break;
-                        }
-                    }
-                    else {
-                        switch (length) {
-                        case PRINTF_LENGTH_SHORT_SHORT:
-                        case PRINTF_LENGTH_SHORT:
-                        case PRINTF_LENGTH_DEFAULT:     fprintf_unsigned(file, va_arg(args, int), radix);
-                                                        break;
-
-                        case PRINTF_LENGTH_LONG:        fprintf_unsigned(file, va_arg(args, long), radix);
-                                                        break;
-
-                        case PRINTF_LENGTH_LONG_LONG:   fprintf_unsigned(file, va_arg(args, long long), radix);
-                                                        break;
-                        }
-                    }
-                }
-
-                state = PRINTF_STATE_NORMAL;
-                length = PRINTF_LENGTH_DEFAULT;
-                radix = 10;
-                sign = false;
-                number = false;
+        switch (mode) {
+        case (int)CUSTOM_PRINTF_MODES::NORMAL:
+            switch (c) {
+            case '%':
+                mode = (int)CUSTOM_PRINTF_MODES::FLAGS;
                 gotoNextChar = true;
                 break;
+            default:
+                internal_fputc(file, c, false);
+                gotoNextChar = true;
+                symbols_printed++;
+                break;
+            }
+            break;
+        case (int)CUSTOM_PRINTF_MODES::FLAGS:
+            switch (c) {
+            case '+':
+                force_sign = true;
+                gotoNextChar = true;
+                break;
+            case '0':
+                zero_pad = true;
+                gotoNextChar = true;
+                break;
+            default:
+                gotoNextChar = false;
+                mode = (int)CUSTOM_PRINTF_MODES::WIDTH;
+                break;
+            }
+            break;
+        case (int)CUSTOM_PRINTF_MODES::WIDTH:
+            if (c == '*') {
+                width = va_arg(args, int);
+                mode = (int)CUSTOM_PRINTF_MODES::LEN;
+                gotoNextChar = true;
+                break;
+            }
+            else if (c >= '0' && c <= '9') {
+                width *= 10;
+                width += c - '0';
+                gotoNextChar = true;
+                break;
+            }
+            else {
+                mode = (int)CUSTOM_PRINTF_MODES::LEN;
+                gotoNextChar = false;
+                break;
+            }
+        case (int)CUSTOM_PRINTF_MODES::LEN:
+            switch (c) {
+            case 'h':
+                if (len == (int)CUSTOM_PRINTF_LENGTH::L_SHORT)
+                    len = (int)CUSTOM_PRINTF_LENGTH::L_CHAR;
+                else
+                    len = (int)CUSTOM_PRINTF_LENGTH::L_SHORT;
+                gotoNextChar = true;
+                break;
+            case 'l':
+                if (len == (int)CUSTOM_PRINTF_LENGTH::L_LONG)
+                    len = (int)CUSTOM_PRINTF_LENGTH::L_LONG_LONG;
+                else
+                    len = (int)CUSTOM_PRINTF_LENGTH::L_LONG;
+                gotoNextChar = true;
+                break;
+            case 'j':
+                len = (int)CUSTOM_PRINTF_LENGTH::L_INTMAX;
+                gotoNextChar = true;
+                break;
+            case 'z':
+                len = (int)CUSTOM_PRINTF_LENGTH::L_SIZET;
+                gotoNextChar = true;
+                break;
+            case 't':
+                len = (int)CUSTOM_PRINTF_LENGTH::L_PTRDIFFT;
+                gotoNextChar = true;
+                break;
+            default:
+                mode = (int)CUSTOM_PRINTF_MODES::SPEC;
+                gotoNextChar = false;
+                break;
+            }
+            break;
+        case (int)CUSTOM_PRINTF_MODES::SPEC:
+            switch (c) {
+            case 'd': // signed decimal
+            case 'i':
+                radix = 10;
+                number = true;
+                sign = true;
+                break;
+            case 'u': // unsigned decimal
+                radix = 10;
+                number = true;
+                sign = false;
+                break;
+            case 'o': // unsigned octal
+                radix = 8;
+                number = true;
+                sign = false;
+                break;
+            case 'p': // pointer address
+            case 'x': // unsigned hex (lowercase)
+                radix = 16;
+                number = true;
+                sign = false;
+                upper = false;
+                break;
+            case 'X': // unsigned hex (uppercase)
+                radix = 16;
+                number = true;
+                sign = false;
+                upper = true;
+                break;
+            case 'c': // character
+                internal_fputc(file, va_arg(args, int /* char is promoted to int */), false);
+                symbols_printed++;
+                break;
+            case 's': // string. requires max length implementation
+                internal_fputs(file, va_arg(args, const char*), false);
+                break;
+            case 'n': // send symbols_printed to va_arg
+                switch (len) {
+                case (int)CUSTOM_PRINTF_LENGTH::L_CHAR:
+                    *(va_arg(args, signed char*)) = symbols_printed;
+                    break;
+                case (int)CUSTOM_PRINTF_LENGTH::L_SHORT:
+                    *(va_arg(args, signed short int*)) = symbols_printed;
+                    break;
+                case (int)CUSTOM_PRINTF_LENGTH::L_LONG:
+                    *(va_arg(args, signed long int*)) = symbols_printed;
+                    break;
+                case (int)CUSTOM_PRINTF_LENGTH::L_LONG_LONG:
+                    *(va_arg(args, signed long long int*)) = symbols_printed;
+                    break;
+                case (int)CUSTOM_PRINTF_LENGTH::L_INTMAX:
+                    *(va_arg(args, intmax_t*)) = symbols_printed;
+                    break;
+                case (int)CUSTOM_PRINTF_LENGTH::L_SIZET:
+                    *(va_arg(args, size_t*)) = symbols_printed;
+                    break;
+                case (int)CUSTOM_PRINTF_LENGTH::L_PTRDIFFT:
+                    *(va_arg(args, ptrdiff_t*)) = symbols_printed;
+                    break;
+                default:
+                    *(va_arg(args, signed int*)) = symbols_printed;
+                    break;
+                }
+                break;
+            case '%': // print a '%'
+                internal_fputc(file, '%', false);
+                symbols_printed++;
+                break;
+            default: // ignore invalid spec
+                break;
+            }
+
+            // actually do the printing
+            if (number) {
+                if (sign) {
+                    int64_t num = 0;
+                    switch (len) {
+                    case (int)CUSTOM_PRINTF_LENGTH::L_CHAR:
+                    case (int)CUSTOM_PRINTF_LENGTH::L_SHORT:
+                        num = va_arg(args, signed int);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_LONG:
+                        num = va_arg(args, signed long int);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_LONG_LONG:
+                        num = va_arg(args, signed long long int);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_INTMAX:
+                        num = va_arg(args, intmax_t);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_SIZET:
+                        num = va_arg(args, size_t);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_PTRDIFFT:
+                        num = va_arg(args, ptrdiff_t);
+                        break;
+                    default:
+                        num = va_arg(args, signed int);
+                        break;
+                    }
+                    symbols_printed += fprintf_int(file, num, force_sign, width, radix, zero_pad, upper);
+                }
+                else {
+                    uint64_t num = 0;
+                    switch (len) {
+                    case (int)CUSTOM_PRINTF_LENGTH::L_CHAR:
+                    case (int)CUSTOM_PRINTF_LENGTH::L_SHORT:
+                        num = va_arg(args, unsigned int);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_LONG:
+                        num = va_arg(args, unsigned long int);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_LONG_LONG:
+                        num = va_arg(args, unsigned long long int);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_INTMAX:
+                        num = va_arg(args, uintmax_t);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_SIZET:
+                        num = va_arg(args, size_t);
+                        break;
+                    case (int)CUSTOM_PRINTF_LENGTH::L_PTRDIFFT:
+                        num = va_arg(args, ptrdiff_t);
+                        break;
+                    default:
+                        num = va_arg(args, unsigned int);
+                        break;
+                    }
+                    symbols_printed += fprintf_uint(file, width, num, radix, zero_pad, upper);
+                }
+                
+            }
+
+            mode = (int)CUSTOM_PRINTF_MODES::NORMAL;
+            radix = 10;
+            len = (int)CUSTOM_PRINTF_LENGTH::L_NORMAL;
+            sign = false;
+            force_sign = false;
+            zero_pad = false;
+            number = false;
+            upper = false;
+            width = 0;
+            gotoNextChar = true;
+            break;
+        default:
+            return -1; // invalid mode
         }
         if (gotoNextChar) {
             i++;
             c = format[i];
         }
     }
+
+    return symbols_printed;
 }
 
-extern "C" void fprintf(const fd_t file, const char* format, ...) {
+extern "C" int fprintf(const fd_t file, const char* format, ...) {
     va_list args;
     va_start(args, format);
-    vfprintf(file, format, args);
+    int rc = vfprintf(file, format, args);
     va_end(args);
     if (file == stdout)
         g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    return rc;
 }
 
-extern "C" void printf(const char* format, ...) {
+extern "C" int printf(const char* format, ...) {
     va_list args;
     va_start(args, format);
-    vfprintf(stdout, format, args);
+    int rc = vfprintf(stdout, format, args);
     va_end(args);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    return rc;
 }
 
-extern "C" void vprintf(const char* format, va_list args) {
-    vfprintf(stdout, format, args);
+extern "C" int vprintf(const char* format, va_list args) {
+    int rc = vfprintf(stdout, format, args);
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    return rc;
 }
 
-extern "C" void dbgprintf(const char* format, ...) {
+extern "C" int dbgprintf(const char* format, ...) {
     va_list args;
     va_start(args, format);
-    vfprintf(stddebug, format, args);
+    int rc = vfprintf(stddebug, format, args);
     va_end(args);
+    return rc;
 }
 
-extern "C" void dbgvprintf(const char* format, va_list args) {
-    vfprintf(stddebug, format, args);
+extern "C" int dbgvprintf(const char* format, va_list args) {
+    return vfprintf(stddebug, format, args);
 }
 
 extern "C" size_t fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file) {

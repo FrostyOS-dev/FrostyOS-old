@@ -49,7 +49,7 @@ extern FILE* stddebug;
 #define FOPEN_MAX 8
 
 void putc(const char c);
-inline void putchar(const char c) { putc(c); };
+inline void putchar(const char c) { putc(c); }
 void fputc(FILE* file, const char c);
 void dbgputc(const char c);
 
