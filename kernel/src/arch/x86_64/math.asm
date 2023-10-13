@@ -46,3 +46,8 @@ uldiv:
     mov rax, rdi
     div rsi
     ret
+
+global log2
+log2:
+    bsr rax, rdi
+    ret

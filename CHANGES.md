@@ -1,6 +1,11 @@
 # Changes
 
-## Latest Changes - 13/10/2023
+## Latest Changes - 13/10/2023 (Evening)
+
+- Implemented logarithmic base-2 function in the kernel for unsigned integers (currently just rounds down the result)
+- Updated ELF loader to use new function
+
+## 13/10/2023
 
 - Updated the `printf` family of functions in kernel and LibC to support force_sign and zero_pad flags, width specifier, keeping track of characters printed, uppercase printing
 - Improved panic screen layout

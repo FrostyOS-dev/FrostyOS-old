@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stdlib.h>
 #include <util.h>
+#include <math.h>
 
 #include <Scheduling/Thread.hpp>
 
@@ -68,10 +69,13 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
                 continue;
             case 1: {
                 // FIXME: change alignment to use shifting instead of multiplication and division as the alignment must be a power of 2
-                void* virt_addr = (void*)(ALIGN_DOWN(prog_header->VirtualAddress, prog_header->RequiredAlignment));
+                uint8_t Alignment = log2(prog_header->RequiredAlignment);
+                void* virt_addr = (void*)(((uint64_t)(prog_header->VirtualAddress) >> Alignment) << Alignment);
+                //void* virt_addr = (void*)(ALIGN_DOWN(prog_header->VirtualAddress, prog_header->RequiredAlignment));
                 if (virt_addr < lowest_addr)
                     lowest_addr = virt_addr;
-                void* end_addr = (void*)(ALIGN_UP(((uint64_t)virt_addr + prog_header->SizeInMemory), prog_header->RequiredAlignment));
+                void* end_addr = (void*)((((uint64_t)virt_addr + prog_header->SizeInMemory + (prog_header->RequiredAlignment - 1)) >> Alignment) << Alignment);
+                //void* end_addr = (void*)(ALIGN_UP(((uint64_t)virt_addr + prog_header->SizeInMemory), prog_header->RequiredAlignment));
                 if (end_addr > highest_addr)
                     highest_addr = end_addr;
                 break;
@@ -117,12 +121,16 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
                 }
                 else
                     perms = PagePermissions::READ;
+                uint8_t Alignment = log2(prog_header->RequiredAlignment);
                 uint64_t RequiredAlignment = ALIGN_UP(prog_header->RequiredAlignment, 8);
                 void* start = ALIGN_ADDRESS_DOWN(prog_header->VirtualAddress, 8);
-                uint64_t mem_size = ALIGN_UP(prog_header->SizeInMemory, RequiredAlignment);
+                //uint64_t mem_size = ALIGN_UP(prog_header->SizeInMemory, RequiredAlignment);
+                uint64_t mem_size = ((prog_header->SizeInMemory + (RequiredAlignment - 1)) >> Alignment) << Alignment;
                 uint64_t file_size = prog_header->SizeInFile;
                 uint64_t page_count = DIV_ROUNDUP(mem_size, PAGE_SIZE);
-                void* page_start = ALIGN_ADDRESS_DOWN(start, (ALIGN_UP(RequiredAlignment, PAGE_SIZE)));
+                uint8_t PageAlignment = Alignment < 12 ? 12 : Alignment;
+                void* page_start = (void*)(((uint64_t)start >> PageAlignment) << PageAlignment);
+                //void* page_start = ALIGN_ADDRESS_DOWN(start, (ALIGN_UP(RequiredAlignment, PAGE_SIZE)));
 #ifdef __x86_64__
                 x86_64_DisableInterrupts();
 #endif
