@@ -49,6 +49,8 @@ void* kcalloc(size_t num, size_t size);
 void kfree(void* ptr);
 void* kmalloc(size_t size);
 void* krealloc(void* ptr, size_t size);
+void* kcalloc_eternal(size_t num, size_t size);
+void* kmalloc_eternal(size_t size);
 
 unsigned int rand();
 void srand(unsigned int);

@@ -105,6 +105,7 @@ namespace WorldOS {
         HAL_EarlyInit(params->MemoryMap, params->MemoryMapEntryCount, params->kernel_virtual_addr, params->kernel_physical_addr, kernel_size, params->hhdm_start_addr, m_InitialFrameBuffer);
         KPM.InitPageManager(VirtualRegion((void*)(params->kernel_virtual_addr + kernel_size), (void*)UINT64_MAX), g_KVPM, false);
         g_KPM = &KPM;
+        kmalloc_eternal_init();
         kmalloc_init();
 
         if (params->frameBuffer.bpp % 8 > 0 || params->frameBuffer.bpp > 64) {
@@ -118,7 +119,7 @@ namespace WorldOS {
         if (ELF_map_size == 0)
             dbgprintf("WARN: Cannot find kernel symbol file\n");
         else
-            g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size);
+            g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size, true);
 
         KBasicVGA.EnableDoubleBuffering(g_KPM);
 
@@ -146,7 +147,7 @@ namespace WorldOS {
 
         HAL_Stage2(params->RSDP_addr);
 
-        VFS* KVFS = new VFS;
+        VFS* KVFS = (VFS*)kcalloc_eternal(1, sizeof(VFS));
         g_VFS = KVFS;
         assert(KVFS->MountRoot(FileSystemType::TMPFS));
 

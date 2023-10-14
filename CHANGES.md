@@ -1,6 +1,13 @@
 # Changes
 
-## Latest Changes - 13/10/2023 (Evening)
+## Latest Changes - 15/10/2023
+
+- Implemented eternal heap using a basic bump allocator.
+- Added eternal symbol table loading support to `ELFSymbols` class.
+- Implemented `ReservePage(s)` functions to `PageManager` to allow for reserve virtual address space without actually allocating physical memory.
+- Added support to `AllocatePage(s)` functions to allow for allocating physical memory and mapping it to previously reserved virtual memory.
+
+## 13/10/2023 (Evening)
 
 - Implemented logarithmic base-2 function in the kernel for unsigned integers (currently just rounds down the result)
 - Updated ELF loader to use new function

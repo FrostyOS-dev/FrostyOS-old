@@ -35,15 +35,22 @@ const void* _kernel_end_addr   = &__kernel_end;
 #include <stdlib.h>
 #include <util.h>
 
-ELFSymbols::ELFSymbols() {
+#include <HAL/hal.hpp>
+
+ELFSymbols::ELFSymbols() : m_eternal(false) {
 
 }
 
-ELFSymbols::ELFSymbols(const void* data, size_t size) {
+ELFSymbols::ELFSymbols(const void* data, size_t size, bool eternal) : m_eternal(eternal) {
     if (size < 10)
         return; // too small
     if (data == nullptr)
         return; // invalid buffer
+    void* (*calloc)(size_t, size_t) = nullptr;
+    if (m_eternal)
+        calloc = kcalloc_eternal;
+    else
+        calloc = kcalloc;
     const uint8_t* i_data = (const uint8_t*)data;
     uint64_t index = 0;
     while (index < size) {
@@ -54,11 +61,11 @@ ELFSymbols::ELFSymbols(const void* data, size_t size) {
         index++;
         char const* name = reinterpret_cast<const char*>(&(i_data[index]));
         size_t name_length = strlen(name);
-        char* new_name = (char*)kcalloc(name_length + 1, sizeof(char));
+        char* new_name = (char*)calloc(name_length + 1, sizeof(char));
         if (new_name == nullptr)
             return;
         memcpy(new_name, name, name_length);
-        ELFSymbol* symbol = new ELFSymbol;
+        ELFSymbol* symbol = (ELFSymbol*)calloc(1, sizeof(ELFSymbol));
         symbol->address = *p_address;
         symbol->name = new_name;
         m_symbols.insert(symbol);
@@ -67,6 +74,9 @@ ELFSymbols::ELFSymbols(const void* data, size_t size) {
 }
 
 ELFSymbols::~ELFSymbols() {
+    if (m_eternal) {
+        PANIC("Eternal ELF Symbol table destruction requested.");
+    }
     for (uint64_t i = m_symbols.getCount(); i > 0; i++) {
         ELFSymbol* symbol = m_symbols.get(i - 1);
         if (symbol == nullptr)

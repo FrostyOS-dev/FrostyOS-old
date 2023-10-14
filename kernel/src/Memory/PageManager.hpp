@@ -48,6 +48,10 @@ namespace WorldOS {
         void* AllocatePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
         void* AllocatePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
 
+        /* Allocate virtual memory, but don't map it yet*/
+        void* ReservePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
+        void* ReservePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
+
         void FreePage(void* addr);
         void FreePages(void* addr);
 
@@ -60,6 +64,9 @@ namespace WorldOS {
         bool isValidAllocation(void* addr, size_t size) const;
 
         const VirtualRegion& GetRegion() const;
+
+    private:
+        bool InsertObject(PageObject* obj);
 
     private:
         PageObject* m_allocated_objects;
