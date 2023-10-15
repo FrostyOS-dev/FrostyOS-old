@@ -17,12 +17,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 15/10/2023
+## Latest Changes - 15/10/2023 (Afternoon)
 
-- Implemented eternal heap using a basic bump allocator.
-- Added eternal symbol table loading support to `ELFSymbols` class.
-- Implemented `ReservePage(s)` functions to `PageManager` to allow for reserve virtual address space without actually allocating physical memory.
-- Added support to `AllocatePage(s)` functions to allow for allocating physical memory and mapping it to previously reserved virtual memory.
+- Optimised physical memory allocation using new `m_nextFree` internal variable.
+- Implemented out of memory checking in physical memory manager
+- Implemented x86_64 remapping functions for standard sized pages and large pages
+- Implemented proper page remapping support to `PageManager` class instead of un-mapping, then mapping again
+- Removed `physical_address` member from `PageObject` struct
+- Updated `PageManager` class to allocate 1 physical page at a time on demand
+- Removed ovmf firmware from repository and use host system's instead. Variables are copied and accessed as read-write, code is loaded in-place as read-only.
+- Updated `clean-all` make target to remove local ovmf directory
 
 ## Resources used
 
@@ -49,6 +53,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - make
 - git
 - nasm
+- ovmf
 
 #### Toolchain build
 
@@ -106,11 +111,11 @@ If you cannot meet these requirements, see notes
 
 #### Debian
 
-- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm libtool patch`
+- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm libtool patch ovmf`
 
 #### Fedora/RHEL
 
-- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm libtool patch`
+- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm libtool patch edk2-ovmf`
 
 #### Arch
 
@@ -118,7 +123,7 @@ If you cannot meet these requirements, see notes
 
 #### Gentoo
 
-- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch`
+- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch sys-firmware/edk2-ovmf`
 
 ---
 

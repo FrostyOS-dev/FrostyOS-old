@@ -1,6 +1,17 @@
 # Changes
 
-## Latest Changes - 15/10/2023
+## Latest Changes - 15/10/2023 (Afternoon)
+
+- Optimised physical memory allocation using new `m_nextFree` internal variable.
+- Implemented out of memory checking in physical memory manager
+- Implemented x86_64 remapping functions for standard sized pages and large pages
+- Implemented proper page remapping support to `PageManager` class instead of un-mapping, then mapping again
+- Removed `physical_address` member from `PageObject` struct
+- Updated `PageManager` class to allocate 1 physical page at a time on demand
+- Removed ovmf firmware from repository and use host system's instead. Variables are copied and accessed as read-write, code is loaded in-place as read-only.
+- Updated `clean-all` make target to remove local ovmf directory
+
+## 15/10/2023
 
 - Implemented eternal heap using a basic bump allocator.
 - Added eternal symbol table loading support to `ELFSymbols` class.

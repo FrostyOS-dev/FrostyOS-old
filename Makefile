@@ -40,11 +40,11 @@ run: all
 	@echo Running
 	@echo -------
 ifeq ($(config), debug)
-	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
+	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
 else ifeq ($(config), release)
-	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64
+	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64
 else
-	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
+	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
 endif
 
 mkgpt:
@@ -99,6 +99,10 @@ dependencies:
 ifeq ("$(wildcard depend/tools/bin/mkgpt)","")
 	@$(MAKE) mkgpt
 endif
+ifeq ("$(wildcard ovmf/x86-64/OVMF_VARS.fd)","")
+	@mkdir -p ovmf/x86-64
+	@cp /usr/share/edk2/x64/OVMF_VARS.fd ovmf/x86-64
+endif
 	@rm -fr depend/tools/build
 	@$(MAKE) -C kernel kernel-dependencies
 
@@ -116,7 +120,7 @@ clean-all:
 	@$(MAKE) -C kernel clean-kernel
 	@$(MAKE) -C utils clean-utils
 	@$(MAKE) -C LibC distclean-libc
-	@rm -fr iso dist depend root/kernel.map root/data/include root/data/lib
+	@rm -fr iso dist depend root/kernel.map root/data/include root/data/lib ovmf
 
 clean-os:
 	@$(MAKE) -C kernel clean-kernel

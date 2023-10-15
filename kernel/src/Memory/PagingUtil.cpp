@@ -27,6 +27,10 @@ void UnmapPage(void* virt_addr) {
     x86_64_unmap_page(virt_addr);
 }
 
+void RemapPage(void* virt_addr, uint32_t flags) {
+    x86_64_remap_page(virt_addr, flags);
+}
+
 void* to_HHDM(void* phys_addr) {
     return x86_64_to_HHDM(phys_addr);
 }

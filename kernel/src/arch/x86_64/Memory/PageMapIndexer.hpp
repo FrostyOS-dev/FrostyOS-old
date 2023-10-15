@@ -42,6 +42,12 @@ void x86_64_unmap_page(void* virtualaddr);
 // Unmap a page with no TLB flush
 void x86_64_unmap_page_noflush(void* virtualaddr);
 
+// Update flags of page mapping
+void x86_64_remap_page(void* virtualaddr, uint32_t flags);
+
+// Update flags of page mapping with no TLB flush
+void x86_64_remap_page_noflush(void* virtualaddr, uint32_t flags);
+
 // Identity map memory. If length and/or start_phys aren't page aligned, the values used are rounded down to the nearest standard page boundary.
 void x86_64_identity_map(void* start_phys, uint64_t length, uint32_t flags);
 
@@ -56,6 +62,12 @@ void x86_64_unmap_large_page_noflush(void* virtualaddr);
 
 // Unmap a 2MiB page. virtualaddr will be rounded down to nearest 2MiB border
 void x86_64_unmap_large_page(void* virtualaddr);
+
+// Update flags of large page mapping
+void x86_64_remap_large_page(void* virtualaddr, uint32_t flags);
+
+// Update flags of large page mapping with no TLB flush
+void x86_64_remap_large_page_noflush(void* virtualaddr, uint32_t flags);
 
 // Set the virtual and physical addresses of the kernel
 void x86_64_SetKernelAddress(void* kernel_virtual, void* kernel_physical, size_t length);

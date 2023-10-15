@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 void MapPage(void* phys_addr, void* virt_addr, uint32_t flags);
 void UnmapPage(void* virt_addr);
+void RemapPage(void* virt_addr, uint32_t flags);
 
 void* to_HHDM(void* phys_addr);
 

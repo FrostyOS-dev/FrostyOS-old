@@ -67,6 +67,7 @@ namespace WorldOS {
         size_t m_ReservedMem;
         size_t m_UsedMem;
         size_t m_MemSize;
+        uint64_t m_nextFree;
     };
 
 }

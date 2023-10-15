@@ -39,6 +39,7 @@ namespace WorldOS {
         m_ReservedMem = 0;
         m_UsedMem = 0;
         m_MemSize = 0;
+        m_nextFree = UINT64_MAX;
     }
 
     PhysicalPageFrameAllocator::~PhysicalPageFrameAllocator() {
@@ -54,6 +55,7 @@ namespace WorldOS {
         m_FreeMem = 0;
         m_ReservedMem = 0;
         m_UsedMem = 0;
+        m_nextFree = UINT64_MAX;
 
         size_t BitmapSize = m_MemSize >> 15; // divide by (4096 * 8)
         if (((m_MemSize >> 12) & 7) != 0) {
@@ -181,12 +183,15 @@ namespace WorldOS {
             m_ReservedMem += 0x1000;
             m_Bitmap.Set(0, true);
         }
+
+        m_nextFree = UINT64_MAX;
     }
 
     void* PhysicalPageFrameAllocator::AllocatePage() {
         uint64_t index = FindFreePage();
-        if (index == UINT64_MAX)
-            return nullptr;
+        if (index == UINT64_MAX) { // Out of memory. Panic immediately
+            PANIC("OUT OF MEMORY. No physical pages are available.");
+        }
         LockPage((void*)(index * 4096));
         return (void*)(index * 4096);
     }
@@ -204,6 +209,8 @@ namespace WorldOS {
         m_Bitmap.Set(((uint64_t)page >> 12), true);
         m_FreeMem -= 4096;
         m_ReservedMem += 4096;
+        if (m_nextFree == ((uint64_t)page >> 12))
+            m_nextFree = UINT64_MAX;
     }
 
     void PhysicalPageFrameAllocator::ReservePages(void* start, uint64_t count) {
@@ -217,6 +224,7 @@ namespace WorldOS {
         m_Bitmap.Set(((uint64_t)page >> 12), false);
         m_FreeMem += 4096;
         m_ReservedMem -= 4096;
+        m_nextFree = ((uint64_t)page >> 12);
     }
 
     void PhysicalPageFrameAllocator::UnreservePages(void* start, uint64_t count) {
@@ -230,6 +238,7 @@ namespace WorldOS {
         m_Bitmap.Set(((uint64_t)page >> 12), false);
         m_FreeMem += 4096;
         m_UsedMem -= 4096;
+        m_nextFree = ((uint64_t)page >> 12);
     }
 
     void PhysicalPageFrameAllocator::FreePages(void* start, uint64_t count) {
@@ -268,8 +277,18 @@ namespace WorldOS {
     }
 
     uint64_t PhysicalPageFrameAllocator::FindFreePage() {
-        for (uint64_t i = 0; i < m_Bitmap.GetSize(); i++) {
+        if (m_nextFree != UINT64_MAX) {
+            uint64_t i = m_nextFree;
+            if ((i + 1) < (m_Bitmap.GetSize() << 3) && m_Bitmap[i + 1] == 0)
+                m_nextFree = i + 1;
+            else
+                m_nextFree = UINT64_MAX;
+            return i;
+        }
+        for (uint64_t i = 0; i < (m_Bitmap.GetSize() << 3); i++) {
             if (m_Bitmap[i] == 0) {
+                if ((i + 1) < (m_Bitmap.GetSize() << 3) && m_Bitmap[i + 1] == 0)
+                    m_nextFree = i + 1;
                 return i;
             }
         }
@@ -279,10 +298,14 @@ namespace WorldOS {
     uint64_t PhysicalPageFrameAllocator::FindFreePages(uint64_t count) {
         uint64_t next = 0;
         if (count == 0) return UINT64_MAX; // impossible offset into bitmap, so good for errors
-        for (uint64_t i = 0; i < m_Bitmap.GetSize(); i+=next) {
+        for (uint64_t i = 0; i < (m_Bitmap.GetSize() << 3); i+=next) {
             next = 1;
             if (m_Bitmap[i] == 0) {
-                if (count == 1) return i * 8;
+                if (count == 1) {
+                    if (m_nextFree == i)
+                        m_nextFree = UINT64_MAX;
+                    return i * 8;
+                }
                 bool found = true;
                 next = 1;
                 while (next <= count) {
@@ -293,7 +316,11 @@ namespace WorldOS {
                     if (count <= next) break; // check if next > count on next iteration
                     next++;
                 }
-                if (found) return i; // return start page index of the block
+                if (found) {
+                    if (m_nextFree >= i && (i + count) > m_nextFree)
+                        m_nextFree = UINT64_MAX; // reset it
+                    return i; // return start page index of the block
+                }
             }
         }
         return UINT64_MAX; // impossible offset into bitmap, so good for errors

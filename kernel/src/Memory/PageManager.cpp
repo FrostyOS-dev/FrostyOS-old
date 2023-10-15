@@ -66,16 +66,11 @@ namespace WorldOS {
     }
 
     void* PageManager::AllocatePage(PagePermissions perms, void* addr) {
-        void* phys_addr = g_PPFA->AllocatePage();
-        if (phys_addr == nullptr)
-            return nullptr;
         if (addr != nullptr) {
             PageObject* object = m_allocated_objects;
             for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-                if (object == nullptr) { // should NEVER happen
-                    g_PPFA->FreePage(phys_addr);
+                if (object == nullptr) // should NEVER happen
                     return nullptr;
-                }
                 VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
                 if (temp_region.IsInside(addr, PAGE_SIZE) && (object->flags & PO_STANDBY) && !(object->flags & PO_INUSE) && object->perms == perms) {
                     if (addr > object->virtual_address) {
@@ -86,12 +81,9 @@ namespace WorldOS {
                             po = PageObjectPool_Allocate();
                             m_page_object_pool_used = true;
                         }
-                        if (po == nullptr) {
-                            g_PPFA->FreePage(phys_addr);
+                        if (po == nullptr)
                             return nullptr;
-                        }
                         po->virtual_address = object->virtual_address;
-                        po->physical_address = nullptr;
                         po->perms = perms;
                         po->flags = object->flags;
                         po->page_count = ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
@@ -100,7 +92,6 @@ namespace WorldOS {
                                 PageObjectPool_Free(po);
                             else if (NewDeleteInitialised())
                                 delete po;
-                            g_PPFA->FreePage(phys_addr);
                             return nullptr;
                         }
                         object->page_count -= ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
@@ -115,12 +106,9 @@ namespace WorldOS {
                             po = PageObjectPool_Allocate();
                             m_page_object_pool_used = true;
                         }
-                        if (po == nullptr) {
-                            g_PPFA->FreePage(phys_addr);
+                        if (po == nullptr)
                             return nullptr;
-                        }
                         po->virtual_address = (void*)((uint64_t)(object->virtual_address) + PAGE_SIZE);
-                        po->physical_address = nullptr;
                         po->perms = perms;
                         po->flags = object->flags;
                         po->page_count = object->page_count - 1;
@@ -129,7 +117,6 @@ namespace WorldOS {
                                 PageObjectPool_Free(po);
                             else if (NewDeleteInitialised())
                                 delete po;
-                            g_PPFA->FreePage(phys_addr);
                             return nullptr;
                         }
                         object->page_count = 1;
@@ -156,7 +143,7 @@ namespace WorldOS {
                         page_perms = 0;
                         break;
                     }
-                    MapPage(phys_addr, addr, page_perms);
+                    MapPage(g_PPFA->AllocatePage(), addr, page_perms);
                     return addr;
                 }
                 object = object->next;
@@ -168,14 +155,10 @@ namespace WorldOS {
         else {
             PageObject* object = m_allocated_objects;
             for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-                if (object == nullptr) { // should NEVER happen
-                    g_PPFA->FreePage(phys_addr);
+                if (object == nullptr) // should NEVER happen
                     return nullptr;
-                }
-                if (object->virtual_address == addr) {
-                    g_PPFA->FreePage(phys_addr);
+                if (object->virtual_address == addr)
                     return nullptr;
-                }
                 object = object->next;
             }
             virt_addr = m_VPM->AllocatePage(addr);
@@ -188,15 +171,11 @@ namespace WorldOS {
                     else
                         virt_addr = m_VPM->AllocatePage(addr);
                 }
-                if (virt_addr == nullptr) {
-                    g_PPFA->FreePage(phys_addr);
+                if (virt_addr == nullptr)
                     return nullptr;
-                }
             }
-            else {
-                g_PPFA->FreePage(phys_addr);
+            else
                 return nullptr;
-            }
         }
         PageObject* po = m_allocated_objects;
         while (po != nullptr)
@@ -208,7 +187,6 @@ namespace WorldOS {
             m_page_object_pool_used = true;
         }
         if (po == nullptr) {
-            g_PPFA->FreePage(phys_addr);
             m_VPM->UnallocatePage(virt_addr);
             return nullptr;
         }
@@ -216,7 +194,6 @@ namespace WorldOS {
         if (m_mode)
             PageObject_SetFlag(po, PO_USER);
         PageObject_SetFlag(po, PO_INUSE);
-        po->physical_address = phys_addr;
         po->virtual_address = virt_addr;
         po->page_count = 1;
         if (m_allocated_object_count > 0) {
@@ -226,7 +203,6 @@ namespace WorldOS {
                     PageObjectPool_Free(po);
                 else if (NewDeleteInitialised())
                     delete po;
-                g_PPFA->FreePage(phys_addr);
                 m_VPM->UnallocatePage(virt_addr);
                 return nullptr;
             }
@@ -255,23 +231,18 @@ namespace WorldOS {
             break;
         }
         po->perms = perms;
-        MapPage(phys_addr, virt_addr, page_perms);
+        MapPage(g_PPFA->AllocatePage(), virt_addr, page_perms);
         return virt_addr;
     }
 
     void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* addr) {
         if (count == 1)
             return AllocatePage(perms, addr);
-        void* phys_addr = g_PPFA->AllocatePages(count);
-        if (phys_addr == nullptr)
-            return nullptr;
         if (addr != nullptr) {
             PageObject* object = m_allocated_objects;
             for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-                if (object == nullptr) { // should NEVER happen
-                    g_PPFA->FreePages(phys_addr, count);
+                if (object == nullptr) // should NEVER happen
                     return nullptr;
-                }
                 VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
                 if (temp_region.IsInside(addr, count * PAGE_SIZE) && (object->flags & PO_STANDBY) && !(object->flags & PO_INUSE) && object->perms == perms) {
                     if (addr > object->virtual_address) {
@@ -282,12 +253,9 @@ namespace WorldOS {
                             po = PageObjectPool_Allocate();
                             m_page_object_pool_used = true;
                         }
-                        if (po == nullptr) {
-                            g_PPFA->FreePages(phys_addr, count);
+                        if (po == nullptr)
                             return nullptr;
-                        }
                         po->virtual_address = object->virtual_address;
-                        po->physical_address = nullptr;
                         po->perms = perms;
                         po->flags = object->flags;
                         po->page_count = ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
@@ -296,7 +264,6 @@ namespace WorldOS {
                                 PageObjectPool_Free(po);
                             else if (NewDeleteInitialised())
                                 delete po;
-                            g_PPFA->FreePage(phys_addr);
                             return nullptr;
                         }
                         object->page_count -= ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
@@ -311,12 +278,9 @@ namespace WorldOS {
                             po = PageObjectPool_Allocate();
                             m_page_object_pool_used = true;
                         }
-                        if (po == nullptr) {
-                            g_PPFA->FreePages(phys_addr, count);
+                        if (po == nullptr)
                             return nullptr;
-                        }
                         po->virtual_address = (void*)((uint64_t)(object->virtual_address) + count * PAGE_SIZE);
-                        po->physical_address = nullptr;
                         po->perms = perms;
                         po->flags = object->flags;
                         po->page_count = object->page_count - count;
@@ -325,7 +289,6 @@ namespace WorldOS {
                                 PageObjectPool_Free(po);
                             else if (NewDeleteInitialised())
                                 delete po;
-                            g_PPFA->FreePage(phys_addr);
                             return nullptr;
                         }
                         object->page_count = count;
@@ -353,7 +316,7 @@ namespace WorldOS {
                         break;
                     }
                     for (uint64_t j = 0; j < count; j++)
-                        MapPage((void*)((uint64_t)phys_addr + j * 0x1000), (void*)((uint64_t)addr + j * 0x1000), page_perms);
+                        MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + j * 0x1000), page_perms);
                     return addr;
                 }
                 object = object->next;
@@ -363,21 +326,15 @@ namespace WorldOS {
         if (addr == nullptr)
             virt_addr = m_VPM->AllocatePages(count);
         else {
-            if (!m_Vregion.IsInside(addr, count * PAGE_SIZE)) {
-                g_PPFA->FreePage(phys_addr);
+            if (!m_Vregion.IsInside(addr, count * PAGE_SIZE))
                 return nullptr;
-            }
             PageObject* object = m_allocated_objects;
             for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-                if (object == nullptr) { // should NEVER happen
-                    g_PPFA->FreePages(phys_addr, count);
+                if (object == nullptr) // should NEVER happen
                     return nullptr;
-                }
                 VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
-                if (temp_region.IsInside(addr, count * PAGE_SIZE)) {
-                    g_PPFA->FreePages(phys_addr, count);
+                if (temp_region.IsInside(addr, count * PAGE_SIZE))
                     return nullptr;
-                }
                 object = object->next;
             }
             virt_addr = m_VPM->AllocatePages(addr, count);
@@ -390,15 +347,11 @@ namespace WorldOS {
                     else
                         virt_addr = m_VPM->AllocatePages(addr, count);
                 }
-                if (virt_addr == nullptr) {
-                    g_PPFA->FreePages(phys_addr, count);
+                if (virt_addr == nullptr)
                     return nullptr;
-                }
             }
-            else {
-                g_PPFA->FreePages(phys_addr, count);
+            else
                 return nullptr;
-            }
         }
         PageObject* po = m_allocated_objects;
         while (po != nullptr)
@@ -410,7 +363,6 @@ namespace WorldOS {
             m_page_object_pool_used = true;
         }
         if (po == nullptr) {
-            g_PPFA->FreePages(phys_addr, count);
             m_VPM->UnallocatePages(virt_addr, count);
             return nullptr;
         }
@@ -418,7 +370,6 @@ namespace WorldOS {
         if (m_mode)
             PageObject_SetFlag(po, PO_USER);
         PageObject_SetFlag(po, PO_INUSE);
-        po->physical_address = phys_addr;
         po->virtual_address = virt_addr;
         po->page_count = count;
         if (m_allocated_object_count > 0) {
@@ -428,7 +379,6 @@ namespace WorldOS {
                     PageObjectPool_Free(po);
                 else if (NewDeleteInitialised())
                     delete po;
-                g_PPFA->FreePages(phys_addr, count);
                 m_VPM->UnallocatePages(virt_addr, count);
                 return nullptr;
             }
@@ -458,7 +408,7 @@ namespace WorldOS {
         }
         po->perms = perms;
         for (uint64_t i = 0; i < count; i++)
-            MapPage((void*)((uint64_t)phys_addr + i * 0x1000), (void*)((uint64_t)virt_addr + i * 0x1000), page_perms);
+            MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * 0x1000), page_perms);
         return virt_addr;
     }
 
@@ -508,7 +458,6 @@ namespace WorldOS {
         if (m_mode)
             PageObject_SetFlag(po, PO_USER);
         PageObject_SetFlag(po, PO_STANDBY);
-        po->physical_address = nullptr;
         po->virtual_address = virt_addr;
         po->page_count = 1;
         if (m_allocated_object_count > 0) {
@@ -582,7 +531,6 @@ namespace WorldOS {
         if (m_mode)
             PageObject_SetFlag(po, PO_USER);
         PageObject_SetFlag(po, PO_STANDBY);
-        po->physical_address = nullptr;
         po->virtual_address = virt_addr;
         po->page_count = count;
         if (m_allocated_object_count > 0) {
@@ -609,7 +557,7 @@ namespace WorldOS {
         PageObject* po = m_allocated_objects;
         while (po != nullptr) {
             if (po->virtual_address == addr && po->page_count == 1) {
-                g_PPFA->FreePage(po->physical_address);
+                g_PPFA->FreePage(get_physaddr(addr));
                 m_VPM->UnallocatePage(addr);
                 UnmapPage(addr);
                 PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
@@ -632,10 +580,11 @@ namespace WorldOS {
         PageObject* po = m_allocated_objects;
         while (po != nullptr) {
             if (po->virtual_address == addr && po->page_count > 1) {
-                g_PPFA->FreePages(po->physical_address, po->page_count);
                 m_VPM->UnallocatePages(addr, po->page_count);
-                for (uint64_t i = 0; i < po->page_count; i++)
+                for (uint64_t i = 0; i < po->page_count; i++) {
+                    g_PPFA->FreePage(get_physaddr((void*)((uint64_t)addr + i * 0x1000)));
                     UnmapPage((void*)((uint64_t)addr + i * 0x1000));
+                }
                 PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
                 if (previous != nullptr)
                     previous->next = po->next;
@@ -655,9 +604,7 @@ namespace WorldOS {
     void PageManager::Remap(void* addr, PagePermissions perms) {
         PageObject* po = m_allocated_objects;
         while (po != nullptr) {
-            if (po->virtual_address == addr && po->page_count > 1) {
-                for (uint64_t i = 0; i < po->page_count; i++)
-                    UnmapPage((void*)((uint64_t)addr + i * 0x1000));
+            if (po->virtual_address == addr) {
                 uint32_t page_perms = 1;
                 if (m_mode)
                     page_perms |= 4;
@@ -678,7 +625,7 @@ namespace WorldOS {
                 }
                 po->perms = perms;
                 for (uint64_t i = 0; i < po->page_count; i++)
-                    MapPage((void*)((uint64_t)po->physical_address + i * 0x1000), (void*)((uint64_t)addr + i * 0x1000), page_perms);
+                    RemapPage((void*)((uint64_t)addr + i * 0x1000), page_perms);
                 return;
             }
             po = po->next;

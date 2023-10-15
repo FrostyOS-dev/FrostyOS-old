@@ -25,7 +25,6 @@ namespace WorldOS {
     enum class PagePermissions;
 
     struct PageObject {
-        void* physical_address;
         void* virtual_address;
         uint64_t page_count;
         uint64_t flags;
