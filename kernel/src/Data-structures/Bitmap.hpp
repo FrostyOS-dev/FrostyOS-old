@@ -21,32 +21,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stddef.h>
 #include <stdint.h>
 
-namespace WorldOS {
+class Bitmap {
+public:
+    Bitmap();
+    Bitmap(uint8_t* buffer, size_t size);
+    ~Bitmap();
 
-    class Bitmap {
-    public:
-        Bitmap();
-        Bitmap(uint8_t* buffer, size_t size);
-        ~Bitmap();
+    bool operator[](uint64_t index) const;
+    void Set(uint64_t index, bool value);
 
-        bool operator[](uint64_t index) const;
-        void Set(uint64_t index, bool value);
+    // Set size in bytes
+    void SetSize(size_t size);
 
-        // Set size in bytes
-        void SetSize(size_t size);
+    void SetBuffer(uint8_t* buffer);
 
-        void SetBuffer(uint8_t* buffer);
+    // Get size in bytes
+    size_t GetSize() const;
 
-        // Get size in bytes
-        size_t GetSize() const;
+    uint8_t* GetBuffer() const;
 
-        uint8_t* GetBuffer() const;
-
-    private:
-        size_t m_Size;
-        uint8_t* m_Buffer;
-    };
-
-}
-
+private:
+    size_t m_Size;
+    uint8_t* m_Buffer;
+};
 #endif /* _BITMAP_HPP */

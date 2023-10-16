@@ -46,7 +46,7 @@ private:
 private:
     bool m_auto_expand;
     LinkedList::SimpleLinkedList<FileDescriptor> m_descriptors;
-    WorldOS::Bitmap m_bitmap;
+    Bitmap m_bitmap;
 };
 
 extern FileDescriptorManager* g_KFDManager;

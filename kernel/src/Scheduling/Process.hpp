@@ -48,23 +48,23 @@ namespace Scheduling {
     class Process {
     public:
         Process();
-        Process(ProcessEntry_t entry, void* entry_data = nullptr, Priority priority = Priority::NORMAL, uint8_t flags = USER_DEFAULT, WorldOS::PageManager* pm = nullptr);
+        Process(ProcessEntry_t entry, void* entry_data = nullptr, Priority priority = Priority::NORMAL, uint8_t flags = USER_DEFAULT, PageManager* pm = nullptr);
         ~Process();
 
         void SetEntry(ProcessEntry_t entry, void* entry_data = nullptr);
         void SetPriority(Priority priority);
         void SetFlags(uint8_t flags);
-        void SetPageManager(WorldOS::PageManager* pm);
-        void SetRegion(const WorldOS::VirtualRegion& region);
-        void SetVirtualPageManager(WorldOS::VirtualPageManager* VPM);
+        void SetPageManager(PageManager* pm);
+        void SetRegion(const VirtualRegion& region);
+        void SetVirtualPageManager(VirtualPageManager* VPM);
 
         ProcessEntry_t GetEntry() const;
         void* GetEntryData() const;
         Priority GetPriority() const;
         uint8_t GetFlags() const;
-        WorldOS::PageManager* GetPageManager() const;
-        const WorldOS::VirtualRegion& GetRegion() const;
-        WorldOS::VirtualPageManager* GetVirtualPageManager() const;
+        PageManager* GetPageManager() const;
+        const VirtualRegion& GetRegion() const;
+        VirtualPageManager* GetVirtualPageManager() const;
         Thread* GetMainThread() const;
         uint64_t GetThreadCount() const;
         Thread* GetThread(uint64_t index) const;
@@ -86,12 +86,12 @@ namespace Scheduling {
         void* m_entry_data;
         uint8_t m_flags;
         Priority m_Priority;
-        WorldOS::PageManager* m_pm;
+        PageManager* m_pm;
         bool m_main_thread_initialised;
         LinkedList::SimpleLinkedList<Thread> m_threads;
         Thread* m_main_thread;
-        WorldOS::VirtualRegion m_region;
-        WorldOS::VirtualPageManager* m_VPM;
+        VirtualRegion m_region;
+        VirtualPageManager* m_VPM;
         bool m_main_thread_creation_requested;
     };
 }

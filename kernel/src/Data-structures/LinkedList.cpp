@@ -31,7 +31,7 @@ namespace LinkedList {
 	Node nodePool[POOL_SIZE];
 	uint64_t nodePool_UsedCount;
 	uint8_t nodePool_BitmapData[POOL_SIZE / 8];
-	WorldOS::Bitmap nodePool_Bitmap;
+	Bitmap nodePool_Bitmap;
 	bool nodePoolHasBeenInitialised = false;
 
 	void NodePool_Init() {

@@ -46,52 +46,48 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Memory/PagingUtil.hpp>
 
-namespace WorldOS {
+void HAL_EarlyInit(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb) {
+    x86_64_GDTInit();
 
-    void HAL_EarlyInit(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb) {
-        x86_64_GDTInit();
+    x86_64_IDT_Initialize();
+    x86_64_ISR_Initialize();
+    x86_64_IDT_Load(&idt.idtr);
 
-        x86_64_IDT_Initialize();
-        x86_64_ISR_Initialize();
-        x86_64_IDT_Load(&idt.idtr);
+    x86_64_IRQ_Initialize();
 
-        x86_64_IRQ_Initialize();
+    x86_64_DisableInterrupts();
+    HAL_TimeInit();
 
-        x86_64_DisableInterrupts();
-        HAL_TimeInit();
+    x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ((fb.bpp >> 3) * fb.FrameBufferHeight * fb.FrameBufferWidth), HHDM_start);
 
-        x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ((fb.bpp >> 3) * fb.FrameBufferHeight * fb.FrameBufferWidth), HHDM_start);
+    x86_64_SetPanicVGADevice(g_CurrentTTY->GetVGADevice());
 
-        x86_64_SetPanicVGADevice(g_CurrentTTY->GetVGADevice());
+    x86_64_EnableInterrupts();
+}
 
-        x86_64_EnableInterrupts();
+void HAL_Stage2(void* RSDP) {
+    assert(InitAndValidateRSDP(RSDP));
+    assert(IsXSDTAvailable());
+    assert(InitAndValidateXSDT(GetXSDT()));
+    bool MCFGFound = false;
+    for (uint64_t i = 0; i < getSDTCount(); i++) {
+        ACPISDTHeader* header = getOtherSDT(i);
+        if (strncmp(header->Signature, "MCFG", 4) == 0 && !MCFGFound) {
+            assert(InitAndValidateMCFG(header));
+            MCFGFound = true;
+        }
+    }
+    assert(MCFGFound); // it must be found or device detection won't work
+    for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
+        MCFGEntry* entry = GetMCFGEntry(i);
+        PCI::EnumerateBuses(to_HHDM((void*)(entry->Address)));
+    }
+    PCI::Header0* device = PCI::PCIDeviceList::GetPCIDevice(0);
+    for (uint64_t i = 1; device != nullptr; i++) {
+        dbgprintf("PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
+        device = PCI::PCIDeviceList::GetPCIDevice(i);
     }
 
-    void HAL_Stage2(void* RSDP) {
-        assert(InitAndValidateRSDP(RSDP));
-        assert(IsXSDTAvailable());
-        assert(InitAndValidateXSDT(GetXSDT()));
-        bool MCFGFound = false;
-        for (uint64_t i = 0; i < getSDTCount(); i++) {
-            ACPISDTHeader* header = getOtherSDT(i);
-            if (strncmp(header->Signature, "MCFG", 4) == 0 && !MCFGFound) {
-                assert(InitAndValidateMCFG(header));
-                MCFGFound = true;
-            }
-        }
-        assert(MCFGFound); // it must be found or device detection won't work
-        for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
-            MCFGEntry* entry = GetMCFGEntry(i);
-            PCI::EnumerateBuses(to_HHDM((void*)(entry->Address)));
-        }
-        PCI::Header0* device = PCI::PCIDeviceList::GetPCIDevice(0);
-        for (uint64_t i = 1; device != nullptr; i++) {
-            dbgprintf("PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
-            device = PCI::PCIDeviceList::GetPCIDevice(i);
-        }
-
-        assert(x86_64_IsSystemCallSupported());
-        assert(x86_64_EnableSystemCalls(0x8, 0x18, x86_64_HandleSystemCall));
-    }
-
+    assert(x86_64_IsSystemCallSupported());
+    assert(x86_64_EnableSystemCalls(0x8, 0x18, x86_64_HandleSystemCall));
 }

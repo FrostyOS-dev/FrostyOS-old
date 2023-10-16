@@ -27,7 +27,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 void* sys$mmap(unsigned long size, unsigned long perms, void* addr) {
     Scheduling::Process* process = Scheduling::Scheduler::GetCurrent()->GetParent();
-    using namespace WorldOS;
     PagePermissions i_perms;
     if (perms == PROT_READ)
         i_perms = PagePermissions::READ;
@@ -78,7 +77,6 @@ int sys$mprotect(void* addr, unsigned long size, unsigned long perms) {
         return -EINVAL; // bad address and size combination
     if (!(process->GetPageManager()->isValidAllocation(addr, size)))
         return -EINVAL; // bad address and size combination
-    using namespace WorldOS;
     PagePermissions i_perms;
     if (perms == PROT_READ)
         i_perms = PagePermissions::READ;

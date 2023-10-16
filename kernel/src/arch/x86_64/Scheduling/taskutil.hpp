@@ -31,7 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 void x86_64_PrepareNewRegisters(x86_64_Interrupt_Registers* out, const x86_64_Registers* in);
 void x86_64_ConvertToStandardRegisters(x86_64_Registers* out, const x86_64_Interrupt_Registers* in);
 
-void x86_64_GetNewStack(WorldOS::PageManager* pm, x86_64_Registers* regs, size_t size);
+void x86_64_GetNewStack(PageManager* pm, x86_64_Registers* regs, size_t size);
 
 void x86_64_SaveIRegistersToThread(const Scheduling::Thread* thread, const x86_64_Interrupt_Registers* regs);
 

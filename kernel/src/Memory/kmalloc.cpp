@@ -369,7 +369,7 @@ bool g_kmalloc_initialised;
 void kmalloc_init() {
     g_kmalloc_initialised = false;
     
-    void* pages = WorldOS::g_KPM->AllocatePages(1024); // ~4MiB
+    void* pages = g_KPM->AllocatePages(1024); // ~4MiB
     assert(pages != nullptr);
     mrvn_memory_init(pages, PAGE_SIZE * 1024);
 
@@ -427,7 +427,7 @@ size_t g_kmalloc_eternal_used_mem = 0;
 void kmalloc_eternal_init() {
     g_kmalloc_eternal_initialised = false;
 
-    void* pages = WorldOS::g_KPM->AllocatePages(512); // ~2MiB
+    void* pages = g_KPM->AllocatePages(512); // ~2MiB
     if (pages == nullptr)
         return;
     g_kmalloc_eternal_mem = pages;

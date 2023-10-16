@@ -25,65 +25,61 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Memory.hpp"
 #include "VirtualPageManager.hpp"
 
-namespace WorldOS {
+enum class PagePermissions {
+    READ,
+    WRITE,
+    EXECUTE,
+    READ_WRITE,
+    READ_EXECUTE
+};
 
-    enum class PagePermissions {
-        READ,
-        WRITE,
-        EXECUTE,
-        READ_WRITE,
-        READ_EXECUTE
-    };
+class PageManager {
+public:
+    PageManager();
 
-    class PageManager {
-    public:
-        PageManager();
+    /* mode is false for supervisor and true for user. auto_expand allows the page manager to try and expand the virtual region for user page managers. */
+    PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false);
+    ~PageManager();
 
-        /* mode is false for supervisor and true for user. auto_expand allows the page manager to try and expand the virtual region for user page managers. */
-        PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false);
-        ~PageManager();
+    void InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false); // Extra function for later initialisation. mode is false for supervisor and true for user
+    
+    void* AllocatePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
+    void* AllocatePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
 
-        void InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false); // Extra function for later initialisation. mode is false for supervisor and true for user
-        
-        void* AllocatePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
-        void* AllocatePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
+    /* Allocate virtual memory, but don't map it yet*/
+    void* ReservePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
+    void* ReservePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
 
-        /* Allocate virtual memory, but don't map it yet*/
-        void* ReservePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
-        void* ReservePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
+    void FreePage(void* addr);
+    void FreePages(void* addr);
 
-        void FreePage(void* addr);
-        void FreePages(void* addr);
+    void Remap(void* addr, PagePermissions perms);
 
-        void Remap(void* addr, PagePermissions perms);
+    bool ExpandVRegionToRight(size_t new_size);
 
-        bool ExpandVRegionToRight(size_t new_size);
+    bool isWritable(void* addr, size_t size) const;
 
-        bool isWritable(void* addr, size_t size) const;
+    bool isValidAllocation(void* addr, size_t size) const;
 
-        bool isValidAllocation(void* addr, size_t size) const;
+    const VirtualRegion& GetRegion() const;
 
-        const VirtualRegion& GetRegion() const;
+private:
+    bool InsertObject(PageObject* obj);
 
-    private:
-        bool InsertObject(PageObject* obj);
+private:
+    PageObject* m_allocated_objects;
+    uint64_t m_allocated_object_count;
+    
+    VirtualRegion m_Vregion;
+    VirtualPageManager* m_VPM; // uses a pointer to avoid wasted RAM
 
-    private:
-        PageObject* m_allocated_objects;
-        uint64_t m_allocated_object_count;
-        
-        VirtualRegion m_Vregion;
-        VirtualPageManager* m_VPM; // uses a pointer to avoid wasted RAM
+    bool m_mode;
 
-        bool m_mode;
+    bool m_page_object_pool_used;
 
-        bool m_page_object_pool_used;
+    bool m_auto_expand;
+};
 
-        bool m_auto_expand;
-    };
-
-    extern PageManager* g_KPM;
-
-}
+extern PageManager* g_KPM;
 
 #endif /* _PAGE_MANAGER_H */

@@ -19,8 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 volatile uint64_t g_memorySizeBytes = 0;
 
-size_t GetMemorySize(const WorldOS::MemoryMapEntry** MemoryMap, const size_t EntryCount) {
-    using namespace WorldOS;
+size_t GetMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCount) {
 
     if (g_memorySizeBytes > 0) {
         return g_memorySizeBytes;

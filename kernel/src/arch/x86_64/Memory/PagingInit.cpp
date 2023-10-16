@@ -29,15 +29,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 
-WorldOS::PhysicalPageFrameAllocator PPFA;
-WorldOS::VirtualPageManager KVPM;
-WorldOS::VirtualPageManager VPM;
-WorldOS::VirtualRegion KVRegion;
-WorldOS::VirtualRegion VAddressSpace;
+PhysicalPageFrameAllocator PPFA;
+VirtualPageManager KVPM;
+VirtualPageManager VPM;
+VirtualRegion KVRegion;
+VirtualRegion VAddressSpace;
 
 size_t g_MemorySize = 0;
 
-void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, uint64_t fb_virt, uint64_t fb_size, uint64_t HHDM_start) {
+void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, uint64_t fb_virt, uint64_t fb_size, uint64_t HHDM_start) {
     if (!x86_64_EnsureNX()) {
         PANIC("No execute is not available. It is required.");
     }
@@ -49,7 +49,7 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
         PANIC("HHDM must have PML3, PML2, PML1 and offset values of 0.");
     }
 
-    g_MemorySize = GetMemorySize((const WorldOS::MemoryMapEntry**)MemoryMap, MMEntryCount);
+    g_MemorySize = GetMemorySize((const MemoryMapEntry**)MemoryMap, MMEntryCount);
 
     x86_64_SetKernelAddress((void*)kernel_virtual, (void*)kernel_physical, kernel_size);
     x86_64_SetHHDMStart((void*)HHDM_start);
@@ -123,7 +123,7 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
         x86_64_map_large_page_noflush((void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
 
     for (uint64_t i = 0; i < MMEntryCount; i++) {
-        WorldOS::MemoryMapEntry* entry = MemoryMap[i];
+        MemoryMapEntry* entry = MemoryMap[i];
         if ((entry->Address + entry->length) < 0x100000000) continue; // skip entries that have already been mapped
         uint64_t addr = entry->Address & ~0xfff;
         uint64_t length = entry->length + 0xfff;
@@ -162,8 +162,8 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     PPFA.FullInit(MemoryMap[0], MMEntryCount, g_MemorySize);
     g_PPFA = &PPFA;
 
-    KVRegion = WorldOS::VirtualRegion((void*)(kernel_virtual + kernel_size), (void*)(~UINT64_C(0)));
-    VAddressSpace = WorldOS::VirtualRegion((void*)0, (void*)(~UINT64_C(0)));
+    KVRegion = VirtualRegion((void*)(kernel_virtual + kernel_size), (void*)(~UINT64_C(0)));
+    VAddressSpace = VirtualRegion((void*)0, (void*)(~UINT64_C(0)));
 
     // Setup kernel virtual MM
     VPM.InitVPageMgr(VAddressSpace);
@@ -172,7 +172,7 @@ void x86_64_InitPaging(WorldOS::MemoryMapEntry** MemoryMap, uint64_t MMEntryCoun
     VPM.ReservePages((void*)HHDM_start, 0x100000000); // Reserve from HHDM_start to HHDM_start + 0x100000000000
     VPM.ReservePages((void*)kernel_virtual, DIV_ROUNDUP((KVRegion.GetSize() + kernel_size), 0x1000)); // reserve kernel address space
     VPM.ReservePages((void*)fb_virt, DIV_ROUNDUP(fb_size, 0x1000)); // reserve framebuffer
-    WorldOS::g_VPM = &VPM;
+    g_VPM = &VPM;
     KVPM.InitVPageMgr(MemoryMap, MMEntryCount, (void*)kernel_virtual, kernel_size, (void*)fb_virt, fb_size, KVRegion);
-    WorldOS::g_KVPM = &KVPM;
+    g_KVPM = &KVPM;
 }

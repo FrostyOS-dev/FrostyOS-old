@@ -89,15 +89,15 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
         page_count = 1;
     else
         page_count = DIV_ROUNDUP(((uint64_t)highest_addr - (uint64_t)lowest_addr), PAGE_SIZE);
-    void* pages = WorldOS::g_VPM->AllocatePages(lowest_addr, page_count);
+    void* pages = g_VPM->AllocatePages(lowest_addr, page_count);
     if (pages != lowest_addr)
         return false;
-    m_region = WorldOS::VirtualRegion(lowest_addr, highest_addr);
-    m_VPM = new WorldOS::VirtualPageManager;
+    m_region = VirtualRegion(lowest_addr, highest_addr);
+    m_VPM = new VirtualPageManager;
     if (m_VPM == nullptr)
         return false;
     m_VPM->InitVPageMgr(m_region);
-    m_PM = new WorldOS::PageManager(m_region, m_VPM, true, true);
+    m_PM = new PageManager(m_region, m_VPM, true, true);
     for (uint64_t i = 0; i < m_header->ProgramHeaderEntryCount; i++) {
         ELF_ProgramHeader64* prog_header = (ELF_ProgramHeader64*)((uint64_t)prog_headers + i * m_header->ProgramHeaderEntrySize);
         switch (prog_header->SegmentType) {
@@ -105,7 +105,6 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
             case 4: // note
                 continue;
             case 1: {
-                using namespace WorldOS;
                 PagePermissions perms;
                 if (prog_header->Flags & 1) { // NOTE: WRITE_EXECUTE and READ_WRITE_EXECUTE are unsupported
                     if (prog_header->Flags & 4)
@@ -241,7 +240,7 @@ void ELF_Executable::End_Handler() {
     if (m_VPM != nullptr) {
         delete m_VPM;
         delete m_PM;
-        WorldOS::g_VPM->UnallocatePages(m_region.GetStart(), DIV_ROUNDUP((m_region.GetSize()), PAGE_SIZE));
+        g_VPM->UnallocatePages(m_region.GetStart(), DIV_ROUNDUP((m_region.GetSize()), PAGE_SIZE));
     }
     kfree(this);
 }

@@ -28,7 +28,7 @@ BasicVGA::BasicVGA() : m_CursorPosition({0, 0}), m_bgcolour(), m_fgcolour(), m_F
 
 }
 
-BasicVGA::BasicVGA(const FrameBuffer& buffer, Position CursorPosition, const Colour& fg_colour, const Colour& bg_colour, bool double_buffer, WorldOS::PageManager* pm) : m_CursorPosition(CursorPosition), m_bgcolour(bg_colour), m_fgcolour(fg_colour), m_FrameBuffer(buffer), m_HasBeenInitialised(true), m_pm(pm), m_DoubleBuffer(double_buffer), m_buffer(nullptr) {
+BasicVGA::BasicVGA(const FrameBuffer& buffer, Position CursorPosition, const Colour& fg_colour, const Colour& bg_colour, bool double_buffer, PageManager* pm) : m_CursorPosition(CursorPosition), m_bgcolour(bg_colour), m_fgcolour(fg_colour), m_FrameBuffer(buffer), m_HasBeenInitialised(true), m_pm(pm), m_DoubleBuffer(double_buffer), m_buffer(nullptr) {
     if (double_buffer)
         EnableDoubleBuffering(pm);
 }
@@ -37,7 +37,7 @@ BasicVGA::~BasicVGA() {
     
 }
 
-void BasicVGA::Init(const FrameBuffer& buffer, Position CursorPosition, const Colour& fg_colour, const Colour& bg_colour, bool double_buffer, WorldOS::PageManager* pm) {
+void BasicVGA::Init(const FrameBuffer& buffer, Position CursorPosition, const Colour& fg_colour, const Colour& bg_colour, bool double_buffer, PageManager* pm) {
     m_FrameBuffer = buffer;
     m_CursorPosition = CursorPosition;
     m_fgcolour = fg_colour;
@@ -222,7 +222,7 @@ uint64_t BasicVGA::GetAmountOfTextColumns() {
     return m_FrameBuffer.FrameBufferWidth / 10;
 }
 
-void BasicVGA::EnableDoubleBuffering(WorldOS::PageManager* pm) {
+void BasicVGA::EnableDoubleBuffering(PageManager* pm) {
     if (pm == nullptr)
         return;
     m_pm = pm;

@@ -82,11 +82,11 @@ private:
     void* m_addr;
     ELF_Header64* m_header;
     size_t m_fileSize;
-    WorldOS::VirtualPageManager* m_VPM;
-    WorldOS::PageManager* m_PM;
+    VirtualPageManager* m_VPM;
+    PageManager* m_PM;
     Scheduling::Process* m_process;
     Scheduling::ProcessEntry_t m_entry;
-    WorldOS::VirtualRegion m_region;
+    VirtualRegion m_region;
     ELF_entry_data m_entry_data;
     ELF_entry_data* m_new_entry_data;
     size_t m_entry_data_size;

@@ -97,9 +97,9 @@ namespace TempFS {
                 }
                 uint64_t pages = block->size / PAGE_SIZE;
                 if (pages > 1)
-                    WorldOS::g_KPM->FreePages(block->address);
+                    g_KPM->FreePages(block->address);
                 else
-                    WorldOS::g_KPM->FreePage(block->address);
+                    g_KPM->FreePage(block->address);
                 delete block; 
             }
         }
@@ -353,7 +353,7 @@ namespace TempFS {
             return false;
         }
         mem_block->size = ALIGN_UP((new_size - m_size), p_blockSize);
-        mem_block->address = WorldOS::g_KPM->AllocatePages(mem_block->size / PAGE_SIZE);
+        mem_block->address = g_KPM->AllocatePages(mem_block->size / PAGE_SIZE);
         if ((mem_block->address) == nullptr) {
             SetLastError(InodeError::ALLOCATION_FAILED);
             return false;

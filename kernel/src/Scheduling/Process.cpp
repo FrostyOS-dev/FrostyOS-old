@@ -26,7 +26,7 @@ namespace Scheduling {
 
     }
 
-    Process::Process(ProcessEntry_t entry, void* entry_data, Priority priority, uint8_t flags, WorldOS::PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false) {
+    Process::Process(ProcessEntry_t entry, void* entry_data, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false) {
 
     }
 
@@ -47,15 +47,15 @@ namespace Scheduling {
         m_flags = flags;
     }
 
-    void Process::SetPageManager(WorldOS::PageManager* pm) {
+    void Process::SetPageManager(PageManager* pm) {
         m_pm = pm;
     }
 
-    void Process::SetRegion(const WorldOS::VirtualRegion& region) {
+    void Process::SetRegion(const VirtualRegion& region) {
         m_region = region;
     }
 
-    void Process::SetVirtualPageManager(WorldOS::VirtualPageManager* VPM) {
+    void Process::SetVirtualPageManager(VirtualPageManager* VPM) {
         m_VPM = VPM;
     }
 
@@ -75,15 +75,15 @@ namespace Scheduling {
         return m_flags;
     }
 
-    WorldOS::PageManager* Process::GetPageManager() const {
+    PageManager* Process::GetPageManager() const {
         return m_pm;
     }
 
-    const WorldOS::VirtualRegion& Process::GetRegion() const {
+    const VirtualRegion& Process::GetRegion() const {
         return m_region;
     }
 
-    WorldOS::VirtualPageManager* Process::GetVirtualPageManager() const {
+    VirtualPageManager* Process::GetVirtualPageManager() const {
         return m_VPM;
     }
 
@@ -111,10 +111,10 @@ namespace Scheduling {
             return;
         Scheduler::AddProcess(this);
         if (m_flags & ALLOCATE_VIRTUAL_SPACE && m_pm == nullptr && m_VPM == nullptr) {
-            m_region = WorldOS::VirtualRegion(WorldOS::g_VPM->AllocatePages(MiB(16) >> 12), MiB(16));
-            m_VPM = new WorldOS::VirtualPageManager;
+            m_region = VirtualRegion(g_VPM->AllocatePages(MiB(16) >> 12), MiB(16));
+            m_VPM = new VirtualPageManager;
             m_VPM->InitVPageMgr(m_region);
-            m_pm = new WorldOS::PageManager(m_region, m_VPM, m_Priority != Priority::KERNEL);
+            m_pm = new PageManager(m_region, m_VPM, m_Priority != Priority::KERNEL);
         }
         else
             m_region = m_pm->GetRegion(); // ensure the region is up to date
