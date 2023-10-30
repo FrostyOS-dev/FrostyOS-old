@@ -246,12 +246,9 @@ void mrvn_memory_init(void* mem, size_t size) {
     mem_free = len - HEADER_SIZE;
     mem_meta = sizeof(Chunk) * 2 + HEADER_SIZE;
 }
-
-void check(void);
  
 void* mrvn_malloc(size_t size) {
     //dbgprintf("[%s(%lx)] INFO: mem_free = %lu, mem_used = %lu\n", __extension__ __PRETTY_FUNCTION__, size, mem_free, mem_used);
-    check();
     size = (size + ALIGN - 1) & (~(ALIGN - 1));
  
 	if (size < MIN_SIZE) size = MIN_SIZE;
