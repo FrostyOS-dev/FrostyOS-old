@@ -95,6 +95,10 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
 
     x86_64_walk_stack_frames((void*)(regs->RBP));
 
+    dbgputs("\nThreads:\n");
+
+    Scheduling::Scheduler::PrintThreads(stddebug);
+
     // Output all to stdout after in case framebuffer writes cause a page fault
 
     if (g_VGADevice == nullptr)

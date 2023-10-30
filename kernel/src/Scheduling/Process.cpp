@@ -22,16 +22,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Memory/VirtualPageManager.hpp>
 
 namespace Scheduling {
-    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false) {
+    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false) {
 
     }
 
-    Process::Process(ProcessEntry_t entry, void* entry_data, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false) {
+    Process::Process(ProcessEntry_t entry, void* entry_data, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false) {
 
     }
 
     Process::~Process() {
         delete m_main_thread;
+        if (m_region_allocated) {
+            delete m_pm;
+            delete m_VPM;
+        }
     }
 
     void Process::SetEntry(ProcessEntry_t entry, void* entry_data) {
@@ -115,6 +119,7 @@ namespace Scheduling {
             m_VPM = new VirtualPageManager;
             m_VPM->InitVPageMgr(m_region);
             m_pm = new PageManager(m_region, m_VPM, m_Priority != Priority::KERNEL);
+            m_region_allocated = true;
         }
         else
             m_region = m_pm->GetRegion(); // ensure the region is up to date

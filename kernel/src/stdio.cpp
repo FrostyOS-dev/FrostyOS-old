@@ -24,18 +24,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <fs/FileDescriptorManager.hpp>
 
-void internal_read(fd_t file, void* data, size_t size) {
+size_t internal_read(fd_t file, void* data, size_t size) {
     FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
     if (descriptor == nullptr)
-        return;
-    descriptor->Read((uint8_t*)data, size);
+        return 0;
+    if (!descriptor->Read((uint8_t*)data, size))
+        return 0;
+    else
+        return size;
 }
 
-void internal_write(fd_t file, const void* data, size_t size) {
+size_t internal_write(fd_t file, const void* data, size_t size) {
     FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
     if (descriptor == nullptr)
-        return;
-    descriptor->Write((const uint8_t*)data, size);
+        return 0;
+    if (!descriptor->Write((const uint8_t*)data, size))
+        return 0;
+    else
+        return size;
 }
 
 fd_t internal_open(const char* path, unsigned long mode) {
@@ -580,19 +586,29 @@ extern "C" int dbgvprintf(const char* format, va_list args) {
 extern "C" size_t fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file) {
     uint8_t* out = (uint8_t*)ptr;
 
-    for (uint64_t i = 0; i < count; i+=size)
-        internal_write(file, (void*)((uint64_t)out + i), size);
-    if (file == stdout)
+    size_t blocks_written = 0;
+    for (uint64_t i = 0; i < count; i+=size) {
+        if (internal_write(file, (void*)((uint64_t)out + i), size) > 0)
+            blocks_written++;
+        else
+            break;
+    }
+    if (file == stdout && blocks_written > 0)
         g_CurrentTTY->GetVGADevice()->SwapBuffers();
 
-    return count;
+    return blocks_written;
 }
 
 extern "C" size_t fread(void* ptr, const size_t size, const size_t count, const fd_t file) {
-    for (uint64_t i = 0; i < count; i+=size)
-        internal_read(file, (void*)((uint64_t)ptr + i), size);
+    size_t blocks_read = 0;
+    for (uint64_t i = 0; i < count; i+=size) {
+        if (internal_read(file, (void*)((uint64_t)ptr + i), size) > 0)
+            blocks_read++;
+        else
+            break;
+    }
 
-    return count;
+    return blocks_read;
 }
 
 extern "C" fd_t fopen(const char* file, const char* mode) {

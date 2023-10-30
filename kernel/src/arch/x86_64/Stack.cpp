@@ -18,8 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Stack.hpp"
 
 extern "C" {
-unsigned char __attribute__((aligned(0x1000))) kernel_stack[KERNEL_STACK_SIZE] = {0};
-unsigned long int kernel_stack_size = KERNEL_STACK_SIZE;
+unsigned char __attribute__((aligned(0x1000))) kernel_stack[INITIAL_KERNEL_STACK_SIZE] = {0};
+unsigned long int kernel_stack_size = INITIAL_KERNEL_STACK_SIZE;
 }
 
 #include <stdint.h>

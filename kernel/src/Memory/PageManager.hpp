@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "PageObject.hpp"
 #include "Memory.hpp"
 #include "VirtualPageManager.hpp"
+#include "PageTable.hpp"
 
 enum class PagePermissions {
     READ,
@@ -63,6 +64,10 @@ public:
 
     const VirtualRegion& GetRegion() const;
 
+    const PageTable& GetPageTable() const;
+
+    void PrintRegions(fd_t fd) const;
+
 private:
     bool InsertObject(PageObject* obj);
 
@@ -72,6 +77,7 @@ private:
     
     VirtualRegion m_Vregion;
     VirtualPageManager* m_VPM; // uses a pointer to avoid wasted RAM
+    PageTable m_PT;
 
     bool m_mode;
 

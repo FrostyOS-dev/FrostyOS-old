@@ -56,6 +56,8 @@ namespace Scheduling {
 
         void Stop();
         void Resume();
+
+        void PrintThreads(fd_t file);
     }
 
 }

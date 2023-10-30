@@ -116,7 +116,7 @@ void PhysicalPageFrameAllocator::FullInit(const MemoryMapEntry* FirstMemoryMapEn
             if ((entry->type == WORLDOS_MEMORY_FREE) && (entry->length >= BitmapSize)) {
                 m_ReservedMem += BitmapSize;
                 m_Bitmap.SetBuffer((uint8_t*)entry->Address);
-                MapPage(m_Bitmap.GetBuffer(), m_Bitmap.GetBuffer(), 0x8000003); // Read/Write, Present, Execute Disable
+                g_KPT.MapPage(m_Bitmap.GetBuffer(), m_Bitmap.GetBuffer(), PagePermissions::READ_WRITE);
                 fast_memset(m_Bitmap.GetBuffer(), 0, BitmapSize >> 3); // Avoid divide
                 for (uint64_t j = 0; j < (BitmapSize >> 12); j++) {
                     m_Bitmap.Set(((entry->Address >> 12) + j), true);

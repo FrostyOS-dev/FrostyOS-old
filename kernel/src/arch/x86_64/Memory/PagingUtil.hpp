@@ -25,9 +25,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 extern "C" void x86_64_FlushTLB();
 extern "C" void x86_64_LoadCR3(uint64_t value);
 extern "C" uint64_t x86_64_GetCR3();
+extern "C" uint64_t x86_64_SwapCR3(uint64_t value);
 extern "C" uint64_t x86_64_GetCR2();
 
 extern "C" bool x86_64_EnsureNX();
 extern "C" bool x86_64_EnsureLargePages();
+
+// Defined in C++ Source file
+
+void x86_64_InitUserTable(void* PML4);
 
 #endif /* _KERNEL_X86_64_PAGING_UTIL_HPP */

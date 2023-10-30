@@ -18,11 +18,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _X86_64_KERNEL_STACK_HPP
 #define _X86_64_KERNEL_STACK_HPP
 
-#define KERNEL_STACK_SIZE 65536
+// Size for the initial kernel stack
+#define INITIAL_KERNEL_STACK_SIZE 65536
+
+#ifndef KERNEL_STACK_SIZE
+// Size of the kernel stack after init
+#define KERNEL_STACK_SIZE 16384
+#endif
 
 extern "C" {
 
-extern unsigned char __attribute__((aligned(0x1000))) kernel_stack[KERNEL_STACK_SIZE];
+extern unsigned char __attribute__((aligned(0x1000))) kernel_stack[INITIAL_KERNEL_STACK_SIZE];
 
 extern unsigned long int kernel_stack_size;
 

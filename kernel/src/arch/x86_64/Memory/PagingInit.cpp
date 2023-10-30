@@ -54,9 +54,7 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     x86_64_SetKernelAddress((void*)kernel_virtual, (void*)kernel_physical, kernel_size);
     x86_64_SetHHDMStart((void*)HHDM_start);
 
-    // prepare page tables
-
-    fast_memset(&PML4_Array, 0, sizeof(Level3Group) / 8);
+    fast_memset(&K_PML4_Array, 0, sizeof(Level3Group) / 8);
     fast_memset(&PML3_LowestArray, 0, sizeof(Level2Group) / 8);
     fast_memset(&PML2_LowestArray, 0, sizeof(Level2Group) / 8);
     fast_memset(&PML1_LowestArray, 0, sizeof(Level1Group) / 8);
@@ -64,40 +62,34 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     fast_memset(&PML2_KernelLower, 0, sizeof(Level1Group) / 8);
     fast_memset(&PML1_KernelLowest, 0, sizeof(Level1Group) / 8);
 
-    
-    //PML4_Array.entries[0].Present = 1;
-    //PML4_Array.entries[0].ReadWrite = 1;
-    //PML4_Array.entries[0].UserSuper = 1;
-    //PML4_Array.entries[0].Address = (uint64_t)x86_64_get_physaddr(&PML3_LowestArray) >> 12;
-
-    PML4_Array.entries[511].Present = 1;
-    PML4_Array.entries[511].ReadWrite = 1;
-    PML4_Array.entries[511].Address = (uint64_t)x86_64_get_physaddr(&PML3_KernelGroup) >> 12;
+    K_PML4_Array.entries[511].Present = 1;
+    K_PML4_Array.entries[511].ReadWrite = 1;
+    K_PML4_Array.entries[511].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML3_KernelGroup) >> 12;
 
     uint16_t HHDM_PML4_offset = (HHDM_start & 0x0000ff8000000000) >> 39;
-    PML4_Array.entries[HHDM_PML4_offset].Present = 1;
-    PML4_Array.entries[HHDM_PML4_offset].ReadWrite = 1;
-    PML4_Array.entries[HHDM_PML4_offset].Address = (uint64_t)x86_64_get_physaddr(&PML3_LowestArray) >> 12;
+    K_PML4_Array.entries[HHDM_PML4_offset].Present = 1;
+    K_PML4_Array.entries[HHDM_PML4_offset].ReadWrite = 1;
+    K_PML4_Array.entries[HHDM_PML4_offset].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML3_LowestArray) >> 12;
 
     PML3_LowestArray.entries[0].Present = 1;
     PML3_LowestArray.entries[0].ReadWrite = 1;
     PML3_LowestArray.entries[0].UserSuper = 1;
-    PML3_LowestArray.entries[0].Address = (uint64_t)x86_64_get_physaddr(&PML2_LowestArray) >> 12;
+    PML3_LowestArray.entries[0].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML2_LowestArray) >> 12;
 
     PML3_KernelGroup.entries[510].Present = 1;
     PML3_KernelGroup.entries[510].ReadWrite = 1;
-    PML3_KernelGroup.entries[510].Address = (uint64_t)x86_64_get_physaddr(&PML2_KernelLower) >> 12;
+    PML3_KernelGroup.entries[510].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML2_KernelLower) >> 12;
 
     PML2_LowestArray.entries[0].Present = 1;
     PML2_LowestArray.entries[0].ReadWrite = 1;
     PML2_LowestArray.entries[0].UserSuper = 1;
-    PML2_LowestArray.entries[0].Address = (uint64_t)x86_64_get_physaddr(&PML1_LowestArray) >> 12;
+    PML2_LowestArray.entries[0].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML1_LowestArray) >> 12;
 
     PML2_KernelLower.entries[0].Present = 1;
     PML2_KernelLower.entries[0].ReadWrite = 1;
-    PML2_KernelLower.entries[0].Address = (uint64_t)x86_64_get_physaddr(&PML1_KernelLowest) >> 12;
+    PML2_KernelLower.entries[0].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML1_KernelLowest) >> 12;
     
-    volatile uint64_t PML4_phys = (uint64_t)x86_64_get_physaddr(&PML4_Array);
+    volatile uint64_t PML4_phys = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &K_PML4_Array);
 
     /* Create page map */
 
@@ -106,7 +98,7 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
         kernel_size += 4096;
     }
     
-    x86_64_WorldOS::MapKernel((void*)kernel_physical, (void*)kernel_virtual, kernel_size); // do not flush TLB until after kernel is loaded
+    MapKernel((void*)kernel_physical, (void*)kernel_virtual, kernel_size); // do not flush TLB until after kernel is loaded
 
     // Perform early initialisation of physical MM
     PPFA.EarlyInit(MemoryMap[0], MMEntryCount, g_MemorySize);
@@ -115,12 +107,12 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
 
     // Map from end of 1st page until 2MiB
     for (uint64_t i = 0x1000; i < 0x200000; i += 0x1000)
-        x86_64_map_page_noflush((void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+        x86_64_map_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
     
     
     // Map from 2MiB to 4GiB with 2MiB pages
     for (uint64_t i = 0x200000; i < 0x100000000; i += 0x200000)
-        x86_64_map_large_page_noflush((void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+        x86_64_map_large_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
 
     for (uint64_t i = 0; i < MMEntryCount; i++) {
         MemoryMapEntry* entry = MemoryMap[i];
@@ -130,7 +122,7 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
         length &= ~0xfff;
         
         for (uint64_t j = 0; j < length; j+=0x1000)
-            x86_64_map_page_noflush((void*)(j + addr), (void*)(j + addr + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+            x86_64_map_page_noflush(&K_PML4_Array, (void*)(j + addr), (void*)(j + addr + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
     }
 
     // Map the framebuffer
@@ -139,9 +131,8 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
 
     uint64_t fb_phys = fb_virt - HHDM_start;
 
-    for (uint64_t i = 0; i < fb_size; i++) {
-        x86_64_map_page_noflush((void*)(fb_phys + i * 4096), (void*)(fb_virt + i * 4096), 0x8000003); // Present, Read/Write, Execute Disable
-    }
+    for (uint64_t i = 0; i < fb_size; i++)
+        x86_64_map_page_noflush(&K_PML4_Array, (void*)(fb_phys + i * 4096), (void*)(fb_virt + i * 4096), 0x8000003); // Present, Read/Write, Execute Disable
 
     fb_size <<= 12; // convert back for later use
     
@@ -167,11 +158,10 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
 
     // Setup kernel virtual MM
     VPM.InitVPageMgr(VAddressSpace);
-    VPM.ReservePages((void*)0x800000000000, 0xFFFF000000000); // reserve all non-canonical addresses (0x800000000000-0xFFFF7FFFFFFFFFFF)
-    VPM.ReservePage(nullptr); // reserve first page
+    VPM.ReservePages(nullptr, 0x3FFFE0000000); // reserve first page, user process memory (0x1000-0x7FFFFFFFFFFF), and non-canonical address space (0x800000000000-0xFFFF7FFFFFFFFFFF)
     VPM.ReservePages((void*)HHDM_start, 0x100000000); // Reserve from HHDM_start to HHDM_start + 0x100000000000
     VPM.ReservePages((void*)kernel_virtual, DIV_ROUNDUP((KVRegion.GetSize() + kernel_size), 0x1000)); // reserve kernel address space
-    VPM.ReservePages((void*)fb_virt, DIV_ROUNDUP(fb_size, 0x1000)); // reserve framebuffer
+    VPM.ReservePages((void*)fb_virt, DIV_ROUNDUP(fb_size, 0x1000)); // reserve framebuffer (most likely in HHDM address space)
     g_VPM = &VPM;
     KVPM.InitVPageMgr(MemoryMap, MMEntryCount, (void*)kernel_virtual, kernel_size, (void*)fb_virt, fb_size, KVRegion);
     g_KVPM = &KVPM;

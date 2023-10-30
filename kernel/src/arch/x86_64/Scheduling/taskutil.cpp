@@ -44,6 +44,7 @@ void x86_64_PrepareNewRegisters(x86_64_Interrupt_Registers* out, const x86_64_Re
     out->CR3 = in->CR3;
     out->cs = in->CS;
     out->ds = in->DS;
+    out->ss = in->DS;
 }
 
 void x86_64_ConvertToStandardRegisters(x86_64_Registers* out, const x86_64_Interrupt_Registers* in) {

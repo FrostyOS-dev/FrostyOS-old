@@ -93,6 +93,7 @@ namespace Scheduling {
         VirtualRegion m_region;
         VirtualPageManager* m_VPM;
         bool m_main_thread_creation_requested;
+        bool m_region_allocated;
     };
 }
 

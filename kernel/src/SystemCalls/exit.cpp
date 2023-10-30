@@ -19,10 +19,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Scheduling/Scheduler.hpp>
 
+#ifdef __x86_64__
+#include <arch/x86_64/Memory/PagingUtil.hpp>
+#include <arch/x86_64/Memory/PageMapIndexer.hpp>
+#endif
+
 void sys$exit(Scheduling::Thread* thread, int status) {
     //(void)status; // has no meaning currently
     using namespace Scheduling;
     Process* parent = thread->GetParent();
+#ifdef __x86_64__
+    x86_64_LoadCR3((uint64_t)(g_KPM->GetPageTable().GetRootTablePhysical()) & 0x000FFFFFFFFFF000); // reset the CR3 value so we are not using an address space that it being destroyed
+#endif
     if (parent == nullptr) {
         ThreadCleanup_t cleanup = thread->GetCleanupFunction();
         delete thread;

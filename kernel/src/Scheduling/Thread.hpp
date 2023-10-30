@@ -37,14 +37,13 @@ namespace Scheduling {
 
     class Thread {
     public:
-        Thread(Process* parent, ThreadEntry_t entry = nullptr, void* entry_data = nullptr, uint8_t flags = THREAD_USER_DEFAULT, uint64_t kernel_stack = 0);
+        Thread(Process* parent, ThreadEntry_t entry = nullptr, void* entry_data = nullptr, uint8_t flags = THREAD_USER_DEFAULT);
         ~Thread();
 
         void SetEntry(ThreadEntry_t entry, void* entry_data);
         void SetFlags(uint8_t flags);
         void SetParent(Process* parent);
         void SetStack(uint64_t stack);
-        void SetKernelStack(uint64_t kernel_stack);
         void SetCleanupFunction(ThreadCleanup_t cleanup);
 
         ThreadEntry_t GetEntry() const;
@@ -64,6 +63,8 @@ namespace Scheduling {
         long sys$write(fd_t file, const void* buf, unsigned long count);
         int sys$close(fd_t file);
         long sys$seek(fd_t file, long offset);
+
+        void PrintInfo(fd_t file) const;
 
     private:
         Process* m_Parent;

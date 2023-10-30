@@ -165,7 +165,7 @@ namespace TempFS {
             SetLastError(InodeError::INVALID_TYPE);
             return false;
         }
-        if (bytes == nullptr || count > m_size) {
+        if (bytes == nullptr || (p_CurrentOffset + count) > m_size) {
             SetLastError(InodeError::INVALID_ARGUMENTS);
             return false;
         }
@@ -266,7 +266,7 @@ namespace TempFS {
                 return false;
             }
             if ((m_currentBlock->size + p_CurrentOffset) > offset) {
-                m_currentBlockOffset = (m_currentBlock->size + p_CurrentOffset) - offset;
+                m_currentBlockOffset = offset - p_CurrentOffset;
                 p_CurrentOffset += m_currentBlockOffset;
                 break;
             }

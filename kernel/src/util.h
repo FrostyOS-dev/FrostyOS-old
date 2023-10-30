@@ -25,6 +25,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define MiB(x) (KiB(x) * (uint64_t)1024)
 #define GiB(x) (MiB(x) * (uint64_t)1024)
 
+#ifndef KERNEL_STACK_SIZE
+// Size of the kernel stack after init
+#define KERNEL_STACK_SIZE 16384
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

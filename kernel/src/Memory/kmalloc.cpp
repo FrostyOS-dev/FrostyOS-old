@@ -246,9 +246,12 @@ void mrvn_memory_init(void* mem, size_t size) {
     mem_free = len - HEADER_SIZE;
     mem_meta = sizeof(Chunk) * 2 + HEADER_SIZE;
 }
+
+void check(void);
  
 void* mrvn_malloc(size_t size) {
-    //dbgprintf("%s(%lx)\n", __extension__ __PRETTY_FUNCTION__, size);
+    //dbgprintf("[%s(%lx)] INFO: mem_free = %lu, mem_used = %lu\n", __extension__ __PRETTY_FUNCTION__, size, mem_free, mem_used);
+    check();
     size = (size + ALIGN - 1) & (~(ALIGN - 1));
  
 	if (size < MIN_SIZE) size = MIN_SIZE;
@@ -338,6 +341,7 @@ void mrvn_free(void *mem) {
 		DLIST_INIT(chunk, free);
 		push_free(chunk);
     }
+    check();
 }
  
 void check(void) {
@@ -389,6 +393,7 @@ extern "C" void* kcalloc(size_t num, size_t size) {
 }
 
 extern "C" void kfree(void* addr) {
+    //dbgputs("kfree\n");
     return mrvn_free(addr);
 }
 

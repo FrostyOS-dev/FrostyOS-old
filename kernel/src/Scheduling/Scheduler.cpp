@@ -72,7 +72,7 @@ namespace Scheduling {
             thread->SetStack(regs->RSP);
             regs->RIP = (uint64_t)thread->GetEntry();
             regs->RFLAGS = (1 << 9) | (1 << 1); // IF Flag and Reserved (always 1)
-            regs->CR3 = x86_64_GetCR3();
+            regs->CR3 = (uint64_t)(thread->GetParent()->GetPageManager()->GetPageTable().GetRootTablePhysical()) & 0x000FFFFFFFFFF000;
             regs->RDI = (uint64_t)thread->GetEntryData();
 #endif
             if (thread_priority == Priority::KERNEL) {
@@ -93,7 +93,6 @@ namespace Scheduling {
                 regs->CS = 0x23; // User Code Segment
                 regs->DS = 0x1b; // User Data Segment
 #endif
-                thread->SetKernelStack((uint64_t)kernel_stack + kernel_stack_size); // FIXME: this will not work once SMP is setup
                 switch (thread_priority) {
                     case Priority::HIGH:
                         g_high_threads.insert(thread);
@@ -208,8 +207,7 @@ namespace Scheduling {
             if (g_current->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(g_current->GetCPURegisters());
             else {
-                x86_64_Interrupt_Registers regs;
-                x86_64_PrepareNewRegisters(&regs, g_current->GetCPURegisters());
+                x86_64_PrepareNewRegisters((x86_64_Interrupt_Registers*)iregs, g_current->GetCPURegisters());
                 return;
             }
 #endif
@@ -303,9 +301,11 @@ namespace Scheduling {
         void TimerTick(void* iregs) {
             g_ticks++;
             if (g_ticks == TICKS_PER_SCHEDULER_CYCLE) {
-                if (!g_running || g_kernel_threads.getCount() < 1) {
-                    g_ticks = 0;
+                g_ticks = 0;
+                if (!g_running)
                     return; // Nothing to switch to
+                if (g_current == nullptr) {
+                    PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
                 }
                 PickNext();
 #ifdef __x86_64__
@@ -331,9 +331,33 @@ namespace Scheduling {
             if (g_current == nullptr) {
                 PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
             }
-            g_ticks = TICKS_PER_SCHEDULER_CYCLE - 1; // make a switch occur sooner. should take < 10ms
-            while (true) // just hang until it is time to switch
-                __asm__ volatile("hlt");
+            Next();
+        }
+
+        void PrintThreads(fd_t file) {
+            fprintf(file, "Kernel Threads:\n");
+            for (uint64_t i = 0; i < g_kernel_threads.getCount(); i++) {
+                g_kernel_threads.get(i)->PrintInfo(file);
+                fputc(file, '\n');
+            }
+            fprintf(file, "High Threads:\n");
+            for (uint64_t i = 0; i < g_high_threads.getCount(); i++) {
+                g_high_threads.get(i)->PrintInfo(file);
+                fputc(file, '\n');
+            }
+            fprintf(file, "Normal Threads:\n");
+            for (uint64_t i = 0; i < g_normal_threads.getCount(); i++) {
+                g_normal_threads.get(i)->PrintInfo(file);
+                fputc(file, '\n');
+            }
+            fprintf(file, "Low Threads:\n");
+            for (uint64_t i = 0; i < g_low_threads.getCount(); i++) {
+                g_low_threads.get(i)->PrintInfo(file);
+                fputc(file, '\n');
+            }
+            fprintf(file, "Current Thread:\n");
+            g_current->PrintInfo(file);
+            fputc(file, '\n');
         }
     }
 }

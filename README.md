@@ -17,16 +17,35 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 15/10/2023 (Afternoon)
+## Latest Changes - 30/10/2023
 
-- Optimised physical memory allocation using new `m_nextFree` internal variable.
-- Implemented out of memory checking in physical memory manager
-- Implemented x86_64 remapping functions for standard sized pages and large pages
-- Implemented proper page remapping support to `PageManager` class instead of un-mapping, then mapping again
-- Removed `physical_address` member from `PageObject` struct
-- Updated `PageManager` class to allocate 1 physical page at a time on demand
-- Removed ovmf firmware from repository and use host system's instead. Variables are copied and accessed as read-write, code is loaded in-place as read-only.
-- Updated `clean-all` make target to remove local ovmf directory
+- Added read/write size returning to `fread` and `fwrite` in the kernel.
+- Fixed `TempFSInode::Seek` so seek is performed correctly.
+- Added kernel stack size macros to kernel `util.h`.
+- Updated system call entry to get the current thread prior to calling the actual system call handler.
+- Now disable interrupts while getting the current thread in the system call entry.
+- Implemented better enter_user function that uses `iretq` instead of `sysretq`.
+- Updated scheduler resume function to immediately switch to the new thread instead of waiting for the next scheduler tick.
+- Set the stack segment to the data segment in the `x86_64_PrepareNewRegisters` function.
+- Interrupt flag now gets masked by the CPU on system call entry.
+- Removed the `x86_64_WorldOS` namespace that was being used in `ELFKernel.hpp` and `ELFKernel.cpp`.
+- Updated x86_64 IO header guards.
+- Implemented `Thread::PrintInfo` function
+- Implemented `Scheduler:PrintThreads` function
+- Now print the scheduler threads to debug in Panic.
+- Changed the existing `KERNEL_STACK_SIZE` macro to `INITIAL_KERNEL_STACK_SIZE`.
+- Added a new `KERNEL_STACK_SIZE` macro with defines the kernel stack size to be used after init. It is set to 64KiB.
+- Updated all page mapping related functions to take the Level4Group as an argument.
+- Implemented PageTable class which handles all mappings, unmappings, permission updates, physical address retrieval and page permissions decoding.
+- Removed all the old usages of the old mapping, unmapping, remapping and physical address retrieval functions.
+- Implemented basic address space separation. Each process gets its own address space. This is mostly setup in the ELF loader currently. The kernel and HHDM is mapped as shared memory in all address spaces.
+- The CR3 value is changed to the kernel value at the start of the exit system call as that address space is about to be destroyed.
+- Updated `x86_64_unmap_page` and the large page equivalent to free the unused page tables.
+- Fixed `void Scheduler::Next(void* iregs)` to actually use the parsed argument and not create some weird x86_64_Interrupt_Registers local variable. This has been a bug since userland support was first added. It is only now been finally discovered.
+- Each thread now has its own kernel stack. This is important because the thread can now be interrupt during kernel functions and still behave correctly.
+- Implemented a `PrintRegions` function to the PageManager class.
+- Updated memory size detection to use the end address of the last free memory map entry as the end of memory. This prevented some weird behaviour in QEMU when KVM is off, where massive reserved sections of memory would be detected after the real end of memory.
+- General cleanup of the `x86_64_InitPaging` function.
 
 ## Resources used
 

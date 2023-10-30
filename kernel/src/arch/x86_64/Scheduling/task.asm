@@ -138,6 +138,7 @@ x86_64_kernel_thread_end:
 
 global x86_64_enter_user
 x86_64_enter_user:
+    pushf
     cli ; disable interrupts
 
     mov rbx, QWORD [rdi+8]   ; load rbx
@@ -147,29 +148,41 @@ x86_64_enter_user:
     mov  r8, QWORD [rdi+64]  ; load r8
     mov  r9, QWORD [rdi+72]  ; load r9
     mov r10, QWORD [rdi+80]  ; load r10
+    mov r11, QWORD [rdi+88]  ; load r11
     mov r12, QWORD [rdi+96]  ; load r12
     mov r13, QWORD [rdi+104] ; load r13
     mov r14, QWORD [rdi+112] ; load r14
     mov r15, QWORD [rdi+120] ; load r15
 
+    mov ax, WORD [rdi+138]
+    mov ds, ax ; load ds
+    mov es, ax ; load es
+    mov fs, ax ; load fs
+    mov gs, ax ; load gs
+
     mov rax, QWORD [rdi+148]
     mov cr3, rax ; load CR3
 
-    mov rsp, QWORD [rdi+48] ; load rsp
+    pop rcx ; get RFLAGS back
 
-    mov ax, WORD [rdi+138] ; load segment
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
+    movzx rax, WORD [rdi+138] ; push ss
+    push rax
 
-    mov r11, QWORD [rdi+140] ; load RFLAGS
-    mov rcx, QWORD [rdi+128] ; load RIP
+    mov rax, QWORD [rdi+48] ; push rsp
+    push rax
     
-    mov rax, QWORD [rdi] ; load rax
-    mov rdi, QWORD [rdi+40] ; load rdi
+    push rcx
 
-    o64 sysret
+    movzx rax, WORD [rdi+136] ; push cs
+    push rax
+
+    mov rax, QWORD [rdi+128] ; push RIP
+    push rax
+
+    mov rax, QWORD [rdi] ; load rax
+    mov rax, QWORD [rdi+8] ; load rcx
+    mov rdi, QWORD [rdi+40] ; load rdi
+    iretq
 
 global x86_64_set_kernel_gs_base
 x86_64_set_kernel_gs_base:

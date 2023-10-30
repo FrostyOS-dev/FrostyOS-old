@@ -81,13 +81,16 @@ x86_64_EnableSystemCalls:
     mov rcx, 0xc0000082 ; LSTAR
     wrmsr
 
-    ; clear unused registers
+    mov rax, 0x200 ; Interrupt flag
+    xor rdx, rdx
+    mov rcx, 0xc0000084 ; FMASK
+    wrmsr
+
+    ; clear unused register
 
     xor rax, rax
     xor rdx, rdx
     mov rcx, 0xc0000083 ; CSTAR
-    wrmsr
-    inc rcx
     wrmsr
 
 .success:
@@ -162,7 +165,7 @@ x86_64_HandleSystemCall:
     mov rdi, QWORD [rsp] ; restore the syscall number
     mov r8, rsp ; save address
 
-    xor rbp, rbp ; create a blank stack frame
+    ;xor rbp, rbp ; create a blank stack frame
 
     call SystemCallHandler
 

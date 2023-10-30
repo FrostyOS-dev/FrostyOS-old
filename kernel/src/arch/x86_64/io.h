@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _WORLDOS_KERNEL_X86_64_IO_h
-#define _WORLDOS_KERNEL_X86_64_IO_h
+#ifndef _X86_64_IO_h
+#define _X86_64_IO_h
 
 #include <stdint.h>
 
@@ -36,4 +36,4 @@ extern void x86_64_iowait();
 }
 #endif
 
-#endif /* _WORLDOS_KERNEL_X86_64_IO_h */
+#endif /* _X86_64_IO_h */

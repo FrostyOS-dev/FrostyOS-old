@@ -25,11 +25,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 PageManager* g_KPM = nullptr;
 
-PageManager::PageManager() : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(), m_VPM(), m_mode(false), m_page_object_pool_used(false), m_auto_expand(false) {
+PageManager::PageManager() : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(), m_VPM(), m_PT(false, this), m_mode(false), m_page_object_pool_used(false), m_auto_expand(false) {
     
 }
 
-PageManager::PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand) : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(region), m_VPM(VPM), m_mode(mode), m_page_object_pool_used(false), m_auto_expand(mode && auto_expand) {
+PageManager::PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand) : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(region), m_VPM(VPM), m_PT(mode, this), m_mode(mode), m_page_object_pool_used(false), m_auto_expand(mode && auto_expand) {
     if (!PageObjectPool_HasBeenInitialised())
         PageObjectPool_Init();
 }
@@ -56,6 +56,7 @@ void PageManager::InitPageManager(const VirtualRegion& region, VirtualPageManage
     m_allocated_object_count = 0;
     m_Vregion = region;
     m_VPM = VPM;
+    m_PT = PageTable(mode, this);
     m_mode = mode;
     m_page_object_pool_used = false;
     m_auto_expand = mode && auto_expand;
@@ -123,25 +124,7 @@ void* PageManager::AllocatePage(PagePermissions perms, void* addr) {
                 PageObject_UnsetFlag(object, PO_STANDBY);
                 PageObject_SetFlag(object, PO_INUSE);
                 
-                uint32_t page_perms = 1;
-                if (m_mode)
-                    page_perms |= 4;
-                switch (perms) {
-                case PagePermissions::READ:
-                    page_perms |= 0x8000000; // No execute
-                    break; // not possible to set read flag
-                case PagePermissions::WRITE:
-                case PagePermissions::READ_WRITE:
-                    page_perms |= 0x8000002; // Write, No execute
-                    break;
-                case PagePermissions::EXECUTE:
-                case PagePermissions::READ_EXECUTE:
-                    break;
-                default:
-                    page_perms = 0;
-                    break;
-                }
-                MapPage(g_PPFA->AllocatePage(), addr, page_perms);
+                m_PT.MapPage(g_PPFA->AllocatePage(), addr, perms);
                 return addr;
             }
             object = object->next;
@@ -210,26 +193,8 @@ void* PageManager::AllocatePage(PagePermissions perms, void* addr) {
     else
         m_allocated_objects = po;
     m_allocated_object_count++;
-    uint32_t page_perms = 1;
-    if (m_mode)
-        page_perms |= 4;
-    switch (perms) {
-    case PagePermissions::READ:
-        page_perms |= 0x8000000; // No execute
-        break; // not possible to set read flag
-    case PagePermissions::WRITE:
-    case PagePermissions::READ_WRITE:
-        page_perms |= 0x8000002; // Write, No execute
-        break;
-    case PagePermissions::EXECUTE:
-    case PagePermissions::READ_EXECUTE:
-        break;
-    default:
-        page_perms = 0;
-        break;
-    }
     po->perms = perms;
-    MapPage(g_PPFA->AllocatePage(), virt_addr, page_perms);
+    m_PT.MapPage(g_PPFA->AllocatePage(), virt_addr, perms);
     return virt_addr;
 }
 
@@ -295,26 +260,8 @@ void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* ad
                 PageObject_UnsetFlag(object, PO_STANDBY);
                 PageObject_SetFlag(object, PO_INUSE);
                 
-                uint32_t page_perms = 1;
-                if (m_mode)
-                    page_perms |= 4;
-                switch (perms) {
-                case PagePermissions::READ:
-                    page_perms |= 0x8000000; // No execute
-                    break; // not possible to set read flag
-                case PagePermissions::WRITE:
-                case PagePermissions::READ_WRITE:
-                    page_perms |= 0x8000002; // Write, No execute
-                    break;
-                case PagePermissions::EXECUTE:
-                case PagePermissions::READ_EXECUTE:
-                    break;
-                default:
-                    page_perms = 0;
-                    break;
-                }
                 for (uint64_t j = 0; j < count; j++)
-                    MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + j * 0x1000), page_perms);
+                    m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + j * 0x1000), perms);
                 return addr;
             }
             object = object->next;
@@ -386,27 +333,9 @@ void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* ad
     else
         m_allocated_objects = po;
     m_allocated_object_count++;
-    uint32_t page_perms = 1;
-    if (m_mode)
-        page_perms |= 4;
-    switch (perms) {
-    case PagePermissions::READ:
-        page_perms |= 0x8000000; // No execute
-        break; // not possible to set read flag
-    case PagePermissions::WRITE:
-    case PagePermissions::READ_WRITE:
-        page_perms |= 0x8000002; // Write, No execute
-        break;
-    case PagePermissions::EXECUTE:
-    case PagePermissions::READ_EXECUTE:
-        break;
-    default:
-        page_perms = 0;
-        break;
-    }
     po->perms = perms;
     for (uint64_t i = 0; i < count; i++)
-        MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * 0x1000), page_perms);
+        m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * 0x1000), perms);
     return virt_addr;
 }
 
@@ -555,9 +484,9 @@ void PageManager::FreePage(void* addr) {
     PageObject* po = m_allocated_objects;
     while (po != nullptr) {
         if (po->virtual_address == addr && po->page_count == 1) {
-            g_PPFA->FreePage(get_physaddr(addr));
+            g_PPFA->FreePage(m_PT.GetPhysicalAddress(addr));
             m_VPM->UnallocatePage(addr);
-            UnmapPage(addr);
+            m_PT.UnmapPage(addr);
             PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
             if (previous != nullptr)
                 previous->next = po->next;
@@ -580,8 +509,8 @@ void PageManager::FreePages(void* addr) {
         if (po->virtual_address == addr && po->page_count > 1) {
             m_VPM->UnallocatePages(addr, po->page_count);
             for (uint64_t i = 0; i < po->page_count; i++) {
-                g_PPFA->FreePage(get_physaddr((void*)((uint64_t)addr + i * 0x1000)));
-                UnmapPage((void*)((uint64_t)addr + i * 0x1000));
+                g_PPFA->FreePage(m_PT.GetPhysicalAddress((void*)((uint64_t)addr + i * 0x1000)));
+                m_PT.UnmapPage((void*)((uint64_t)addr + i * 0x1000));
             }
             PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
             if (previous != nullptr)
@@ -603,27 +532,9 @@ void PageManager::Remap(void* addr, PagePermissions perms) {
     PageObject* po = m_allocated_objects;
     while (po != nullptr) {
         if (po->virtual_address == addr) {
-            uint32_t page_perms = 1;
-            if (m_mode)
-                page_perms |= 4;
-            switch (perms) {
-            case PagePermissions::READ:
-                page_perms |= 0x8000000; // No execute
-                break; // not possible to set read flag
-            case PagePermissions::WRITE:
-            case PagePermissions::READ_WRITE:
-                page_perms |= 0x8000002; // Write, No execute
-                break;
-            case PagePermissions::EXECUTE:
-            case PagePermissions::READ_EXECUTE:
-                break;
-            default:
-                page_perms = 0;
-                break;
-            }
             po->perms = perms;
             for (uint64_t i = 0; i < po->page_count; i++)
-                RemapPage((void*)((uint64_t)addr + i * 0x1000), page_perms);
+                m_PT.RemapPage((void*)((uint64_t)addr + i * 0x1000), perms);
             return;
         }
         po = po->next;
@@ -671,6 +582,10 @@ const VirtualRegion& PageManager::GetRegion() const {
     return m_Vregion;
 }
 
+const PageTable& PageManager::GetPageTable() const {
+    return m_PT;
+}
+
 bool PageManager::InsertObject(PageObject* obj) {
     if (m_allocated_object_count > 0) {
         PageObject* previous = PageObject_GetPrevious(m_allocated_objects, obj);
@@ -683,4 +598,32 @@ bool PageManager::InsertObject(PageObject* obj) {
         m_allocated_objects = obj;
     m_allocated_object_count++;
     return true;
+}
+
+void PageManager::PrintRegions(fd_t fd) const {
+    PageObject* po = m_allocated_objects;
+    while (po != nullptr) {
+        if (po->flags & PO_ALLOCATED) {
+            if (po->flags & PO_USER)
+                fputs(fd, "User ");
+            else
+                fputs(fd, "Supervisor ");
+            if (po->flags & PO_INUSE)
+                fputs(fd, "In use ");
+            else if (po->flags & PO_STANDBY)
+                fputs(fd, "Standby ");
+            if (po->perms == PagePermissions::READ)
+                fputs(fd, "Read ");
+            else if (po->perms == PagePermissions::WRITE)
+                fputs(fd, "Write ");
+            else if (po->perms == PagePermissions::EXECUTE)
+                fputs(fd, "Execute ");
+            else if (po->perms == PagePermissions::READ_WRITE)
+                fputs(fd, "Read/Write ");
+            else if (po->perms == PagePermissions::READ_EXECUTE)
+                fputs(fd, "Read/Execute ");
+            fprintf(fd, "0x%016llX - 0x%016llX\n", (uint64_t)po->virtual_address, (uint64_t)po->virtual_address + po->page_count * PAGE_SIZE);
+        }
+        po = po->next;
+    }
 }

@@ -17,19 +17,45 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Memory.hpp"
 
+#include <stdio.h>
+
 volatile uint64_t g_memorySizeBytes = 0;
 
 size_t GetMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCount) {
 
-    if (g_memorySizeBytes > 0) {
+    if (g_memorySizeBytes > 0)
         return g_memorySizeBytes;
-    }
+
+    size_t endLastFree = 0;
 
     for (size_t i = 0; i < EntryCount; i++) {
         const MemoryMapEntry* entry = MemoryMap[i];
-        //if (entry->Address >= g_memorySizeBytes) continue; // prevents invalid entries from being counted
-        g_memorySizeBytes += entry->length;
+        if (entry->type == WORLDOS_MEMORY_FREE) {
+            if (((uint64_t)(entry->Address) + entry->length) > endLastFree)
+                endLastFree = (uint64_t)(entry->Address) + entry->length;
+        }
     }
+    g_memorySizeBytes = endLastFree;
 
     return g_memorySizeBytes;
+}
+
+size_t UpdateMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCount) {
+
+    if (g_memorySizeBytes > 0) {
+        return EntryCount;
+    }
+
+    size_t NewEntryCount = 0;
+
+    for (size_t i = EntryCount; i > 0; i--) {
+        const MemoryMapEntry* entry = MemoryMap[i-1];
+        if (entry->type == WORLDOS_MEMORY_FREE) {
+            g_memorySizeBytes = (uint64_t)(entry->Address) + entry->length;
+            NewEntryCount = i;
+            break;
+        }
+    }
+
+    return NewEntryCount;
 }

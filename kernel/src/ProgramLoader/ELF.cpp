@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #ifdef __x86_64__
 #include <arch/x86_64/io.h>
+#include <arch/x86_64/Memory/PagingUtil.hpp>
 #endif
 
 ELF_Executable::ELF_Executable(void* addr, size_t size) : m_addr(addr), m_header(nullptr), m_fileSize(size), m_VPM(nullptr), m_process(nullptr), m_entry(nullptr), m_entry_data({0, nullptr, 0, nullptr}), m_new_entry_data(nullptr), m_entry_data_size(0) {
@@ -58,6 +59,7 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
             return false;
         m_header = header;
     }
+    dbgputs("valid elf header\n");
     void* lowest_addr = (void*)UINT64_MAX;
     void* highest_addr = nullptr;
     ELF_ProgramHeader64** prog_headers = (ELF_ProgramHeader64**)((uint64_t)m_header + m_header->ProgramHeaderTablePosition);
@@ -89,15 +91,18 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
         page_count = 1;
     else
         page_count = DIV_ROUNDUP(((uint64_t)highest_addr - (uint64_t)lowest_addr), PAGE_SIZE);
-    void* pages = g_VPM->AllocatePages(lowest_addr, page_count);
-    if (pages != lowest_addr)
-        return false;
-    m_region = VirtualRegion(lowest_addr, highest_addr);
+    //void* pages = g_VPM->AllocatePages(lowest_addr, page_count);
+    /*if (pages != lowest_addr)
+        return false;*/
+    m_region = VirtualRegion((void*)0x1000, (void*)0x800000000000);
     m_VPM = new VirtualPageManager;
     if (m_VPM == nullptr)
         return false;
     m_VPM->InitVPageMgr(m_region);
     m_PM = new PageManager(m_region, m_VPM, true, true);
+#ifdef __x86_64__
+    uint64_t old_CR3 = x86_64_SwapCR3((uint64_t)(m_PM->GetPageTable().GetRootTablePhysical()) & 0x000FFFFFFFFFF000);
+#endif
     for (uint64_t i = 0; i < m_header->ProgramHeaderEntryCount; i++) {
         ELF_ProgramHeader64* prog_header = (ELF_ProgramHeader64*)((uint64_t)prog_headers + i * m_header->ProgramHeaderEntrySize);
         switch (prog_header->SegmentType) {
@@ -210,6 +215,9 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
     fast_memcpy(&m_entry_data, new_entry_data, sizeof(ELF_entry_data));
     m_new_entry_data = new_entry_data;
     m_entry_data_size = total_size;
+#ifdef __x86_64__
+    x86_64_LoadCR3(old_CR3);
+#endif
     return true;
 }
 
@@ -238,9 +246,9 @@ void ELF_Executable::End_Handler() {
             m_PM->FreePage(m_new_entry_data);
     }
     if (m_VPM != nullptr) {
-        delete m_VPM;
         delete m_PM;
-        g_VPM->UnallocatePages(m_region.GetStart(), DIV_ROUNDUP((m_region.GetSize()), PAGE_SIZE));
+        delete m_VPM;
+        //g_VPM->UnallocatePages(m_region.GetStart(), DIV_ROUNDUP((m_region.GetSize()), PAGE_SIZE));
     }
     kfree(this);
 }

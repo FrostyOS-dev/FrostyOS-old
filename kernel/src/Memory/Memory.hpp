@@ -49,6 +49,7 @@ struct MemoryMapEntry {
 } __attribute__((packed));
 
 size_t GetMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCount);
+size_t UpdateMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCount);
 
 #endif
 

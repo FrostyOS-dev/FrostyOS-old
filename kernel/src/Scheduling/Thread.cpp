@@ -26,13 +26,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Scheduling {
 
-    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, uint64_t kernel_stack) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager() {
+    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager() {
         fast_memset(&m_regs, 0, DIV_ROUNDUP(sizeof(m_regs), 8));
-        m_frame.kernel_stack = kernel_stack;
+        m_frame.kernel_stack = (uint64_t)g_KPM->AllocatePages(KERNEL_STACK_SIZE >> 12, PagePermissions::READ_WRITE) + KERNEL_STACK_SIZE; // FIXME: use actual page size
     }
 
     Thread::~Thread() {
-
+        g_KPM->FreePages((void*)(m_frame.kernel_stack - KERNEL_STACK_SIZE));
     }
 
     void Thread::SetEntry(ThreadEntry_t entry, void* entry_data) {
@@ -54,10 +54,6 @@ namespace Scheduling {
             if (m_Parent->GetPriority() == Priority::KERNEL)
                 m_frame.kernel_stack = stack;
         }
-    }
-
-    void Thread::SetKernelStack(uint64_t kernel_stack) {
-        m_frame.kernel_stack = kernel_stack;
     }
 
     void Thread::SetCleanupFunction(ThreadCleanup_t cleanup) {
@@ -289,5 +285,42 @@ namespace Scheduling {
 
         return offset;
     }
-    
+
+    void Thread::PrintInfo(fd_t file) const {
+        fprintf(file, "Thread %lp\n", this);
+        fprintf(file, "Entry: %lp\n", m_entry);
+        fprintf(file, "Entry data: %lp\n", m_entry_data);
+        fprintf(file, "Flags: %u\n", m_flags);
+        fprintf(file, "Parent: %lp\n", m_Parent);
+        fprintf(file, "Stack: %lp\n", m_stack);
+        fprintf(file, "Kernel stack: %lp\n", m_frame.kernel_stack);
+        fprintf(file, "Cleanup function: %lp\n", m_cleanup.function);
+        fprintf(file, "Cleanup data: %lp\n", m_cleanup.data);
+        fprintf(file, "Registers:\n");
+        fprintf(file, "RAX: %016lx\n", m_regs.RAX);
+        fprintf(file, "RBX: %016lx\n", m_regs.RBX);
+        fprintf(file, "RCX: %016lx\n", m_regs.RCX);
+        fprintf(file, "RDX: %016lx\n", m_regs.RDX);
+        fprintf(file, "RSP: %016lx\n", m_regs.RSP);
+        fprintf(file, "RBP: %016lx\n", m_regs.RBP);
+        fprintf(file, "RDI: %016lx\n", m_regs.RDI);
+        fprintf(file, "RSI: %016lx\n", m_regs.RSI);
+        fprintf(file, "R8 : %016lx\n", m_regs.R8);
+        fprintf(file, "R9 : %016lx\n", m_regs.R9);
+        fprintf(file, "R10: %016lx\n", m_regs.R10);
+        fprintf(file, "R11: %016lx\n", m_regs.R11);
+        fprintf(file, "R12: %016lx\n", m_regs.R12);
+        fprintf(file, "R13: %016lx\n", m_regs.R13);
+        fprintf(file, "R14: %016lx\n", m_regs.R14);
+        fprintf(file, "R15: %016lx\n", m_regs.R15);
+        fprintf(file, "RIP: %016lx\n", m_regs.RIP);
+        fprintf(file, "RFLAGS: %016lx\n", m_regs.RFLAGS);
+        fprintf(file, "CS: %04lx\n", m_regs.CS);
+        fprintf(file, "DS: %04lx\n", m_regs.DS);
+        fprintf(file, "SS: %04lx\n", m_regs.DS);
+        fprintf(file, "ES: %04lx\n", m_regs.DS);
+        fprintf(file, "FS: %04lx\n", m_regs.DS);
+        fprintf(file, "GS: %04lx\n", m_regs.DS);
+        fprintf(file, "CR3: %016lx\n", m_regs.CR3);
+    }
 }
