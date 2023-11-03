@@ -40,99 +40,126 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <fs/VFS.hpp>
 #include <fs/initramfs.hpp>
+#include <fs/FileDescriptorManager.hpp>
 
-namespace WorldOS {
+#include <SystemCalls/SystemCall.hpp>
 
-    FrameBuffer m_InitialFrameBuffer;
-    Colour g_fgcolour;
-    Colour g_bgcolour;
-    uint64_t m_Stage;
-    ColourFormat g_ColourFormat;
+FrameBuffer m_InitialFrameBuffer;
+Colour g_fgcolour;
+Colour g_bgcolour;
+uint64_t m_Stage;
+ColourFormat g_ColourFormat;
 
-    PageManager KPM;
+PageManager KPM;
 
-    Scheduling::Process* KProcess;
+Scheduling::Process* KProcess;
 
-    BasicVGA KBasicVGA;
+BasicVGA KBasicVGA;
 
-    TTY KTTY;
+TTY KTTY;
 
-    struct Stage2_Params {
-        void* RSDP_addr;
-        void* initramfs_addr;
-        size_t initramfs_size;
-    } Kernel_Stage2Params;
+FileDescriptorManager KFDManager;
+uint8_t KFDManager_BitmapData[8]; // allows up to 64 file descriptors
+FileDescriptor Kstdin;
+FileDescriptor Kstdout;
+FileDescriptor Kstderr;
+FileDescriptor Kstddebug;
 
-    extern "C" void StartKernel(KernelParams* params) {
-        m_Stage = EARLY_STAGE;
-        m_InitialFrameBuffer = params->frameBuffer;
-        g_ColourFormat = ColourFormat(m_InitialFrameBuffer.bpp, m_InitialFrameBuffer.red_mask_shift, m_InitialFrameBuffer.red_mask_size, m_InitialFrameBuffer.green_mask_shift, m_InitialFrameBuffer.green_mask_size, m_InitialFrameBuffer.blue_mask_shift, m_InitialFrameBuffer.blue_mask_size);
-        g_fgcolour = Colour(g_ColourFormat, 0xFF, 0xFF, 0xFF);
-        g_bgcolour = Colour(g_ColourFormat, 0, 0, 0);
+struct Stage2_Params {
+    void* RSDP_addr;
+    void* initramfs_addr;
+    size_t initramfs_size;
+} Kernel_Stage2Params;
 
-        KBasicVGA.Init(m_InitialFrameBuffer, {0, 0}, g_fgcolour, g_bgcolour);
+extern "C" void StartKernel(KernelParams* params) {
+    m_Stage = EARLY_STAGE;
+    m_InitialFrameBuffer = params->frameBuffer;
+    g_ColourFormat = ColourFormat(m_InitialFrameBuffer.bpp, m_InitialFrameBuffer.red_mask_shift, m_InitialFrameBuffer.red_mask_size, m_InitialFrameBuffer.green_mask_shift, m_InitialFrameBuffer.green_mask_size, m_InitialFrameBuffer.blue_mask_shift, m_InitialFrameBuffer.blue_mask_size);
+    g_fgcolour = Colour(g_ColourFormat, 0xFF, 0xFF, 0xFF);
+    g_bgcolour = Colour(g_ColourFormat, 0, 0, 0);
 
-        KTTY = TTY(&KBasicVGA, g_fgcolour, g_bgcolour); 
+    KBasicVGA.Init(m_InitialFrameBuffer, {0, 0}, g_fgcolour, g_bgcolour);
 
-        g_CurrentTTY = &KTTY;
+    KTTY = TTY(&KBasicVGA, g_fgcolour, g_bgcolour); 
 
-        uint64_t kernel_size = (uint64_t)_kernel_end_addr - (uint64_t)_text_start_addr;
+    g_CurrentTTY = &KTTY;
 
-        HAL_EarlyInit(params->MemoryMap, params->MemoryMapEntryCount, params->kernel_virtual_addr, params->kernel_physical_addr, kernel_size, params->hhdm_start_addr, m_InitialFrameBuffer);
-        KPM.InitPageManager((void*)(params->kernel_virtual_addr + kernel_size), UINT64_MAX - (params->kernel_virtual_addr + kernel_size), false);
-        g_KPM = &KPM;
-        kmalloc_init();
+    LinkedList::NodePool_Init();
 
-        if (params->frameBuffer.bpp % 8 > 0 || params->frameBuffer.bpp > 64) {
-            Panic("Bootloader Frame Buffer Bits per Pixel is either not byte aligned or larger than 64", nullptr, false);
-        }
+    KFDManager = FileDescriptorManager(KFDManager_BitmapData, 8);
+    Kstdin = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::READ, 0); // currently TTYs will just output 0 when read from
+    Kstdout = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::WRITE, 1);
+    Kstderr = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::WRITE, 2);
+    Kstddebug = FileDescriptor(FileDescriptorType::DEBUG, nullptr, FileDescriptorMode::WRITE, 3);
+    assert(KFDManager.ReserveFileDescriptor(&Kstdin));
+    assert(KFDManager.ReserveFileDescriptor(&Kstdout));
+    assert(KFDManager.ReserveFileDescriptor(&Kstderr));
+    assert(KFDManager.ReserveFileDescriptor(&Kstddebug));
 
-        // Do any early initialisation
+    g_KFDManager = &KFDManager;
 
-        uint8_t* ELF_map_data;
-        uint64_t ELF_map_size = TarFS::USTAR_Lookup((uint8_t*)(params->initramfs_addr), "kernel.map", &ELF_map_data);
-        if (ELF_map_size == 0)
-            fprintf(VFS_DEBUG, "WARN: Cannot find kernel symbol file\n");
-        else
-            g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size);
+    uint64_t kernel_size = (uint64_t)_kernel_end_addr - (uint64_t)_text_start_addr;
 
-        KBasicVGA.EnableDoubleBuffering(g_KPM);
+    g_KPT = PageTable(false, nullptr);
+    params->MemoryMapEntryCount = UpdateMemorySize(const_cast<const MemoryMapEntry**>(params->MemoryMap), params->MemoryMapEntryCount);
+    HAL_EarlyInit(params->MemoryMap, params->MemoryMapEntryCount, params->kernel_virtual_addr, params->kernel_physical_addr, kernel_size, params->hhdm_start_addr, m_InitialFrameBuffer);
+    KPM.InitPageManager(VirtualRegion((void*)(params->kernel_virtual_addr + kernel_size), (void*)UINT64_MAX), g_KVPM, false);
+    g_KPM = &KPM;
+    kmalloc_eternal_init();
+    kmalloc_init();
 
-        Kernel_Stage2Params = {
-            .RSDP_addr = params->RSDP_table,
-            .initramfs_addr = params->initramfs_addr,
-            .initramfs_size = params->initramfs_size
-        };
-
-        KProcess = new Scheduling::Process(Kernel_Stage2, (void*)&Kernel_Stage2Params, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
-        KProcess->Start();
-
-        Scheduling::Scheduler::Start();
-
-        Panic("Scheduler Start returned!\n", nullptr, false);
+    if (params->frameBuffer.bpp % 8 > 0 || params->frameBuffer.bpp > 64) {
+        PANIC("Bootloader Frame Buffer Bits per Pixel is either not byte aligned or larger than 64");
     }
 
-    void Kernel_Stage2(void* params_addr) {
-        fputs(VFS_DEBUG_AND_STDOUT, "Starting WorldOS!\n");
+    // Do any early initialisation
 
-        m_Stage = STAGE2;
+    uint8_t* ELF_map_data;
+    uint64_t ELF_map_size = TarFS::USTAR_Lookup((uint8_t*)(params->initramfs_addr), "kernel.map", &ELF_map_data);
+    if (ELF_map_size == 0)
+        dbgprintf("WARN: Cannot find kernel symbol file\n");
+    else
+        g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size, true);
 
-        Stage2_Params* params = (Stage2_Params*)params_addr;
+    KBasicVGA.EnableDoubleBuffering(g_KPM);
 
-        HAL_Stage2(params->RSDP_addr);
+    Kernel_Stage2Params = {
+        .RSDP_addr = params->RSDP_table,
+        .initramfs_addr = params->initramfs_addr,
+        .initramfs_size = params->initramfs_size
+    };
 
-        VFS* KVFS = new VFS;
-        g_VFS = KVFS;
-        assert(KVFS->MountRoot(FileSystemType::TMPFS));
+    KProcess = new Scheduling::Process(Kernel_Stage2, (void*)&Kernel_Stage2Params, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
+    KProcess->Start();
 
-        fputs(VFS_DEBUG, "VFS root mounted.\n");
+    Scheduling::Scheduler::Start();
 
-        Initialise_InitRAMFS(params->initramfs_addr, params->initramfs_size);
+    PANIC("Scheduler Start returned!\n");
+}
 
-        fputs(VFS_DEBUG, "Initial RAMFS initialised.\n");
+void Kernel_Stage2(void* params_addr) {
+    dbgputs("Starting WorldOS!\n");
+    puts("Starting WorldOS!\n");
 
-        while (true) {
-            
-        }
+    m_Stage = STAGE2;
+
+    Stage2_Params* params = (Stage2_Params*)params_addr;
+
+    HAL_Stage2(params->RSDP_addr);
+
+    VFS* KVFS = (VFS*)kcalloc_eternal(1, sizeof(VFS));
+    g_VFS = KVFS;
+    assert(KVFS->MountRoot(FileSystemType::TMPFS));
+
+    dbgputs("VFS root mounted.\n");
+
+    Initialise_InitRAMFS(params->initramfs_addr, params->initramfs_size);
+
+    dbgputs("Initial RAMFS initialised.\n");
+
+    SystemCallInit();
+
+    while (true) {
+        
     }
 }

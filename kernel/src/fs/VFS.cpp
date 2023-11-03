@@ -55,7 +55,7 @@ bool VFS::MountRoot(FileSystemType type) {
 }
 
 bool VFS::Mount(const char* path, FileSystemType type) {
-    fprintf(VFS_DEBUG, "[%s(%s, %u)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, (unsigned int)type);
+    dbgprintf("[%s(%s, %u)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, (unsigned int)type);
     return false;
 }
 
@@ -264,9 +264,20 @@ bool VFS::CloseStream(FileStream* stream) {
     return false;
 }
 
+bool VFS::IsValidPath(const char* path) const {
+    Inode* inode = nullptr;
+    VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
+    if (mountPoint == nullptr || inode == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return false;
+    }
+    SetLastError(FileSystemError::SUCCESS);
+    return true;
+}
+
 /* Private functions */
 
-VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) {
+VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) const {
     if (path == nullptr) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return nullptr;
@@ -366,6 +377,6 @@ VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) {
 }
 
 bool VFS::isMountpoint(const char* path, size_t len) {
-    fprintf(VFS_DEBUG, "[%s(%lp, %lu)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, len);
+    dbgprintf("[%s(%lp, %lu)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, len);
     return false;
 }

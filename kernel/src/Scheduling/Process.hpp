@@ -25,6 +25,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Data-structures/LinkedList.hpp>
 
 #include <Memory/PageManager.hpp>
+#include <Memory/VirtualRegion.hpp>
+#include <Memory/VirtualPageManager.hpp>
 
 namespace Scheduling {
     class Thread;
@@ -46,32 +48,52 @@ namespace Scheduling {
     class Process {
     public:
         Process();
-        Process(ProcessEntry_t entry, void* entry_data = nullptr, Priority priority = Priority::NORMAL, uint8_t flags = USER_DEFAULT, WorldOS::PageManager* pm = nullptr);
+        Process(ProcessEntry_t entry, void* entry_data = nullptr, Priority priority = Priority::NORMAL, uint8_t flags = USER_DEFAULT, PageManager* pm = nullptr);
         ~Process();
 
         void SetEntry(ProcessEntry_t entry, void* entry_data = nullptr);
         void SetPriority(Priority priority);
         void SetFlags(uint8_t flags);
-        void SetPageManager(WorldOS::PageManager* pm);
+        void SetPageManager(PageManager* pm);
+        void SetRegion(const VirtualRegion& region);
+        void SetVirtualPageManager(VirtualPageManager* VPM);
 
         ProcessEntry_t GetEntry() const;
         void* GetEntryData() const;
         Priority GetPriority() const;
         uint8_t GetFlags() const;
-        WorldOS::PageManager* GetPageManager() const;
+        PageManager* GetPageManager() const;
+        const VirtualRegion& GetRegion() const;
+        VirtualPageManager* GetVirtualPageManager() const;
+        Thread* GetMainThread() const;
+        uint64_t GetThreadCount() const;
+        Thread* GetThread(uint64_t index) const;
 
+        void CreateMainThread();
         void Start();
         void ScheduleThread(Thread* thread);
+        void RemoveThread(Thread* thread);
+        void RemoveThread(uint64_t index);
+
+        bool ValidateRead(const void* buf, size_t size) const;
+        bool ValidateStringRead(const char* str) const;
+        bool ValidateWrite(void* buf, size_t size) const;
+
+        void SyncRegion(); // ensure the region matches the page manager's region
 
     private:
         ProcessEntry_t m_Entry;
         void* m_entry_data;
         uint8_t m_flags;
         Priority m_Priority;
-        WorldOS::PageManager* m_pm;
+        PageManager* m_pm;
         bool m_main_thread_initialised;
         LinkedList::SimpleLinkedList<Thread> m_threads;
         Thread* m_main_thread;
+        VirtualRegion m_region;
+        VirtualPageManager* m_VPM;
+        bool m_main_thread_creation_requested;
+        bool m_region_allocated;
     };
 }
 

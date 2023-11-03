@@ -22,6 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 void kmalloc_init();
 
+void kmalloc_eternal_init();
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,6 +32,12 @@ void* kcalloc(size_t num, size_t size);
 void kfree(void* ptr);
 void* kmalloc(size_t size);
 void* krealloc(void* ptr, size_t size);
+
+void kmalloc_expand(size_t extra_size);
+
+
+void* kmalloc_eternal(size_t size);
+void* kcalloc_eternal(size_t num, size_t size);
 
 #ifdef __cplusplus
 }

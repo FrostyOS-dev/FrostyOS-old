@@ -19,18 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <arch/x86_64/Memory/PageMapIndexer.hpp>
 
-void MapPage(void* phys_addr, void* virt_addr, uint32_t flags) {
-    x86_64_map_page(phys_addr, virt_addr, flags);
-}
-
-void UnmapPage(void* virt_addr) {
-    x86_64_unmap_page(virt_addr);
-}
-
 void* to_HHDM(void* phys_addr) {
     return x86_64_to_HHDM(phys_addr);
-}
-
-void* get_physaddr(void* virtaddr) {
-    return x86_64_get_physaddr(virtaddr);
 }

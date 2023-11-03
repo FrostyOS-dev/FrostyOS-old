@@ -35,6 +35,12 @@ x86_64_GetCR3:
     mov rax, cr3
     ret
 
+global x86_64_SwapCR3
+x86_64_SwapCR3:
+    mov rax, cr3
+    mov cr3, rdi
+    ret
+
 global x86_64_GetCR2
 x86_64_GetCR2:
     mov rax, cr2

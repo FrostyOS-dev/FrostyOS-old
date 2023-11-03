@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2023  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,27 +15,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _STDIO_HPP
-#define _STDIO_HPP
-
-#include <stddef.h>
 #include <stdint.h>
-#include <stdarg.h>
 
-#include <HAL/vfs.hpp>
+extern char* g_panic_reason;
 
-void putc(const char c);
-inline void putchar(const char c) { putc(c); };
-void fputc(const fd_t file, const char c);
+#ifndef PANIC
+#ifdef __x86_64__
+#define PANIC(reason) __asm__ volatile ("movq %1, %0" : "=m" (g_panic_reason) : "p" (reason)); __asm__ volatile ("call x86_64_PrePanic"); __builtin_unreachable()
+#else
+#error Unknown Architecture
+#endif
+#endif
 
-void puts(const char* str);
-void fputs(const fd_t file, const char* str);
+#define STACK_CHK_GUARD 0x595e9fbd94fda766
 
-void printf(const char* format, ...);
-void vprintf(const char* format, va_list args);
-void fprintf(const fd_t file, const char* format, ...);
-void vfprintf(const fd_t file, const char* format, va_list args);
+uintptr_t __stack_chk_guard = STACK_CHK_GUARD;
 
-void fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file);
-
-#endif /* _STDIO_HPP */
+__attribute__((noreturn))
+void __stack_chk_fail(void) {
+    PANIC("Stack smashing detected");
+}

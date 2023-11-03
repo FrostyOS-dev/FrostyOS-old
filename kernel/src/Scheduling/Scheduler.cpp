@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Scheduler.hpp"
 
 #include <assert.h>
-#include <stdio.hpp>
+#include <stdio.h>
 
 #include <HAL/hal.hpp>
 
@@ -38,67 +38,180 @@ namespace Scheduling {
 
         LinkedList::SimpleLinkedList<Process> g_processes;
         LinkedList::SimpleLinkedList<Thread> g_kernel_threads;
+        LinkedList::SimpleLinkedList<Thread> g_high_threads;
+        LinkedList::SimpleLinkedList<Thread> g_normal_threads;
+        LinkedList::SimpleLinkedList<Thread> g_low_threads;
+        uint8_t g_kernel_run_count = 0; // the amount of times a kernel thread has been run in a row
+        uint8_t g_high_run_count = 0; // the amount of times a high thread has been run in a row
+        uint8_t g_normal_run_count = 0; // the amount of times a normal thread has been run in a row
         bool g_running = false;
         Thread* g_current = nullptr;
 
         void AddProcess(Process* process) {
-            assert(process->GetPriority() == Priority::KERNEL); // only kernel priority is supported
             g_processes.insert(process);
+        }
+
+        void RemoveProcess(Process* process) {
+            g_processes.remove(process);
         }
 
         void ScheduleThread(Thread* thread) {
             assert(thread != nullptr);
-            assert(thread->GetParent()->GetPriority() == Priority::KERNEL); // only kernel priority is supported
+            Priority thread_priority = thread->GetParent()->GetPriority();
             if (g_processes.getIndex(thread->GetParent()) == UINT64_MAX)
                 AddProcess(thread->GetParent());
             CPU_Registers* regs = thread->GetCPURegisters();
             fast_memset(regs, 0, DIV_ROUNDUP(sizeof(CPU_Registers), 8));
 #ifdef __x86_64__
-            if ((thread->GetFlags() & CREATE_STACK))
+            if ((thread->GetFlags() & CREATE_STACK)) {
                 x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64));
+                thread->GetParent()->SyncRegion();
+            }
             else
                 regs->RSP = (uint64_t)x86_64_get_stack_ptr();
             thread->SetStack(regs->RSP);
-            regs->RSP -= 8;
-            *(uint64_t*)(regs->RSP) = (uint64_t)(void*)&Scheduling::Scheduler::End;
-            regs->RSP -= 8;
-            *(uint64_t*)(regs->RSP) = (uint64_t)(void*)&x86_64_kernel_thread_end;
             regs->RIP = (uint64_t)thread->GetEntry();
-            regs->RDI = (uint64_t)thread->GetEntryData();
-            regs->CR3 = x86_64_GetCR3();
-            regs->CS = 0x08; // Kernel Code Segment
-            regs->DS = 0x10; // Kernel Data Segment
             regs->RFLAGS = (1 << 9) | (1 << 1); // IF Flag and Reserved (always 1)
+            regs->CR3 = (uint64_t)(thread->GetParent()->GetPageManager()->GetPageTable().GetRootTablePhysical()) & 0x000FFFFFFFFFF000;
+            regs->RDI = (uint64_t)thread->GetEntryData();
+#endif
+            if (thread_priority == Priority::KERNEL) {
+#ifdef __x86_64__
+                regs->RSP -= 8;
+                *(uint64_t*)(regs->RSP) = (uint64_t)(void*)&Scheduling::Scheduler::End;
+                regs->RSP -= 8;
+                *(uint64_t*)(regs->RSP) = (uint64_t)(void*)&x86_64_kernel_thread_end;
+                regs->CS = 0x08; // Kernel Code Segment
+                regs->DS = 0x10; // Kernel Data Segment
 #else
 #error Unkown Architecture
 #endif
-            g_kernel_threads.insert(thread);
+                g_kernel_threads.insert(thread);
+            }
+            else {
+#ifdef __x86_64__
+                regs->CS = 0x23; // User Code Segment
+                regs->DS = 0x1b; // User Data Segment
+#endif
+                switch (thread_priority) {
+                    case Priority::HIGH:
+                        g_high_threads.insert(thread);
+                        break;
+                    case Priority::NORMAL:
+                        g_normal_threads.insert(thread);
+                        break;
+                    case Priority::LOW:
+                        g_low_threads.insert(thread);
+                        break;
+                    default:
+                        assert(false);
+                        return; // just in case assertions are disabled
+                }
+            }
+        }
+
+        void RemoveThread(Thread* thread) {
+            if (thread == nullptr)
+                return;
+            bool success = false;
+            switch (thread->GetParent()->GetPriority()) {
+                case Priority::KERNEL: {
+                    uint64_t i = g_kernel_threads.getIndex(thread);
+                    if (i != UINT64_MAX) {
+                        g_kernel_threads.remove(i);
+                        success = true;
+                    }
+                    break;
+                }
+                case Priority::HIGH: {
+                    uint64_t i = g_high_threads.getIndex(thread);
+                    if (i != UINT64_MAX) {
+                        g_high_threads.remove(i);
+                        success = true;
+                    }
+                    break;
+                }
+                case Priority::NORMAL: {
+                    uint64_t i = g_normal_threads.getIndex(thread);
+                    if (i != UINT64_MAX) {
+                        g_normal_threads.remove(i);
+                        success = true;
+                    }
+                    break;
+                }
+                case Priority::LOW: {
+                    uint64_t i = g_low_threads.getIndex(thread);
+                    if (i != UINT64_MAX) {
+                        g_low_threads.remove(i);
+                        success = true;
+                    }
+                    break;
+                }
+                default:
+                    return;
+            }
+            if (!success) {
+                if (thread == g_current) {
+                    g_current = nullptr;
+                    success = true;
+                    PickNext();
+                }
+            }
         }
 
         void __attribute__((noreturn)) Start() {
 #ifdef __x86_64__
             x86_64_DisableInterrupts(); // task switch code re-enables them
 #endif
-            g_current = g_kernel_threads.get(0);
-            g_kernel_threads.remove(UINT64_C(0));
-            assert(g_current != nullptr);
+            PickNext();
+            if (g_current == nullptr) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
             assert(g_current->GetCPURegisters() != nullptr);
             g_ticks = 0;
             g_running = true;
 #ifdef __x86_64__
-            x86_64_kernel_switch(g_current->GetCPURegisters());
+            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetStackRegisterFrame()));
+            if (g_current->GetParent()->GetPriority() == Priority::KERNEL)
+                x86_64_kernel_switch(g_current->GetCPURegisters());
+            else
+                x86_64_enter_user(g_current->GetCPURegisters());
 #endif
-            WorldOS::Panic("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
+            PANIC("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
 
         void __attribute__((noreturn)) Next() {
-            assert(g_current != nullptr);
+            if (g_current == nullptr) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
             assert(g_current->GetCPURegisters() != nullptr);
             g_ticks = 0;
 #ifdef __x86_64__
-            x86_64_kernel_switch(g_current->GetCPURegisters());
+            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetStackRegisterFrame()));
+            if (g_current->GetParent()->GetPriority() == Priority::KERNEL)
+                x86_64_kernel_switch(g_current->GetCPURegisters());
+            else
+                x86_64_enter_user(g_current->GetCPURegisters());
 #endif
-            WorldOS::Panic("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
+            PANIC("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.");
+        }
+
+        void Next(void* iregs) {
+            if (g_current == nullptr) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
+            assert(g_current->GetCPURegisters() != nullptr);
+            g_ticks = 0;
+#ifdef __x86_64__
+            x86_64_set_kernel_gs_base((uint64_t)(g_current->GetStackRegisterFrame()));
+            if (g_current->GetParent()->GetPriority() == Priority::KERNEL)
+                x86_64_kernel_switch(g_current->GetCPURegisters());
+            else {
+                x86_64_PrepareNewRegisters((x86_64_Interrupt_Registers*)iregs, g_current->GetCPURegisters());
+                return;
+            }
+#endif
+            PANIC("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
 
         void __attribute__((noreturn)) Next(Thread* thread) {
@@ -109,19 +222,21 @@ namespace Scheduling {
             assert(thread->GetCPURegisters() != nullptr);
             g_ticks = 0;
 #ifdef __x86_64__
-            x86_64_kernel_switch(thread->GetCPURegisters());
+            x86_64_set_kernel_gs_base((uint64_t)(thread->GetStackRegisterFrame()));
+            if (thread->GetParent()->GetPriority() == Priority::KERNEL)
+                x86_64_kernel_switch(thread->GetCPURegisters());
+            else
+                x86_64_enter_user(thread->GetCPURegisters());
 #endif
-            WorldOS::Panic("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.", nullptr, false);
+            PANIC("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
 
         void End() {
             // TODO: call any destructors or other destruction function
             if (g_current->GetFlags() & CREATE_STACK)
                 g_current->GetParent()->GetPageManager()->FreePages((void*)(g_current->GetStack() - KiB(64)));
-            if (g_kernel_threads.getCount() == 0)
-                WorldOS::Panic("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.", nullptr, false);
-            g_current = g_kernel_threads.get(0);
-            g_kernel_threads.remove(UINT64_C(0));
+            g_current = nullptr;
+            PickNext();
             Next();
         }
 
@@ -129,25 +244,76 @@ namespace Scheduling {
             return g_current;
         }
 
+        void PickNext() {
+            if (g_current != nullptr) {
+                switch (g_current->GetParent()->GetPriority()) {
+                    case Priority::KERNEL:
+                        g_kernel_threads.insert(g_current);
+                        g_kernel_run_count++;
+                        break;
+                    case Priority::HIGH:
+                        g_high_threads.insert(g_current);
+                        g_high_run_count++;
+                        break;
+                    case Priority::NORMAL:
+                        g_normal_threads.insert(g_current);
+                        g_normal_run_count++;
+                        break;
+                    case Priority::LOW:
+                        g_low_threads.insert(g_current);
+                        break;
+                    default:
+                        PANIC("Scheduler: A thread has run with an unknown priority.");
+                        return; // unnecessary, but only here to remove compiler warnings
+                }
+            }
+            if ((g_kernel_run_count >= 4 || g_kernel_threads.getCount() == 0) && (g_high_threads.getCount() > 0 || g_normal_threads.getCount() > 0 || g_low_threads.getCount() > 0)) { // time to select a high thread
+                if ((g_high_run_count >= 4 || g_high_threads.getCount() == 0) && (g_normal_threads.getCount() > 0 || g_low_threads.getCount() > 0)) { // time to select a normal thread
+                    if ((g_normal_run_count >= 4 || g_normal_threads.getCount() == 0) && g_low_threads.getCount() > 0) { // time to select a low thread
+                        g_current = g_low_threads.get(0);
+                        g_low_threads.remove(UINT64_C(0));
+                        g_normal_run_count = 0;
+                    }
+                    else {
+                        g_current = g_normal_threads.get(0);
+                        g_normal_threads.remove(UINT64_C(0));
+                    }
+                    g_high_run_count = 0;
+                }
+                else {
+                    g_current = g_high_threads.get(0);
+                    g_high_threads.remove(UINT64_C(0));
+                }
+                g_kernel_run_count = 0;
+            }
+            else {
+                if (g_kernel_threads.getCount() == 0) {
+                    g_current = nullptr;
+                }
+                else {
+                    g_current = g_kernel_threads.get(0);
+                    g_kernel_threads.remove(UINT64_C(0));
+                }
+            }
+        }
 
-        void TimerTick() {
+
+        void TimerTick(void* iregs) {
             g_ticks++;
             if (g_ticks == TICKS_PER_SCHEDULER_CYCLE) {
-                if (!g_running || g_kernel_threads.getCount() < 1) {
-                    g_ticks = 0;
+                g_ticks = 0;
+                if (!g_running)
                     return; // Nothing to switch to
+                if (g_current == nullptr) {
+                    PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
                 }
-                assert(g_processes.getCount() > 0);
-                assert(g_kernel_threads.getCount() > 0); // temporary until more priority levels are implemented
-                g_kernel_threads.insert(g_current);
-                g_current = g_kernel_threads.get(0);
-                g_kernel_threads.remove(UINT64_C(0));
+                PickNext();
 #ifdef __x86_64__
-                x86_64_PIC_sendEOI(0);
+                if (g_current->GetParent()->GetPriority() == Priority::KERNEL)
+                    x86_64_PIC_sendEOI(0);
 #endif
-                Next();
+                Next(iregs);
             }
-            return;
         }
 
         bool isRunning() {
@@ -156,6 +322,42 @@ namespace Scheduling {
 
         void Stop() {
             g_running = false;
+        }
+
+        void Resume() {
+            g_running = true;
+            if (g_current == nullptr)
+                PickNext();
+            if (g_current == nullptr) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
+            Next();
+        }
+
+        void PrintThreads(fd_t file) {
+            fprintf(file, "Kernel Threads:\n");
+            for (uint64_t i = 0; i < g_kernel_threads.getCount(); i++) {
+                g_kernel_threads.get(i)->PrintInfo(file);
+                fputc(file, '\n');
+            }
+            fprintf(file, "High Threads:\n");
+            for (uint64_t i = 0; i < g_high_threads.getCount(); i++) {
+                g_high_threads.get(i)->PrintInfo(file);
+                fputc(file, '\n');
+            }
+            fprintf(file, "Normal Threads:\n");
+            for (uint64_t i = 0; i < g_normal_threads.getCount(); i++) {
+                g_normal_threads.get(i)->PrintInfo(file);
+                fputc(file, '\n');
+            }
+            fprintf(file, "Low Threads:\n");
+            for (uint64_t i = 0; i < g_low_threads.getCount(); i++) {
+                g_low_threads.get(i)->PrintInfo(file);
+                fputc(file, '\n');
+            }
+            fprintf(file, "Current Thread:\n");
+            g_current->PrintInfo(file);
+            fputc(file, '\n');
         }
     }
 }

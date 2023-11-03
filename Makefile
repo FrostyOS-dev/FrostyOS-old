@@ -27,6 +27,7 @@ SHELL := env PATH=$(PATH) /bin/bash
 CC = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc
 CXX = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-g++
 LD = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld
+AR = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ar
 ASM = nasm
 
 all: boot-iso
@@ -39,12 +40,11 @@ run: all
 	@echo Running
 	@echo -------
 ifeq ($(config), debug)
-	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,if=none,id=nvm -device nvme,serial=deadbeef,drive=nvm,use-intel-id=on -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
+	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,if=none,id=nvm -device nvme,serial=deadbeef,drive=nvm,use-intel-id=on -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
 else ifeq ($(config), release)
-	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,if=none,id=nvm -device nvme,serial=deadbeef,drive=nvm,use-intel-id=on -m 256M -machine accel=kvm -M q35 -cpu qemu64
+	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,if=none,id=nvm -device nvme,serial=deadbeef,drive=nvm,use-intel-id=on -m 256M -machine accel=kvm -M q35 -cpu qemu64
 else
-	@qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,if=none,id=nvm -device nvme,serial=deadbeef,drive=nvm,use-intel-id=on -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
-endif
+	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,if=none,id=nvm -device nvme,serial=deadbeef,drive=nvm,use-intel-id=on -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64
 
 mkgpt:
 	@echo --------------
@@ -77,7 +77,7 @@ ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld -v 2>/dev/null | grep 2
 	@$(MAKE) -C toolchain/binutils/build install
 	@rm -fr toolchain/binutils
 endif
-ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion)", "13.2.0")
+ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion 2>/dev/null)", "13.2.0")
 	@echo ------------
 	@echo Building GCC
 	@echo ------------
@@ -98,6 +98,10 @@ dependencies:
 ifeq ("$(wildcard depend/tools/bin/mkgpt)","")
 	@$(MAKE) mkgpt
 endif
+ifeq ("$(wildcard ovmf/x86-64/OVMF_VARS.fd)","")
+	@mkdir -p ovmf/x86-64
+	@cp /usr/share/edk2/x64/OVMF_VARS.fd ovmf/x86-64
+endif
 	@rm -fr depend/tools/build
 	@$(MAKE) -C kernel kernel-dependencies
 
@@ -114,10 +118,12 @@ clean-all:
 	@echo ------------
 	@$(MAKE) -C kernel clean-kernel
 	@$(MAKE) -C utils clean-utils
-	@rm -fr iso dist depend root/kernel.map
+	@$(MAKE) -C LibC distclean-libc
+	@rm -fr iso dist depend root/kernel.map root/data/include root/data/lib ovmf
 
 clean-os:
 	@$(MAKE) -C kernel clean-kernel
+	@$(MAKE) -C LibC clean-libc
 	@rm -fr iso dist root/kernel.map
 
 boot-iso: clean-os .WAIT dependencies toolchain
@@ -125,11 +131,19 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@echo Building Kernel
 	@echo ---------------
 	@$(MAKE) -C kernel kernel config=$(config)
+	@echo -------------
+	@echo Building LibC
+	@echo -------------
+	@$(MAKE) -C LibC libc config=$(config)
 	@echo --------------
 	@echo Building utils
 	@echo --------------
 	@$(MAKE) -C utils build
 	@utils/bin/buildsymboltable kernel/bin/kernel.elf root/kernel.map
+	@echo ----------
+	@echo Installing
+	@echo ----------
+	@$(MAKE) -C LibC install-libc config=$(config)
 	@$(MAKE) --no-print-directory initramfs
 	@echo -----------------
 	@echo Making disk image

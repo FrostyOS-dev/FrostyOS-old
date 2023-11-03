@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Scheduling/taskutil.hpp"
 
-#include <stdio.hpp>
+#include <stdio.h>
 
 #include <Graphics/VGA.hpp>
 
@@ -64,38 +64,45 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
 
     // Output all to debug first
 
-    fprintf(VFS_DEBUG, "KERNEL PANIC!\nError Message:  %s", reason == nullptr ? "(null)" : reason);
+    dbgputs("KERNEL PANIC!\n");
+    if (type)
+        dbgputs("Exception: ");
+    dbgprintf("%s\n", reason);
 
-    fprintf(VFS_DEBUG, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->RIP, regs->RFLAGS);
-    fprintf(VFS_DEBUG, "\nCS=%x    DS=%x", regs->CS, regs->DS);
+    dbgprintf("RAX=%016lx  RBX=%016lx  RCX=%016lx  RDX=%016lx\nRSI=%016lx  RDI=%016lx  RSP=%016lx  RBP=%016lx\nR8 =%016lx  R9 =%016lx  R10=%016lx  R11=%016lx\nR12=%016lx  R13=%016lx  R14=%016lx  R15=%016lx\nRIP=%016lx  RFL=%016lx", regs->RAX, regs->RBX, regs->RCX, regs->RDX, regs->RSI, regs->RDI, regs->RSP, regs->RBP, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->RIP, regs->RFLAGS);
+    dbgprintf("\nCS=%04hx  DS=%04hx", regs->CS, regs->DS);
     if (type /* true = interrupt */) {
-        fprintf(VFS_DEBUG, "    SS=%x\nINTERRUPT=%x", i_regs->ss, i_regs->interrupt);
+        dbgprintf("  SS=%04hx\nINTERRUPT=%02hhx", i_regs->ss, i_regs->interrupt);
         if (i_regs->error != 0)
-            fprintf(VFS_DEBUG, "    ERROR CODE=%x\n", i_regs->error);
+            dbgprintf("  ERROR CODE=%08x\n", i_regs->error);
         else
-            fputc(VFS_DEBUG, '\n');
+            dbgputc('\n');
         if (i_regs->interrupt == 0xE /* Page Fault */)
-            fprintf(VFS_DEBUG, "CR2=%lx    CR3=%lx\n", i_regs->CR2, regs->CR3);
+            dbgprintf("CR2=%016lx  CR3=%016lx\n", i_regs->CR2, regs->CR3);
     }
     else
-        fputc(VFS_DEBUG, '\n');
+        dbgputc('\n');
 
-    fprintf(VFS_DEBUG, "Stack trace:\n");
+    dbgprintf("Stack trace:\n");
     char const* name = nullptr;
     if (g_KernelSymbols != nullptr)
         name = g_KernelSymbols->LookupSymbol(regs->RIP);
-    fprintf(VFS_DEBUG, "%lx", regs->RIP);
+    dbgprintf("%016lx", regs->RIP);
     if (name != nullptr)
-        fprintf(VFS_DEBUG, ": %s\n", name);
+        dbgprintf(": %s\n", name);
     else
-        fputc(VFS_DEBUG, '\n');
+        dbgputc('\n');
 
     x86_64_walk_stack_frames((void*)(regs->RBP));
+
+    dbgputs("\nThreads:\n");
+
+    Scheduling::Scheduler::PrintThreads(stddebug);
 
     // Output all to stdout after in case framebuffer writes cause a page fault
 
     if (g_VGADevice == nullptr)
-        fprintf(VFS_DEBUG, "\nWARNING VGA Device unavailable.\n");
+        dbgprintf("\nWARNING VGA Device unavailable.\n");
     else {
         g_VGADevice->ClearScreen(g_panic_background /* blue */);
         g_VGADevice->SetBackgroundColour(g_panic_background /* blue */);
@@ -104,18 +111,21 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
 
         g_CurrentTTY->SetVGADevice(g_VGADevice);
 
-        fprintf(VFS_STDOUT, "KERNEL PANIC!\nError Message:  %s", reason == nullptr ? "(null)" : reason);
+        puts("KERNEL PANIC!\n");
+        if (type)
+            puts("Exception: ");
+        printf("%s\n", reason);
 
-        fprintf(VFS_STDOUT, "\nRAX=%lx    RCX=%lx    RBX=%lx\nRDX=%lx    RSP=%lx    RBP=%lx\nRSI=%lx    RDI=%lx    R8=%lx\nR9=%lx    R10=%lx    R11=%lx\nR12=%lx    R13=%lx    R14=%lx\nR15=%lx    RIP=%lx    RFLAGS=%lx", regs->RAX, regs->RCX, regs->RBX, regs->RDX, regs->RSP, regs->RBP, regs->RSI, regs->RDI, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->RIP, regs->RFLAGS);
-        fprintf(VFS_STDOUT, "\nCS=%x    DS=%x", regs->CS, regs->DS);
+        printf("RAX=%016lx  RBX=%016lx  RCX=%016lx  RDX=%016lx\nRSI=%016lx  RDI=%016lx  RSP=%016lx  RBP=%016lx\nR8 =%016lx  R9 =%016lx  R10=%016lx  R11=%016lx\nR12=%016lx  R13=%016lx  R14=%016lx  R15=%016lx\nRIP=%016lx  RFL=%016lx", regs->RAX, regs->RBX, regs->RCX, regs->RDX, regs->RSI, regs->RDI, regs->RSP, regs->RBP, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->RIP, regs->RFLAGS);
+        printf("\nCS=%04hx  DS=%04hx", regs->CS, regs->DS);
         if (type /* true = interrupt */) {
-            fprintf(VFS_STDOUT, "    SS=%x\nINTERRUPT=%x", i_regs->ss, i_regs->interrupt);
+            printf("  SS=%04hx\nINTERRUPT=%02hhx", i_regs->ss, i_regs->interrupt);
             if (i_regs->error != 0)
-                fprintf(VFS_STDOUT, "    ERROR CODE=%x\n", i_regs->error);
+                printf("  ERROR CODE=%08x\n", i_regs->error);
             else
-                fputc(VFS_STDOUT, '\n');
+                putc('\n');
             if (i_regs->interrupt == 0xE /* Page Fault */)
-                fprintf(VFS_STDOUT, "CR2=%lx    CR3=%lx\n", i_regs->CR2, regs->CR3);
+                printf("CR2=%016lx  CR3=%016lx\n", i_regs->CR2, regs->CR3);
         }
     }
 

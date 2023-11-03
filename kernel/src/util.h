@@ -25,6 +25,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define MiB(x) (KiB(x) * (uint64_t)1024)
 #define GiB(x) (MiB(x) * (uint64_t)1024)
 
+#ifndef KERNEL_STACK_SIZE
+// Size of the kernel stack after init
+#define KERNEL_STACK_SIZE 16384
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,9 +38,15 @@ extern "C" {
 
 #define DIV_ROUNDUP(VALUE, DIV) (VALUE + (DIV - 1)) / DIV
 
+#define DIV_ROUNDUP_ADDRESS(ADDR, DIV) (void*)(((unsigned long)ADDR + (DIV - 1)) / DIV)
+
 #define ALIGN_UP(VALUE, ALIGN) DIV_ROUNDUP(VALUE, ALIGN) * ALIGN
 
 #define ALIGN_DOWN(VALUE, ALIGN) (VALUE / ALIGN) * ALIGN
+
+#define ALIGN_ADDRESS_DOWN(ADDR, ALIGN) (void*)(((unsigned long)ADDR / ALIGN) * ALIGN)
+
+#define ALIGN_ADDRESS_UP(ADDR, ALIGN) (void*)((((unsigned long)ADDR + (ALIGN - 1)) / ALIGN) * ALIGN)
 
 #define PAGE_SIZE 4096
 

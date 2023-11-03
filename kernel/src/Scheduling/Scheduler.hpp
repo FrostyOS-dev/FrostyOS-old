@@ -33,23 +33,31 @@ namespace Scheduling {
     namespace Scheduler {
 
         void AddProcess(Process* process);
+        void RemoveProcess(Process* process);
         void ScheduleThread(Thread* thread);
+        void RemoveThread(Thread* thread);
 
         void __attribute__((noreturn)) Start();
 
         void __attribute__((noreturn)) Next();
+        void Next(void* iregs);
         void __attribute__((noreturn)) Next(Thread* thread);
 
         // Called when a thread ends. Responsible for cleanup
         void End();
 
+        void PickNext();
+
         Thread* GetCurrent();
 
-        void TimerTick(); // Only to be called in timer IRQ
+        void TimerTick(void* iregs); // Only to be called in timer IRQ
 
         bool isRunning();
 
         void Stop();
+        void Resume();
+
+        void PrintThreads(fd_t file);
     }
 
 }

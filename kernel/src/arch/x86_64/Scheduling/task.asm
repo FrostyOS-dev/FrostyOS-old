@@ -54,10 +54,11 @@ x86_64_kernel_switch:
 
     mov rax, QWORD [rdi+140]
     push rax
-    popf ; load RFLAGS
     
     mov rax, QWORD [rdi] ; load rax
     mov rdi, QWORD [rdi+40] ; load rdi
+
+    popf ; load RFLAGS
 
     retfq ; return to cs:RIP
 
@@ -133,4 +134,63 @@ x86_64_kernel_thread_end:
     add rsp, [kernel_stack_size]
     xor rbp, rbp
     push rax
+    ret
+
+global x86_64_enter_user
+x86_64_enter_user:
+    pushf
+    cli ; disable interrupts
+
+    mov rbx, QWORD [rdi+8]   ; load rbx
+    mov rdx, QWORD [rdi+24]  ; load rdx
+    mov rsi, QWORD [rdi+32]  ; load rsi
+    mov rbp, QWORD [rdi+56]  ; load rbp
+    mov  r8, QWORD [rdi+64]  ; load r8
+    mov  r9, QWORD [rdi+72]  ; load r9
+    mov r10, QWORD [rdi+80]  ; load r10
+    mov r11, QWORD [rdi+88]  ; load r11
+    mov r12, QWORD [rdi+96]  ; load r12
+    mov r13, QWORD [rdi+104] ; load r13
+    mov r14, QWORD [rdi+112] ; load r14
+    mov r15, QWORD [rdi+120] ; load r15
+
+    mov ax, WORD [rdi+138]
+    mov ds, ax ; load ds
+    mov es, ax ; load es
+    mov fs, ax ; load fs
+    mov gs, ax ; load gs
+
+    mov rax, QWORD [rdi+148]
+    mov cr3, rax ; load CR3
+
+    pop rcx ; get RFLAGS back
+
+    movzx rax, WORD [rdi+138] ; push ss
+    push rax
+
+    mov rax, QWORD [rdi+48] ; push rsp
+    push rax
+    
+    push rcx
+
+    movzx rax, WORD [rdi+136] ; push cs
+    push rax
+
+    mov rax, QWORD [rdi+128] ; push RIP
+    push rax
+
+    mov rax, QWORD [rdi] ; load rax
+    mov rax, QWORD [rdi+8] ; load rcx
+    mov rdi, QWORD [rdi+40] ; load rdi
+    iretq
+
+global x86_64_set_kernel_gs_base
+x86_64_set_kernel_gs_base:
+    xor rax, rax
+    xor rdx, rdx
+    mov eax, edi
+    shr rdi, 32
+    mov edx, edi
+    mov rcx, 0xc0000102
+    wrmsr
     ret

@@ -6,6 +6,9 @@ dist/
 depend/
 .idea/
 toolchain/
+root/data/lib/
+root/data/include/
+ovmf/
 
 # Files
 kernel/src/limine.h

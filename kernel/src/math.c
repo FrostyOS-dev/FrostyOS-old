@@ -64,31 +64,3 @@ long labs(long n) {
 unsigned long ulabs(unsigned long n) {
     return n;
 }
-
-div_t div(int numer, int denom) {
-    div_t ret;
-    ret.rem = numer % denom;
-    ret.quot = (numer - ret.rem) / denom;
-    return ret;
-}
-
-udiv_t udiv(unsigned numer, unsigned denom) {
-    udiv_t ret;
-    ret.rem = numer % denom;
-    ret.quot = (numer - ret.rem) / denom;
-    return ret;
-}
-
-ldiv_t ldiv(long numer, long denom) {
-    ldiv_t ret;
-    ret.rem = numer % denom;
-    ret.quot = (numer - ret.rem) / denom;
-    return ret;
-}
-
-uldiv_t uldiv(unsigned long numer, unsigned long denom) {
-    uldiv_t ret;
-    ret.rem = numer % denom;
-    ret.quot = (numer - ret.rem) / denom;
-    return ret;
-}

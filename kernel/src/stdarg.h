@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_WORLDOS_STDARG_H
-#define _KERNEL_WORLDOS_STDARG_H
+#ifndef _STDARG_H
+#define _STDARG_H
 
 typedef __builtin_va_list va_list;
 
@@ -25,4 +25,4 @@ typedef __builtin_va_list va_list;
 #define va_arg(v,l)	  __builtin_va_arg(v,l)
 #define va_copy(d,s)  __builtin_va_copy(d,s)
 
-#endif /* _KERNEL_WORLDOS_STDARG_H */
+#endif /* _STDARG_H */

@@ -22,8 +22,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stddef.h>
 
-namespace x86_64_WorldOS {
-    bool MapKernel(void* kernel_phys, void* kernel_virt, size_t kernel_size);
-}
+bool MapKernel(void* kernel_phys, void* kernel_virt, size_t kernel_size);
 
 #endif /* _KERNEL_X86_64_ELF_KERNEL_HPP */

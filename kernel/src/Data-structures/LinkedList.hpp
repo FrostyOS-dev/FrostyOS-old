@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _LINKED_LIST_HPP
 
 #include <stdint.h>
-#include <stdio.hpp>
+#include <stdio.h>
 #include <assert.h>
 
 namespace LinkedList {
@@ -55,8 +55,11 @@ namespace LinkedList {
 	// Delete a node
 	void deleteNode(Node*& head, uint64_t key);
 
+	// Delete a specific node
+	void deleteNode(Node*& head, Node* node);
+
 	// print the Linked list
-	void print(Node* head);
+	void fprint(fd_t file, Node* head);
 
 	template <typename T> class SimpleLinkedList {
 	public:
@@ -68,7 +71,7 @@ namespace LinkedList {
 
 		void insert(const T* obj) {
 			/*if (findNode(m_start, (uint64_t)&obj) != nullptr) {
-				fprintf(VFS_DEBUG, "[%s] WARN: object already exists. Not inserting.\n", __extension__ __PRETTY_FUNCTION__);
+				dbgprintf("[%s] WARN: object already exists. Not inserting.\n", __extension__ __PRETTY_FUNCTION__);
 				return; // object already exists
 			}*/
 			insertNode(m_start, (uint64_t)obj);
@@ -108,7 +111,7 @@ namespace LinkedList {
 		}
 		void rotateLeft() {
 			if (m_count < 2) {
-				fprintf(VFS_DEBUG, "[%s] WARN: not enough nodes to rotate.\n", __extension__ __PRETTY_FUNCTION__);
+				dbgprintf("[%s] WARN: not enough nodes to rotate.\n", __extension__ __PRETTY_FUNCTION__);
 				return; // not enough nodes to rotate
 			}
 			Node* end = m_start;

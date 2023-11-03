@@ -22,9 +22,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 
+#include <fs/FileDescriptorManager.hpp>
+
 namespace Scheduling {
 
     typedef void (*ThreadEntry_t)(void*);
+    struct ThreadCleanup_t {
+        void (*function)(void*);
+        void* data;
+    };
 
     constexpr uint8_t THREAD_KERNEL_DEFAULT = CREATE_STACK;
     constexpr uint8_t THREAD_USER_DEFAULT = CREATE_STACK;
@@ -38,6 +44,7 @@ namespace Scheduling {
         void SetFlags(uint8_t flags);
         void SetParent(Process* parent);
         void SetStack(uint64_t stack);
+        void SetCleanupFunction(ThreadCleanup_t cleanup);
 
         ThreadEntry_t GetEntry() const;
         void* GetEntryData() const;
@@ -45,8 +52,19 @@ namespace Scheduling {
         Process* GetParent() const;
         CPU_Registers* GetCPURegisters() const;
         uint64_t GetStack() const;
+        uint64_t GetKernelStack() const;
+        ThreadCleanup_t GetCleanupFunction() const;
+        void* GetStackRegisterFrame() const;
 
         void Start();
+
+        fd_t sys$open(const char* path, unsigned long mode);
+        long sys$read(fd_t file, void* buf, unsigned long count);
+        long sys$write(fd_t file, const void* buf, unsigned long count);
+        int sys$close(fd_t file);
+        long sys$seek(fd_t file, long offset);
+
+        void PrintInfo(fd_t file) const;
 
     private:
         Process* m_Parent;
@@ -54,7 +72,13 @@ namespace Scheduling {
         void* m_entry_data;
         uint8_t m_flags;
         uint64_t m_stack;
+        mutable struct Register_Frame {
+            uint64_t user_stack;
+            uint64_t kernel_stack;
+        } __attribute__((packed)) m_frame;
         mutable CPU_Registers m_regs;
+        ThreadCleanup_t m_cleanup;
+        FileDescriptorManager m_FDManager;
     };
 }
 

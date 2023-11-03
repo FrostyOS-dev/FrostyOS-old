@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "PCI.hpp"
 
-#include <stdio.hpp>
+#include <stdio.h>
 
 #include <Data-structures/LinkedList.hpp>
 

@@ -83,7 +83,7 @@ static void done(void) {
     }
 }
 
-WorldOS::KernelParams kernelParams;
+KernelParams kernelParams;
 
 // called from asm
 extern "C" void _start(void) {
@@ -163,7 +163,7 @@ extern "C" void _start(void) {
 
     
 
-    WorldOS::MemoryMapEntry** memoryMap = (WorldOS::MemoryMapEntry**)memmap_response->entries;
+    MemoryMapEntry** memoryMap = (MemoryMapEntry**)memmap_response->entries;
 
     kernelParams = {
         .frameBuffer = {buffer->address, buffer->width, buffer->height, buffer->bpp, buffer->red_mask_size, buffer->red_mask_shift, buffer->green_mask_size, buffer->green_mask_shift, buffer->blue_mask_size, buffer->blue_mask_shift},

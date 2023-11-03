@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "PIT.hpp"
 #include "io.h"
 
-#include <stdio.hpp>
+#include <stdio.h>
 
 #include <Scheduling/Scheduler.hpp>
 
@@ -43,7 +43,7 @@ void x86_64_PIT_Handler(x86_64_Interrupt_Registers* iregs) {
     if (!Scheduling::Scheduler::isRunning())
         return;
     x86_64_SaveIRegistersToThread(Scheduling::Scheduler::GetCurrent(), iregs);
-    Scheduling::Scheduler::TimerTick();
+    Scheduling::Scheduler::TimerTick(iregs);
 }
 
 void x86_64_PIT_Init() {

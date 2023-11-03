@@ -19,9 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "newdelete.hpp"
 
 #include <stdint.h>
-#include <stdio.hpp>
+#include <stdio.h>
 #include <util.h>
 #include <assert.h>
+#include <math.h>
 
 #include <Memory/PageManager.hpp>
 
@@ -247,7 +248,7 @@ void mrvn_memory_init(void* mem, size_t size) {
 }
  
 void* mrvn_malloc(size_t size) {
-    //fprintf(VFS_DEBUG, "%s(%lx)\n", __extension__ __PRETTY_FUNCTION__, size);
+    //dbgprintf("[%s(%lx)] INFO: mem_free = %lu, mem_used = %lu\n", __extension__ __PRETTY_FUNCTION__, size, mem_free, mem_used);
     size = (size + ALIGN - 1) & (~(ALIGN - 1));
  
 	if (size < MIN_SIZE) size = MIN_SIZE;
@@ -283,7 +284,7 @@ void* mrvn_malloc(size_t size) {
 	//printf("AAAA\n");
     mem_free -= size2;
     mem_used += size2 - len - HEADER_SIZE;
-    //fprintf(VFS_DEBUG, "  = %p [%p]\n", chunk->data, chunk);
+    //dbgprintf("  = %lp [%lp]. mem_free = %lx\n", chunk->data, chunk, mem_free);
     return chunk->data;
 }
  
@@ -337,6 +338,7 @@ void mrvn_free(void *mem) {
 		DLIST_INIT(chunk, free);
 		push_free(chunk);
     }
+    check();
 }
  
 void check(void) {
@@ -368,15 +370,17 @@ bool g_kmalloc_initialised;
 void kmalloc_init() {
     g_kmalloc_initialised = false;
     
-    void* pages = WorldOS::g_KPM->AllocatePages(2048);
+    void* pages = g_KPM->AllocatePages(1024); // ~4MiB
     assert(pages != nullptr);
-    mrvn_memory_init(pages, MiB(8));
+    mrvn_memory_init(pages, PAGE_SIZE * 1024);
 
     g_kmalloc_initialised = true;
     NewDeleteInit();
 }
 
 extern "C" void* kcalloc(size_t num, size_t size) {
+    if (!g_kmalloc_initialised)
+        return nullptr;
     size = ALIGN_UP((size * num), MIN_SIZE);
     void* mem = mrvn_malloc(size);
     if (mem == nullptr)
@@ -386,11 +390,12 @@ extern "C" void* kcalloc(size_t num, size_t size) {
 }
 
 extern "C" void kfree(void* addr) {
+    //dbgputs("kfree\n");
     return mrvn_free(addr);
 }
 
 extern "C" void* kmalloc(size_t size) {
-    if (size == 0)
+    if (size == 0 || !g_kmalloc_initialised)
         return nullptr;
     return mrvn_malloc(ALIGN_UP(size, MIN_SIZE));
 }
@@ -400,6 +405,8 @@ extern "C" void* krealloc(void* ptr, size_t size) {
         kfree(ptr);
         return nullptr;
     }
+    if (ptr == nullptr)
+        return kmalloc(size);
     if (ptr < g_mem_start || ptr > g_mem_end)
         return nullptr;
     size = ALIGN_UP(size, MIN_SIZE);
@@ -410,4 +417,54 @@ extern "C" void* krealloc(void* ptr, size_t size) {
     fast_memcpy(ptr2, ptr, old_size);
     kfree(ptr);
     return ptr2;
+}
+
+
+bool g_kmalloc_eternal_initialised = false;
+
+void* g_kmalloc_eternal_mem = nullptr;
+size_t g_kmalloc_eternal_free_mem = 0;
+size_t g_kmalloc_eternal_used_mem = 0;
+
+void kmalloc_eternal_init() {
+    g_kmalloc_eternal_initialised = false;
+
+    void* pages = g_KPM->AllocatePages(512); // ~2MiB
+    if (pages == nullptr)
+        return;
+    g_kmalloc_eternal_mem = pages;
+    g_kmalloc_eternal_free_mem = 512 * PAGE_SIZE;
+    g_kmalloc_eternal_used_mem = 0;
+
+    g_kmalloc_eternal_initialised = true;
+}
+
+extern "C" void* kmalloc_eternal(size_t size) {
+    size = ALIGN_UP(size, 8);
+
+    if (!g_kmalloc_eternal_initialised || size > g_kmalloc_eternal_free_mem)
+        return nullptr;
+
+    void* mem = g_kmalloc_eternal_mem;
+    g_kmalloc_eternal_used_mem += size;
+    g_kmalloc_eternal_free_mem -= size;
+    g_kmalloc_eternal_mem = (void*)((uint64_t)g_kmalloc_eternal_mem + size);
+
+    return mem;
+}
+
+extern "C" void* kcalloc_eternal(size_t num, size_t size) {
+    size = ALIGN_UP(size * num, 8);
+
+    if (!g_kmalloc_eternal_initialised || size > g_kmalloc_eternal_free_mem)
+        return nullptr;
+
+    void* mem = g_kmalloc_eternal_mem;
+    g_kmalloc_eternal_used_mem += size;
+    g_kmalloc_eternal_free_mem -= size;
+    g_kmalloc_eternal_mem = (void*)((uint64_t)g_kmalloc_eternal_mem + size);
+
+    fast_memset(mem, 0, size / 8);
+
+    return mem;
 }

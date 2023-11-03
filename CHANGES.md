@@ -1,6 +1,164 @@
 # Changes
 
-## Latest Changes - 19/08/2023
+## Latest Changes - 30/10/2023
+
+- Added read/write size returning to `fread` and `fwrite` in the kernel.
+- Fixed `TempFSInode::Seek` so seek is performed correctly.
+- Added kernel stack size macros to kernel `util.h`.
+- Updated system call entry to get the current thread prior to calling the actual system call handler.
+- Now disable interrupts while getting the current thread in the system call entry.
+- Implemented better enter_user function that uses `iretq` instead of `sysretq`.
+- Updated scheduler resume function to immediately switch to the new thread instead of waiting for the next scheduler tick.
+- Set the stack segment to the data segment in the `x86_64_PrepareNewRegisters` function.
+- Interrupt flag now gets masked by the CPU on system call entry.
+- Removed the `x86_64_WorldOS` namespace that was being used in `ELFKernel.hpp` and `ELFKernel.cpp`.
+- Updated x86_64 IO header guards.
+- Implemented `Thread::PrintInfo` function
+- Implemented `Scheduler:PrintThreads` function
+- Now print the scheduler threads to debug in Panic.
+- Changed the existing `KERNEL_STACK_SIZE` macro to `INITIAL_KERNEL_STACK_SIZE`.
+- Added a new `KERNEL_STACK_SIZE` macro with defines the kernel stack size to be used after init. It is set to 64KiB.
+- Updated all page mapping related functions to take the Level4Group as an argument.
+- Implemented PageTable class which handles all mappings, unmappings, permission updates, physical address retrieval and page permissions decoding.
+- Removed all the old usages of the old mapping, unmapping, remapping and physical address retrieval functions.
+- Implemented basic address space separation. Each process gets its own address space. This is mostly setup in the ELF loader currently. The kernel and HHDM is mapped as shared memory in all address spaces.
+- The CR3 value is changed to the kernel value at the start of the exit system call as that address space is about to be destroyed.
+- Updated `x86_64_unmap_page` and the large page equivalent to free the unused page tables.
+- Fixed `void Scheduler::Next(void* iregs)` to actually use the parsed argument and not create some weird x86_64_Interrupt_Registers local variable. This has been a bug since userland support was first added. It is only now been finally discovered.
+- Each thread now has its own kernel stack. This is important because the thread can now be interrupt during kernel functions and still behave correctly.
+- Implemented a `PrintRegions` function to the PageManager class.
+- Updated memory size detection to use the end address of the last free memory map entry as the end of memory. This prevented some weird behaviour in QEMU when KVM is off, where massive reserved sections of memory would be detected after the real end of memory.
+- General cleanup of the `x86_64_InitPaging` function.
+
+## 15/10/2023 (Afternoon)
+
+- Optimised physical memory allocation using new `m_nextFree` internal variable.
+- Implemented out of memory checking in physical memory manager
+- Implemented x86_64 remapping functions for standard sized pages and large pages
+- Implemented proper page remapping support to `PageManager` class instead of un-mapping, then mapping again
+- Removed `physical_address` member from `PageObject` struct
+- Updated `PageManager` class to allocate 1 physical page at a time on demand
+- Removed ovmf firmware from repository and use host system's instead. Variables are copied and accessed as read-write, code is loaded in-place as read-only.
+- Updated `clean-all` make target to remove local ovmf directory
+
+## 15/10/2023
+
+- Implemented eternal heap using a basic bump allocator.
+- Added eternal symbol table loading support to `ELFSymbols` class.
+- Implemented `ReservePage(s)` functions to `PageManager` to allow for reserve virtual address space without actually allocating physical memory.
+- Added support to `AllocatePage(s)` functions to allow for allocating physical memory and mapping it to previously reserved virtual memory.
+
+## 13/10/2023 (Evening)
+
+- Implemented logarithmic base-2 function in the kernel for unsigned integers (currently just rounds down the result)
+- Updated ELF loader to use new function
+
+## 13/10/2023
+
+- Updated the `printf` family of functions in kernel and LibC to support force_sign and zero_pad flags, width specifier, keeping track of characters printed, uppercase printing
+- Improved panic screen layout
+- Updated panic screen to use new printf functionality
+- Updated ISR handler to use new printf functionality
+- Updated stack tracing to use new printf functionality
+
+## 05/10/2023
+
+- Added address alignment and division macros to kernel util header
+- Setting upper 12-bits of page mapping flags actually works. This means that no-execute protection is actually active
+- Only set NX bit for lowest page table level for the relevant page size
+- Updating kernel mapping to use noflush variant of the `x86_64_map_page` function to avoid unnecessary TLB flushing
+- Added `isValidAllocation` function to PageManager
+- Removed unnecessary debug print statement from ELF loader
+- Implemented mmap, mprotect and munmap system calls. Region expansion for mmap with an address request is not supported. Splitting of allocations is unsupported in mprotect and munmap.
+- Moved LibC stack_protector to separate library due to GCC requirements
+- Updated GCC patch so libgcc actually builds
+- Updated Makefile so gcc version check stderr is discarded
+- Removed old libgcc patch
+
+## 24/09/2023
+
+- Changed syscall entry so interrupts can be enabled while in system calls. This also means that the Kernel GS base is only accessible when needed.
+- No longer set kernel gs base in `x86_64_enter_user` because it is redundant as the scheduler already does this.
+- Added alignment member to the end of the `x86_64_Registers` structure
+- Implemented `div`, `udiv`, `ldiv` and `uldiv` functions in assembly in kernel instead of in C due to inconsistencies in the compiler
+- Improved bitmap class so the code is nicer and more efficient
+- Changed RegisterFrame layout in Thread class to allow user stack to be saved easier and for the kernel stack to be accessed easier
+- Added some read/write validation functions to the process class so userspace pointers/strings can be checked before being used by the kernel
+- Added a SyncRegion function to the Process class to ensure the VirtualRegion of the Process matches the VirtualRegion of the Process's PageManager
+- Added an `IsValidPath` function to the VFS to check if a path exists or not
+- Marked the `VFS::GetMountpoint` function has `const` so it can be called in more places
+- Copied `strchr` and `strrchr` functions from LibC over to the kernel
+- Added all the C++11 errno values to `LibC/include/errno.h` and copied them over to the kernel
+- Added read function to TTY that simply zeros the buffer provided as no user input mechanism is support
+- Added proper file descriptor management. A file descriptor is a non-zero 64-bit signed integer that represents a TTY, a FileStream or Debug
+- Converted all the kernel stdio functions to use this new system and implemented `fopen`, `fclose`, `fread` and `fseek` functions.
+- Added a FileDescriptorManager to the Thread class. By default stdin is opened as read-only with ID 0 to KTTY, stdout and stderr as write-only with ID 1 and 2, respectively, to KTTY and stddebug as write-only with ID 3 to Debug
+- Implemented `open`, `close`, `read`, `write` and `seek` system calls
+- Copied over kernel stdio code to LibC with minor modifications. Currently only 8 streams can be opened simultaneously, not including stdin, stdout, stderr and stddebug. No streams are buffered as userland memory allocation is not supported yet.
+- Implemented basic C assertions in LibC. Currently only prints to debug, but can print to stdout if a line is uncommented.
+- Implemented stack protector in LibC
+
+## 16/09/2023
+
+- Added `stdint.h` include to `utils/src/buildsymboltable.cpp` so it compiles on all platforms instead of just Gentoo Linux
+- Started working on a very simple statically linked LibC. This includes the various crt*.o start and end files
+- Moved system headers to LibC includes, instead of being in the root filesystem by default
+- Implemented basic stack smashing protector support in the kernel
+- Fix a spelling mistake in `Scheduler.cpp`
+- Implemented RemoveThread and RemoveProcess functions in scheduler
+- Added a scheduler resume function
+- Changed the way the scheduler detects when there is nothing left to run so it will only check when it actually needs to run something
+- Scheduler now panics when `g_current == nullptr` instead of just doing some weird assertion
+- Updated include guards in `stdarg.h`
+- Added a RemoveThread function to the process class
+- Changed how system calls behave so they all go to one function, which then calls the appropriate function with the correct arguments
+- Fixed VirtualPageManager and PageManager destructors so they perform proper cleanup
+- Fixed ELF_Executable destructor and added an end_handler cleanup function
+- Added proper argument and environment variable passing support to the ELF loader
+- Added a Remap function to the PageManager class so permissions can be changed
+- Added a thread cleanup function system
+- Add support for main thread creation requesting to the Process class
+- Added an extra argument to the `VirtualPageManager::LockPage(s)` functions that is used for optimisation
+- Improved the `VirtualPageManager::UnfreePages` function for hopefully the last time
+- Cleaned up various parts of the `PageManager` class
+- Minor bug fixes to the `LinkedList::deleteNode` functions
+- Changed `x86_64_kernel_switch` function so RFLAGS is set after RAX and RDI are set
+- Implemented exit system call (Syscall 0)
+
+## 30/08/2023
+
+- Renamed `stdio.hpp` to `stdio.h` and marked all functions as `extern "C"`
+- Added `memset`, `memcpy`, `memmove` and `memcmp` declarations to `string.h`
+- Removed unnecessary includes from `kernel.hpp`
+- Improved `VirtualPageManager::Unfree` function so it should now support all possible scenarios
+- Added fixed address allocation to the VirtualPageManager and PageManager
+- Added proper mapping permission support to PageManager with user support
+- Added region expansion support to the VirtualPageManager and PageManager
+- Added region automatic expansion support for user PageManagers
+- Added multiple privilege level support to the Scheduler with the standard kernel priority and 3 different user priorities: LOW, NORMAL, HIGH. Each privilege level gets 80% more CPU time than the level below it. If there are no tasks at a certain level, the level below gets that rotation
+- Added basic system call support. Currently all 64 system calls just redirect to the same function which just prints the number and the arguments. The system call number is placed in `rax` and the arguments are parsed in `rdi`, `rsi` and `rdx`, return value is in `rax` (just like the System V x86_64 calling convention).
+- Added virtual region allocation support to the Process class. Currently, 16MiB is allocated, but this is not the preferred method for allocation
+- Added basic ELF executable loading and execution. Currently, relocation is not support.
+- Added a `LinkedList::deleteNode` function that can delete a specific node, instead of finding it based off its data.
+- Removed unused debugging argument from `x86_64_LoadCR3` function.
+- Updated `x86_64_InitPaging` function so it reserves all of non-canonical address space instead of a small section.
+
+## 26/08/2023
+
+- Fixed `VirtualPageManager::UnfreePages` function so it now can unfree pages with page counts that don't directly match a size
+- General VirtualPageManager cleanup
+- Switched PageManager to use a virtual region based system with a built in VirtualPageManager, making PageManager class more generic
+- Added an `InitVPageMgr` to the VirtualPageManager class for region-only initialisation
+- Changed `x86_64_InitPaging` to use the new initialisation function for the VPM
+
+## 25/08/2023
+
+- Changed `__assert_failed` to use new panic system
+- Changed PagingInit, PageManager and PhysicalPageFrameAllocator to use new panic system
+- Changed Scheduler to use new panic system
+- Changed `StartKernel` to use new panic system
+
+## 19/08/2023
 
 - Implemented support for panic register saving outside of interrupts/exceptions with a `x86_64_PrePanic` function
 - Added a `PANIC(reason)` macro for easier panic outside of interrupts/exceptions

@@ -29,6 +29,7 @@ public:
     TTY(BasicVGA* VGADevice, const Colour& fg_colour, const Colour& bg_colour); // Set the default foreground and background colours.
     ~TTY();
 
+    char getc(); // just returns 0
     void putc(char c);
     void puts(const char* str);
 

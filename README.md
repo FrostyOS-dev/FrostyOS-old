@@ -17,11 +17,35 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 19/08/2023
+## Latest Changes - 30/10/2023
 
-- Implemented support for panic register saving outside of interrupts/exceptions with a `x86_64_PrePanic` function
-- Added a `PANIC(reason)` macro for easier panic outside of interrupts/exceptions
-- Added a check inside `x86_64_Panic` to ensure we don't get a page fault due to a null panic reason
+- Added read/write size returning to `fread` and `fwrite` in the kernel.
+- Fixed `TempFSInode::Seek` so seek is performed correctly.
+- Added kernel stack size macros to kernel `util.h`.
+- Updated system call entry to get the current thread prior to calling the actual system call handler.
+- Now disable interrupts while getting the current thread in the system call entry.
+- Implemented better enter_user function that uses `iretq` instead of `sysretq`.
+- Updated scheduler resume function to immediately switch to the new thread instead of waiting for the next scheduler tick.
+- Set the stack segment to the data segment in the `x86_64_PrepareNewRegisters` function.
+- Interrupt flag now gets masked by the CPU on system call entry.
+- Removed the `x86_64_WorldOS` namespace that was being used in `ELFKernel.hpp` and `ELFKernel.cpp`.
+- Updated x86_64 IO header guards.
+- Implemented `Thread::PrintInfo` function
+- Implemented `Scheduler:PrintThreads` function
+- Now print the scheduler threads to debug in Panic.
+- Changed the existing `KERNEL_STACK_SIZE` macro to `INITIAL_KERNEL_STACK_SIZE`.
+- Added a new `KERNEL_STACK_SIZE` macro with defines the kernel stack size to be used after init. It is set to 64KiB.
+- Updated all page mapping related functions to take the Level4Group as an argument.
+- Implemented PageTable class which handles all mappings, unmappings, permission updates, physical address retrieval and page permissions decoding.
+- Removed all the old usages of the old mapping, unmapping, remapping and physical address retrieval functions.
+- Implemented basic address space separation. Each process gets its own address space. This is mostly setup in the ELF loader currently. The kernel and HHDM is mapped as shared memory in all address spaces.
+- The CR3 value is changed to the kernel value at the start of the exit system call as that address space is about to be destroyed.
+- Updated `x86_64_unmap_page` and the large page equivalent to free the unused page tables.
+- Fixed `void Scheduler::Next(void* iregs)` to actually use the parsed argument and not create some weird x86_64_Interrupt_Registers local variable. This has been a bug since userland support was first added. It is only now been finally discovered.
+- Each thread now has its own kernel stack. This is important because the thread can now be interrupt during kernel functions and still behave correctly.
+- Implemented a `PrintRegions` function to the PageManager class.
+- Updated memory size detection to use the end address of the last free memory map entry as the end of memory. This prevented some weird behaviour in QEMU when KVM is off, where massive reserved sections of memory would be detected after the real end of memory.
+- General cleanup of the `x86_64_InitPaging` function.
 
 ## Resources used
 
@@ -30,6 +54,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
 - [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful. rand function from this
 - [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
+- [SerenityOS](https://github.com/SerenityOS/serenity) - inspired system call entry and file descriptor management
 
 ## Prerequisites
 
@@ -47,6 +72,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - make
 - git
 - nasm
+- ovmf
 
 #### Toolchain build
 
@@ -104,11 +130,11 @@ If you cannot meet these requirements, see notes
 
 #### Debian
 
-- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm libtool patch`
+- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm libtool patch ovmf`
 
 #### Fedora/RHEL
 
-- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm libtool patch`
+- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm libtool patch edk2-ovmf`
 
 #### Arch
 
@@ -116,7 +142,7 @@ If you cannot meet these requirements, see notes
 
 #### Gentoo
 
-- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch`
+- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch sys-firmware/edk2-ovmf`
 
 ---
 

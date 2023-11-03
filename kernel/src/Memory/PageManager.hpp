@@ -23,19 +23,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "PageObject.hpp"
 #include "Memory.hpp"
+#include "VirtualPageManager.hpp"
+#include "PageTable.hpp"
 
-namespace WorldOS {
+enum class PagePermissions {
+    READ,
+    WRITE,
+    EXECUTE,
+    READ_WRITE,
+    READ_EXECUTE
+};
 
-    class PageManager {
-    public:
-        PageManager();
-        PageManager(void* virtual_region_start, size_t virtual_region_size, bool mode = false); // mode is false for supervisor and true for user
-        ~PageManager();
+class PageManager {
+public:
+    PageManager();
 
-        void InitPageManager(void* virtual_region_start, size_t virtual_region_size, bool mode = false); // Extra function for later initialisation. mode is false for supervisor and true for user
-        
-        void* AllocatePage();
-        void* AllocatePages(uint64_t count);
+    /* mode is false for supervisor and true for user. auto_expand allows the page manager to try and expand the virtual region for user page managers. */
+    PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false);
+    ~PageManager();
 
         /* Standard free */
 
@@ -54,13 +59,41 @@ namespace WorldOS {
         void* m_Vregion_start;
         size_t m_Vregion_size;
 
-        bool m_mode;
+    void FreePage(void* addr);
+    void FreePages(void* addr);
 
-        bool m_page_object_pool_used;
-    };
+    void Remap(void* addr, PagePermissions perms);
 
-    extern PageManager* g_KPM;
+    bool ExpandVRegionToRight(size_t new_size);
 
-}
+    bool isWritable(void* addr, size_t size) const;
+
+    bool isValidAllocation(void* addr, size_t size) const;
+
+    const VirtualRegion& GetRegion() const;
+
+    const PageTable& GetPageTable() const;
+
+    void PrintRegions(fd_t fd) const;
+
+private:
+    bool InsertObject(PageObject* obj);
+
+private:
+    PageObject* m_allocated_objects;
+    uint64_t m_allocated_object_count;
+    
+    VirtualRegion m_Vregion;
+    VirtualPageManager* m_VPM; // uses a pointer to avoid wasted RAM
+    PageTable m_PT;
+
+    bool m_mode;
+
+    bool m_page_object_pool_used;
+
+    bool m_auto_expand;
+};
+
+extern PageManager* g_KPM;
 
 #endif /* _PAGE_MANAGER_H */

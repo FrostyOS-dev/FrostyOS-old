@@ -28,10 +28,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 class BasicVGA {
 public:
     BasicVGA();
-    BasicVGA(const FrameBuffer& buffer, Position CursorPosition, const Colour& fgcolour, const Colour& bgcolour, bool double_buffer = false, WorldOS::PageManager* pm = nullptr);
+    BasicVGA(const FrameBuffer& buffer, Position CursorPosition, const Colour& fgcolour, const Colour& bgcolour, bool double_buffer = false, PageManager* pm = nullptr);
     ~BasicVGA();
 
-    void Init(const FrameBuffer& buffer, Position CursorPosition, const Colour& fgcolour, const Colour& bgcolour, bool double_buffer = false, WorldOS::PageManager* pm = nullptr);
+    void Init(const FrameBuffer& buffer, Position CursorPosition, const Colour& fgcolour, const Colour& bgcolour, bool double_buffer = false, PageManager* pm = nullptr);
     bool HasBeenInitialised();
 
     void SetFrameBuffer(const FrameBuffer& fb);
@@ -55,7 +55,7 @@ public:
     uint64_t GetAmountOfTextRows();
     uint64_t GetAmountOfTextColumns();
 
-    void EnableDoubleBuffering(WorldOS::PageManager* pm);
+    void EnableDoubleBuffering(PageManager* pm);
     void DisableDoubleBuffering();
     void SwapBuffers(bool disable_interrupts = true);
     bool isDoubleBufferEnabled();
@@ -66,7 +66,7 @@ private:
     Colour m_fgcolour;
     FrameBuffer m_FrameBuffer;
     bool m_HasBeenInitialised;
-    WorldOS::PageManager* m_pm;
+    PageManager* m_pm;
     bool m_DoubleBuffer;
     uint8_t* m_buffer;
 };

@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/RTC.hpp>
 
 #include <util.h>
-#include <stdio.hpp>
+#include <stdio.h>
 
 const char* days_of_week[7] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 const char* months[12] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
@@ -35,7 +35,7 @@ extern "C" void HAL_TimeInit() {
         sleep(10); // minimum wait time
         RTCTime time2 = RTC_getCurrentTime();
         if (time == time2) {
-            fprintf(VFS_DEBUG, "RTC Initialised Successfully. It is the %hhu of %s %hu, %hhu:%hhu:%hhu UTC\n", /*days_of_week[time.WeekDay - 1],*/ time.DayOfMonth, months[time.Month - 1], time.Year, time.Hours, time.Minutes, time.Seconds);
+            dbgprintf("RTC Initialised Successfully. It is %s the %hhu of %s %hu, %hhu:%hhu:%hhu UTC\n", days_of_week[time.WeekDay - 1], time.DayOfMonth, months[time.Month - 1], time.Year, time.Hours, time.Minutes, time.Seconds);
             break;
         }
     }

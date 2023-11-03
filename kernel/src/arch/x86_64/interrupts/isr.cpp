@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 x86_64_ISRHandler_t g_ISRHandlers[256];
 
-#include <stdio.hpp>
+#include <stdio.h>
 
 static const char* const g_Exceptions[] = {
     "Divide by 0",
@@ -71,7 +71,7 @@ extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers regs) {
     if (g_ISRHandlers[p_regs->interrupt] != nullptr)
         return g_ISRHandlers[p_regs->interrupt](p_regs);
 
-    fprintf(VFS_DEBUG, "Interrupt occurred. RIP: %lx Interrupt number: %hhx\n", regs.rip, regs.interrupt);
+    dbgprintf("Interrupt occurred. RIP: %016lx Interrupt number: %02hhx\n", regs.rip, regs.interrupt);
 
     // prevent spam panic messages
     if (in_interrupt) {
@@ -89,7 +89,7 @@ extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers regs) {
     memcpy(tempReason, g_Exceptions[p_regs->interrupt], strLength);
 
     in_interrupt = true;
-    WorldOS::Panic(tempReason, p_regs, true);
+    Panic(tempReason, p_regs, true);
 
 
     while (true); // just hang

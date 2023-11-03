@@ -57,10 +57,15 @@ unsigned uabs(unsigned n);
 long labs(long n);
 unsigned long ulabs(unsigned long n);
 
+
+/* Implemented in architecture-specific assembly */
+
 div_t div(int numer, int denom);
 udiv_t udiv(unsigned numer, unsigned denom);
 ldiv_t ldiv(long numer, long denom);
 uldiv_t uldiv(unsigned long numer, unsigned long denom);
+
+unsigned char log2(unsigned long int num);
 
 #ifdef __cplusplus
 }

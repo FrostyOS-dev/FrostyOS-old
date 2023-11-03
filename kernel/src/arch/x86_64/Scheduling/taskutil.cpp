@@ -44,6 +44,7 @@ void x86_64_PrepareNewRegisters(x86_64_Interrupt_Registers* out, const x86_64_Re
     out->CR3 = in->CR3;
     out->cs = in->CS;
     out->ds = in->DS;
+    out->ss = in->DS;
 }
 
 void x86_64_ConvertToStandardRegisters(x86_64_Registers* out, const x86_64_Interrupt_Registers* in) {
@@ -70,7 +71,7 @@ void x86_64_ConvertToStandardRegisters(x86_64_Registers* out, const x86_64_Inter
     out->DS = in->ds;
 }
 
-void x86_64_GetNewStack(WorldOS::PageManager* pm, x86_64_Registers* regs, size_t size) {
+void x86_64_GetNewStack(PageManager* pm, x86_64_Registers* regs, size_t size) {
     size = ALIGN_UP(size, 4096);
     if (size < KiB(16))
         size = KiB(16);

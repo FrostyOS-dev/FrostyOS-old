@@ -18,12 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Stack.hpp"
 
 extern "C" {
-unsigned char __attribute__((aligned(0x1000))) kernel_stack[KERNEL_STACK_SIZE] = {0};
-unsigned long int kernel_stack_size = KERNEL_STACK_SIZE;
+unsigned char __attribute__((aligned(0x1000))) kernel_stack[INITIAL_KERNEL_STACK_SIZE] = {0};
+unsigned long int kernel_stack_size = INITIAL_KERNEL_STACK_SIZE;
 }
 
 #include <stdint.h>
-#include <stdio.hpp>
+#include <stdio.h>
 
 #include "ELFSymbols.hpp"
 
@@ -34,7 +34,7 @@ struct stack_frame {
 
 void x86_64_walk_stack_frames(void* RBP) {
     if (RBP == nullptr) {
-        fprintf(VFS_DEBUG, "[%s(%lp)] WARN: no stack frames.\n", __extension__ __PRETTY_FUNCTION__, RBP);
+        dbgprintf("[%s(%lp)] WARN: no stack frames.\n", __extension__ __PRETTY_FUNCTION__, RBP);
         return;
     }
 
@@ -46,11 +46,11 @@ void x86_64_walk_stack_frames(void* RBP) {
         char const* name = nullptr;
         if (g_KernelSymbols != nullptr)
             name = g_KernelSymbols->LookupSymbol(frame->RIP);
-        fprintf(VFS_DEBUG, "%lx", frame->RIP);
+        dbgprintf("%016lx", frame->RIP);
         if (name != nullptr)
-            fprintf(VFS_DEBUG, ": %s\n", name);
+            dbgprintf(": %s\n", name);
         else
-            fputc(VFS_DEBUG, '\n');
+            dbgputc('\n');
         frame = frame->RBP;
     }
 }

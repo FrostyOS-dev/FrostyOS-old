@@ -46,10 +46,13 @@ struct x86_64_Registers {
     uint16_t DS;
     uint64_t RFLAGS;
     uint64_t CR3;
+    uint32_t _alignment; // used to fix alignment
 } __attribute__((packed));
 
 // Switch to another kernel thread. Does not save any registers and will not return.
 void __attribute__((noreturn)) x86_64_kernel_switch(struct x86_64_Registers* regs);
+
+void __attribute__((noreturn)) x86_64_enter_user(struct x86_64_Registers* regs);
 
 
 // Save all registers. The address to save MUST be placed on the stack before calling.
@@ -60,6 +63,8 @@ void x86_64_kernel_save_main();
 void* x86_64_get_stack_ptr();
 
 void __attribute__((noreturn)) x86_64_kernel_thread_end();
+
+void x86_64_set_kernel_gs_base(uint64_t base);
 
 #ifdef __cplusplus
 }

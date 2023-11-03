@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "LinkedList.hpp"
 #include "Bitmap.hpp"
 
-#include <stdio.hpp>
+#include <stdio.h>
 #include <util.h>
 #include <Memory/newdelete.hpp> // required for creating and deleting nodes
 
@@ -31,7 +31,7 @@ namespace LinkedList {
 	Node nodePool[POOL_SIZE];
 	uint64_t nodePool_UsedCount;
 	uint8_t nodePool_BitmapData[POOL_SIZE / 8];
-	WorldOS::Bitmap nodePool_Bitmap;
+	Bitmap nodePool_Bitmap;
 	bool nodePoolHasBeenInitialised = false;
 
 	void NodePool_Init() {
@@ -169,8 +169,8 @@ namespace LinkedList {
 		if (temp == nullptr)
 			return;
 		if (temp->next != nullptr)
-			temp->next->previous= temp->previous;
-		if (temp->previous!= nullptr)
+			temp->next->previous = temp->previous;
+		if (temp->previous != nullptr)
 			temp->previous->next = temp->next;
 		if (NodePool_IsInPool(temp))
 			NodePool_FreeNode(temp);
@@ -178,16 +178,31 @@ namespace LinkedList {
 			delete temp;
 	}
 
-	void print(Node* head) {
-		printf("Linked list order: ");
+	void deleteNode(Node*& head, Node* node) {
+		if (node == nullptr || head == nullptr)
+			return;
+		if (node->next != nullptr)
+			node->next->previous = node->previous;
+		if (node->previous != nullptr)
+			node->previous->next = node->next;
+		if (head == node)
+			head = node->next;
+		if (NodePool_IsInPool(node))
+			NodePool_FreeNode(node);
+		else if (NewDeleteInitialised())
+			delete node;
+	}
+
+	void fprint(fd_t file, Node* head) {
+		fprintf(file, "Linked list order: ");
 
 		Node* current = head;
 		while (current != nullptr) {
-			printf(" %lu ", current->data);
+			fprintf(file, " %lu ", current->data);
 			current = current->next;
 		}
 
-		printf("\n");
+		fprintf(file, "\n");
 
 		// clear the value of current to protect the node it is pointing to from possible deletion
 		current = nullptr;
