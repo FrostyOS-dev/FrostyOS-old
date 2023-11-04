@@ -338,7 +338,6 @@ void mrvn_free(void *mem) {
 		DLIST_INIT(chunk, free);
 		push_free(chunk);
     }
-    check();
 }
  
 void check(void) {

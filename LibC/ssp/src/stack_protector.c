@@ -16,7 +16,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <stdint.h>
-#include <sys/syscall.h>
+#include <kernel/syscall.h>
+#include <kernel/file.h>
 
 #define STACK_CHK_GUARD 0x595e9fbd94fda766
 
@@ -24,9 +25,9 @@ uintptr_t __stack_chk_guard = STACK_CHK_GUARD;
 
 __attribute__((noreturn)) void __stack_chk_fail(void) {
 #ifndef NDEBUG
-    system_call(SC_WRITE, 3, (unsigned long)"Stack smashing detected. terminating...\n", 40);
+    write(3, "Stack smashing detected. terminating...\n", 40);
 #endif
-    system_call(SC_WRITE, 2, (unsigned long)"Stack smashing detected. terminating...\n", 40);
+    write(2, "Stack smashing detected. terminating...\n", 40);
     system_call(SC_EXIT, 1, 0, 0);
     __builtin_unreachable();
 }

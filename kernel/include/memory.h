@@ -29,6 +29,31 @@ extern "C" {
 #define PROT_EXECUTE       4UL
 #define PROT_READ_EXECUTE  5UL
 
+
+#ifndef _IN_KERNEL
+
+#include "syscall.h"
+
+static inline void* mmap(unsigned long size, unsigned long perms, void* addr) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_MMAP), "D"(size), "S"(perms), "d"(addr) : "rcx", "r11", "memory");
+    return (void*)ret;
+}
+
+static inline int munmap(void* addr, unsigned long size) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_MUNMAP), "D"(addr), "S"(size) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+static inline int mprotect(void* addr, unsigned long size, unsigned long perms) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_MPROTECT), "D"(addr), "S"(size), "d"(perms) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+#else /* _IN_KERNEL */
+
 // Request page aligned memory size bytes long, starting at addr (if null, any address) with perms. If returned address is between (void*)-1 and (void*)-100, then an error occurred and the address is the error code.
 void* mmap(unsigned long size, unsigned long perms, void* addr);
 
@@ -38,6 +63,7 @@ int munmap(void* addr, unsigned long size);
 // Remap page aligned memory size bytes long, starting at addr with perms.
 int mprotect(void* addr, unsigned long size, unsigned long perms);
 
+#endif /* _IN_KERNEL */
 
 #ifdef __cplusplus
 }

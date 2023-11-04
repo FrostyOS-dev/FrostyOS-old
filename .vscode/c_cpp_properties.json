@@ -3,17 +3,20 @@
         {
             "name": "Kernel",
             "includePath": [
-                "${workspaceFolder}/kernel/src/*"
+                "/home/frosty515/dev/WorldOS/Public/kernel/src/*",
+                "/home/frosty515/dev/WorldOS/Public/kernel/include/*"
             ],
-            "defines": [],
-            "compilerPath": "${HOME}/opt/x86_64-worldos-cross/bin/x86_64-worldos-gcc",
+            "defines": [
+                "_IN_KERNEL=1"
+            ],
+            "compilerPath": "/home/frosty515/opt/x86_64-worldos-cross/bin/x86_64-worldos-gcc",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
             "mergeConfigurations": false,
             "browse": {
                 "path": [
-                    "${workspaceFolder}/**"
+                    "/home/frosty515/dev/WorldOS/Public/**"
                 ],
                 "limitSymbolsToIncludedHeaders": true
             },
@@ -42,7 +45,8 @@
                 "-static",
                 "-Bsymbolic",
                 "-zmax-page-size=0x1000"
-            ]
+            ],
+            "compilerPathInCppPropertiesJson": "${HOME}/opt/x86_64-worldos-cross/bin/x86_64-worldos-gcc"
         },
         {
             "name": "Utils",

@@ -35,4 +35,6 @@ void x86_64_GetNewStack(PageManager* pm, x86_64_Registers* regs, size_t size);
 
 void x86_64_SaveIRegistersToThread(const Scheduling::Thread* thread, const x86_64_Interrupt_Registers* regs);
 
+extern "C" void x86_64_PrepareThreadExit(Scheduling::Thread* thread, int status, bool was_running, void (*func)(Scheduling::Thread*, int, bool));
+
 #endif /* _X86_64_TASK_UTIL_HPP */

@@ -132,6 +132,10 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@echo Building Kernel
 	@echo ---------------
 	@$(MAKE) -C kernel kernel config=$(config)
+	@echo -------------------------
+	@echo Installing Kernel Headers
+	@echo -------------------------
+	@$(MAKE) -C kernel install-kernel-headers
 	@echo -------------
 	@echo Building LibC
 	@echo -------------

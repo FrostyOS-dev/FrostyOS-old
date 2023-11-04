@@ -59,7 +59,6 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
             return false;
         m_header = header;
     }
-    dbgputs("valid elf header\n");
     void* lowest_addr = (void*)UINT64_MAX;
     void* highest_addr = nullptr;
     ELF_ProgramHeader64** prog_headers = (ELF_ProgramHeader64**)((uint64_t)m_header + m_header->ProgramHeaderTablePosition);
@@ -86,14 +85,6 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
                 return false;
         }
     }
-    size_t page_count = 0;
-    if (highest_addr == lowest_addr)
-        page_count = 1;
-    else
-        page_count = DIV_ROUNDUP(((uint64_t)highest_addr - (uint64_t)lowest_addr), PAGE_SIZE);
-    //void* pages = g_VPM->AllocatePages(lowest_addr, page_count);
-    /*if (pages != lowest_addr)
-        return false;*/
     m_region = VirtualRegion((void*)0x1000, (void*)0x800000000000);
     m_VPM = new VirtualPageManager;
     if (m_VPM == nullptr)
@@ -248,7 +239,6 @@ void ELF_Executable::End_Handler() {
     if (m_VPM != nullptr) {
         delete m_PM;
         delete m_VPM;
-        //g_VPM->UnallocatePages(m_region.GetStart(), DIV_ROUNDUP((m_region.GetSize()), PAGE_SIZE));
     }
     kfree(this);
 }

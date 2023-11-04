@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Scheduling/Scheduler.hpp>
 #include <Scheduling/Thread.hpp>
 
+#include <syscall.h>
+
 #ifdef __x86_64__
 #include <arch/x86_64/io.h>
 #endif

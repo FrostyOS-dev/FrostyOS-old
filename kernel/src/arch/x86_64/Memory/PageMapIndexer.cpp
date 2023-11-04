@@ -173,7 +173,7 @@ void x86_64_unmap_page(Level4Group* PML4Array, void* virtualaddr) {
 }
 
 void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
-    uint64_t virtual_addr = (uint64_t)virtualaddr & ~0x1FFFFF;
+    uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
 
     const uint16_t pt    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
     const uint16_t pd    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
@@ -418,7 +418,7 @@ void x86_64_remap_large_page(Level4Group* PML4Array, void* virtualaddr, uint32_t
 
 // Update flags of page mapping with no TLB flush
 void x86_64_remap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
-    uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
+    uint64_t virtual_addr = (uint64_t)virtualaddr & ~0x1FFFFF;
 
     const uint16_t pd    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
     const uint16_t pdptr = (uint16_t)((virtual_addr & 0x007FC0000000) >> 30);

@@ -106,9 +106,7 @@ char* strrchr(const char* str, int character) {
         i++;
         c = str[i];
     }
-    if (found) {
-        dbgprintf("found = %d. last = %lu, str = \"%s\"", found, last, str);
+    if (found)
         return &(((char*)str)[last]);
-    }
     return NULL;
 }

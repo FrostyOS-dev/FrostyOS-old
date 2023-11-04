@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdlib.h>
 
-#include <sys/syscall.h>
+#include <kernel/syscall.h>
 
 int atoi(const char* str) {
     int value = 0;

@@ -22,10 +22,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifdef __x86_64__
 #include <arch/x86_64/Memory/PagingUtil.hpp>
 #include <arch/x86_64/Memory/PageMapIndexer.hpp>
+#include <arch/x86_64/Scheduling/taskutil.hpp>
 #endif
 
-void sys$exit(Scheduling::Thread* thread, int status) {
-    //(void)status; // has no meaning currently
+void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running) {
     using namespace Scheduling;
     Process* parent = thread->GetParent();
 #ifdef __x86_64__
@@ -38,9 +38,6 @@ void sys$exit(Scheduling::Thread* thread, int status) {
             cleanup.function(cleanup.data);
         return;
     }
-    bool was_running = Scheduler::isRunning();
-    if (was_running)
-        Scheduler::Stop();
     if (thread->GetFlags() & CREATE_STACK)
         parent->GetPageManager()->FreePages((void*)(thread->GetStack() - KiB(64)));
     ThreadCleanup_t cleanup = thread->GetCleanupFunction();
@@ -66,6 +63,16 @@ void sys$exit(Scheduling::Thread* thread, int status) {
     delete thread;
     if (cleanup.function != nullptr)
         cleanup.function(cleanup.data);
-    if (was_running)
+    if (was_scheduler_running)
         Scheduler::Resume();
+}
+
+void sys$exit(Scheduling::Thread* thread, int status) {
+    using namespace Scheduling;
+    bool was_running = Scheduler::isRunning();
+    if (was_running)
+        Scheduler::Stop();
+#ifdef __x86_64__
+    x86_64_PrepareThreadExit(thread, status, was_running, do_exit);
+#endif
 }

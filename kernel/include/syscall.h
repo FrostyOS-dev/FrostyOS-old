@@ -15,31 +15,39 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _SYS_FILE_H
-#define _SYS_FILE_H
-
-typedef long fd_t;
-
-#define O_READ 1UL
-#define O_WRITE 2UL
-#define O_CREATE 4UL
-#define O_APPEND 8UL
+#ifndef _SYSCALL_H
+#define _SYSCALL_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-fd_t open(const char* path, unsigned long mode);
+enum SystemCalls {
+    SC_EXIT = 0,
+    SC_READ = 1,
+    SC_WRITE = 2,
+    SC_OPEN = 3,
+    SC_CLOSE = 4,
+    SC_SEEK = 5,
+    SC_MMAP = 6,
+    SC_MUNMAP = 7,
+    SC_MPROTECT = 8
+};
 
-long read(fd_t file, void* buf, unsigned long count);
-long write(fd_t file, const void* buf, unsigned long count);
+#ifndef _IN_KERNEL
 
-int close(fd_t file);
+inline unsigned long system_call(unsigned long num, unsigned long arg1, unsigned long arg2, unsigned arg3) {
+    // Number is in RAX, arg1 is in RDI, arg2 is in RSI, arg3 is in RDX
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(num), "D"(arg1), "S"(arg2), "d"(arg3) : "rcx", "r11", "memory");
+    return ret;
+}
 
-long seek(fd_t file, long offset);
+#endif /* _IN_KERNEL */
+
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _SYS_FILE_H */
+#endif /* _SYS_SYSCALL_H */

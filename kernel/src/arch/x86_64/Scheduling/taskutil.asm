@@ -15,17 +15,16 @@
 
 [bits 64]
 
-global system_call
-system_call:
-    push rbp
-    mov rbp, rsp
-    push r11 ; gets overridden by syscall
-    mov rax, rdi ; set the system call number
-    mov rdi, rsi ; set arg1
-    mov rsi, rdx ; set arg2
-    mov rdx, rcx ; set arg2
-    syscall
-    pop r11
-    mov rsp, rbp
-    pop rbp
-    ret
+extern kernel_stack
+extern kernel_stack_size
+
+global x86_64_PrepareThreadExit
+x86_64_PrepareThreadExit:
+    mov rsp, kernel_stack
+    add rsp, [kernel_stack_size]
+    xor rbp, rbp
+    call rcx
+    cli
+.l: ; we should never get to here. just hang.
+    hlt
+    jmp .l

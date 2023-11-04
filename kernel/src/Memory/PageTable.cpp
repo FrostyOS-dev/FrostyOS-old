@@ -30,7 +30,6 @@ PageTable g_KPT {false, g_KPM};
 PageTable::PageTable(bool mode, PageManager* pm) : m_root_table(nullptr), m_mode(mode), m_pm(pm) {
     if (m_mode && m_pm != nullptr) {
         m_root_table = x86_64_to_HHDM(g_PPFA->AllocatePage());
-        dbgprintf("Initialising user page table. m_root_table = %lp, m_pm = %lp.\n", m_root_table, m_pm);
         x86_64_InitUserTable(m_root_table);
     }
     else
@@ -43,10 +42,6 @@ PageTable::~PageTable() {
 }
 
 void PageTable::MapPage(void* physical_addr, void* virtual_addr, PagePermissions perms, bool flush) {
-    /*dbgprintf("Mapping %lp to %lp with perms %x.\n", physical_addr, virtual_addr, DecodePageFlags(perms));
-    void* RBP;
-    __asm__ volatile ("movq %%rbp, %0" : "=g" (RBP));
-    x86_64_walk_stack_frames(RBP);*/
     if (flush)
         x86_64_map_page((Level4Group*)m_root_table, physical_addr, virtual_addr, DecodePageFlags(perms));
     else
@@ -54,7 +49,6 @@ void PageTable::MapPage(void* physical_addr, void* virtual_addr, PagePermissions
 }
 
 void PageTable::RemapPage(void* virtual_addr, PagePermissions perms, bool flush) {
-    //dbgprintf("Remapping %lp with perms %u.\n", virtual_addr, DecodePageFlags(perms));
     if (flush)
         x86_64_remap_page((Level4Group*)m_root_table, virtual_addr, DecodePageFlags(perms));
     else
@@ -62,7 +56,6 @@ void PageTable::RemapPage(void* virtual_addr, PagePermissions perms, bool flush)
 }
 
 void PageTable::UnmapPage(void* virtual_addr, bool flush) {
-    //dbgprintf("Unmapping %lp.\n", virtual_addr);
     if (flush)
         x86_64_unmap_page((Level4Group*)m_root_table, virtual_addr);
     else

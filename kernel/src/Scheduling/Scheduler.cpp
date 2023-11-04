@@ -335,29 +335,39 @@ namespace Scheduling {
         }
 
         void PrintThreads(fd_t file) {
-            fprintf(file, "Kernel Threads:\n");
-            for (uint64_t i = 0; i < g_kernel_threads.getCount(); i++) {
-                g_kernel_threads.get(i)->PrintInfo(file);
+            if (g_kernel_threads.getCount() > 0) {
+                fprintf(file, "Kernel Threads:\n");
+                for (uint64_t i = 0; i < g_kernel_threads.getCount(); i++) {
+                    g_kernel_threads.get(i)->PrintInfo(file);
+                    fputc(file, '\n');
+                }
+            }
+            if (g_high_threads.getCount() > 0) {
+                fprintf(file, "High Threads:\n");
+                for (uint64_t i = 0; i < g_high_threads.getCount(); i++) {
+                    g_high_threads.get(i)->PrintInfo(file);
+                    fputc(file, '\n');
+                }
+            }
+            if (g_normal_threads.getCount() > 0) {
+                fprintf(file, "Normal Threads:\n");
+                for (uint64_t i = 0; i < g_normal_threads.getCount(); i++) {
+                    g_normal_threads.get(i)->PrintInfo(file);
+                    fputc(file, '\n');
+                }
+            }
+            if (g_low_threads.getCount() > 0) {
+                fprintf(file, "Low Threads:\n");
+                for (uint64_t i = 0; i < g_low_threads.getCount(); i++) {
+                    g_low_threads.get(i)->PrintInfo(file);
+                    fputc(file, '\n');
+                }
+            }
+            if (g_current != nullptr) {
+                fprintf(file, "Current Thread:\n");
+                g_current->PrintInfo(file);
                 fputc(file, '\n');
             }
-            fprintf(file, "High Threads:\n");
-            for (uint64_t i = 0; i < g_high_threads.getCount(); i++) {
-                g_high_threads.get(i)->PrintInfo(file);
-                fputc(file, '\n');
-            }
-            fprintf(file, "Normal Threads:\n");
-            for (uint64_t i = 0; i < g_normal_threads.getCount(); i++) {
-                g_normal_threads.get(i)->PrintInfo(file);
-                fputc(file, '\n');
-            }
-            fprintf(file, "Low Threads:\n");
-            for (uint64_t i = 0; i < g_low_threads.getCount(); i++) {
-                g_low_threads.get(i)->PrintInfo(file);
-                fputc(file, '\n');
-            }
-            fprintf(file, "Current Thread:\n");
-            g_current->PrintInfo(file);
-            fputc(file, '\n');
         }
     }
 }

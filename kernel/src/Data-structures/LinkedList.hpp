@@ -111,7 +111,7 @@ namespace LinkedList {
 		}
 		void rotateLeft() {
 			if (m_count < 2) {
-				dbgprintf("[%s] WARN: not enough nodes to rotate.\n", __extension__ __PRETTY_FUNCTION__);
+				//dbgprintf("[%s] WARN: not enough nodes to rotate.\n", __extension__ __PRETTY_FUNCTION__);
 				return; // not enough nodes to rotate
 			}
 			Node* end = m_start;

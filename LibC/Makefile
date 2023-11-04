@@ -51,7 +51,7 @@ libc: $(libc_cxx_object_files) $(libc_c_object_files) $(libc_asm_object_files) $
 	@echo Linking LibC
 	@echo ------------
 	$(AR) rcs $(LIBC_TARGET) $(libc_asm_object_files) $(libc_c_object_files) $(libc_cxx_object_files) $(libc_ssp_object_files)
-	$(AR) rcs $(LIBSSP_TARGET) $(libc_ssp_object_files) bin-int/arch/x86_64/sys/syscall.asm.o
+	$(AR) rcs $(LIBSSP_TARGET) $(libc_ssp_object_files)
 
 install-start-files: $(libc_start_object_files) $(libc_end_object_files)
 	@mkdir -p ../root/data/lib
@@ -63,6 +63,7 @@ install-libc: install-start-files install-libc-headers
 	@mkdir -p ../root/data/lib
 	@cp $(LIBC_TARGET) ../root/data/lib/
 	@cp $(LIBSSP_TARGET) ../root/data/lib/
+	@cp $(LIBSSP_TARGET) ../root/data/lib/libssp.a
 
 install-libc-headers:
 	@mkdir -p ../root/data/include
