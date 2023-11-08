@@ -28,6 +28,7 @@ CC = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc
 CXX = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-g++
 LD = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld
 AR = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ar
+STRIP = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-strip
 ASM = nasm
 
 all: boot-iso
@@ -155,6 +156,7 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@echo -----------------
 	@mkdir -p dist/boot/WorldOS
 	@cp kernel/bin/kernel.elf dist/boot/WorldOS
+	@$(STRIP) --strip-debug dist/boot/WorldOS/kernel.elf
 	@curl -o dist/boot/limine.cfg https://raw.githubusercontent.com/WorldOS-dev/various-scripts/master/WorldOS/boot/limine.cfg &> /dev/null
 	@mkdir -p iso
 	@dd if=/dev/zero of=iso/fat.img bs=1k count=1440 &>/dev/null
