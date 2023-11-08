@@ -27,6 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <HAL/drivers/ACPI/RSDP.hpp>
 #include <HAL/drivers/ACPI/XSDT.hpp>
 
+#include <HAL/drivers/PS2/PS2Controller.hpp>
+
 #include <HAL/time.h>
 
 #include <Scheduling/Scheduler.hpp>
@@ -35,6 +37,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Graphics/Colour.hpp>
 
 #include <tty/TTY.hpp>
+#include <tty/KeyboardInput.hpp>
 
 #include <assert.h>
 
@@ -65,6 +68,10 @@ FileDescriptor Kstdout;
 FileDescriptor Kstderr;
 FileDescriptor Kstddebug;
 
+PS2Controller KPS2Controller;
+
+KeyboardInput KInput;
+
 struct Stage2_Params {
     void* RSDP_addr;
     void* initramfs_addr;
@@ -80,14 +87,14 @@ extern "C" void StartKernel(KernelParams* params) {
 
     KBasicVGA.Init(m_InitialFrameBuffer, {0, 0}, g_fgcolour, g_bgcolour);
 
-    KTTY = TTY(&KBasicVGA, g_fgcolour, g_bgcolour); 
+    KTTY = TTY(&KBasicVGA, nullptr, g_fgcolour, g_bgcolour); 
 
     g_CurrentTTY = &KTTY;
 
     LinkedList::NodePool_Init();
 
     KFDManager = FileDescriptorManager(KFDManager_BitmapData, 8);
-    Kstdin = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::READ, 0); // currently TTYs will just output 0 when read from
+    Kstdin = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::READ, 0);
     Kstdout = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::WRITE, 1);
     Kstderr = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::WRITE, 2);
     Kstddebug = FileDescriptor(FileDescriptorType::DEBUG, nullptr, FileDescriptorMode::WRITE, 3);
@@ -113,6 +120,15 @@ extern "C" void StartKernel(KernelParams* params) {
     }
 
     // Do any early initialisation
+
+    KPS2Controller = PS2Controller();
+    KPS2Controller.Init();
+    dbgprintf("Detected %s %s\n", KPS2Controller.getVendorName(), KPS2Controller.getDeviceName());
+
+    KInput = KeyboardInput();
+    KInput.Initialise((Keyboard*)KPS2Controller.GetKeyboard());
+
+    KTTY.SetKeyboardInput(&KInput);
 
     uint8_t* ELF_map_data;
     uint64_t ELF_map_size = TarFS::USTAR_Lookup((uint8_t*)(params->initramfs_addr), "kernel.map", &ELF_map_data);

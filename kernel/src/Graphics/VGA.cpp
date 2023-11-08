@@ -115,25 +115,24 @@ void BasicVGA::PlotPixel(uint64_t x, uint64_t y, const Colour& colour) {
 
 void BasicVGA::NewLine() {
     m_CursorPosition.y += 16;
-    if (m_CursorPosition.y >= m_FrameBuffer.FrameBufferHeight)
+    if (m_CursorPosition.y >= ALIGN_DOWN(m_FrameBuffer.FrameBufferHeight, 16))
         ScrollText();
     m_CursorPosition.x = 0;
 }
 
 void BasicVGA::Backspace() {
-    if (m_CursorPosition.x < 10 && m_CursorPosition.y < 10)
+    if (m_CursorPosition.x < 10 && m_CursorPosition.y < 16)
         return; // Cannot backspace
     // Rewind
     if (m_CursorPosition.x < 10)
-        m_CursorPosition = {GetAmountOfTextColumns() - 1, m_CursorPosition.y - 16};
+        m_CursorPosition = {ALIGN_DOWN(m_FrameBuffer.FrameBufferWidth, 10) - 10, m_CursorPosition.y - 16};
     else
         m_CursorPosition = {m_CursorPosition.x - 10, m_CursorPosition.y};
-    putc(' '); // clear the existing character
-    // Rewind again
-    if (m_CursorPosition.x < 10)
-        m_CursorPosition = {GetAmountOfTextColumns() - 1, m_CursorPosition.y - 16};
-    else
-        m_CursorPosition = {m_CursorPosition.x - 10, m_CursorPosition.y};
+    // Zero it
+    for (uint8_t cy = 0; cy < 16; cy++) {
+        for (uint8_t cx = 0; cx < 10; cx++)
+            PlotPixel((m_CursorPosition.x)+cx, (m_CursorPosition.y)+cy, m_bgcolour);
+    }
 }
 
 void BasicVGA::putc(const char c) {
@@ -181,12 +180,16 @@ void BasicVGA::putc(const char c) {
     }
     /* Adjust Cursor position to say a character has been printed */
     m_CursorPosition = {m_CursorPosition.x + 10, m_CursorPosition.y};
+    if (m_CursorPosition.x >= ALIGN_DOWN(m_FrameBuffer.FrameBufferWidth, 10))
+        NewLine();
 }
 
 void BasicVGA::ScrollText() {
     /* Copy everything up one row */
-    for (uint64_t y = 16; y < ((GetAmountOfTextRows() - 1) * 16); y += 16)
-        fast_memmove((m_FrameBuffer.FrameBufferAddress + ((y - 16) * 4 * m_FrameBuffer.FrameBufferWidth)), (m_FrameBuffer.FrameBufferAddress + (y * 4 * m_FrameBuffer.FrameBufferWidth)), 4 * m_FrameBuffer.FrameBufferWidth);
+    for (uint64_t y = 16; y < (GetAmountOfTextRows() * 16); y += 16) {
+        dbgprintf("Copying row %ld to row %ld\n", y, y - 16);
+        fast_memcpy((void*)((uint64_t)(m_FrameBuffer.FrameBufferAddress) + ((y - 16) * 4 * m_FrameBuffer.FrameBufferWidth)), (void*)((uint64_t)m_FrameBuffer.FrameBufferAddress + (y * 4 * m_FrameBuffer.FrameBufferWidth)), 4 * m_FrameBuffer.FrameBufferWidth * 16);
+    }
 
     /* Set everything in the last row to zero */
     fast_memset((void*)((uint64_t)(m_FrameBuffer.FrameBufferAddress) + 4 * m_FrameBuffer.FrameBufferWidth * 16 * (GetAmountOfTextRows() - 1)), 0, (4 * m_FrameBuffer.FrameBufferWidth * 16) / 8);

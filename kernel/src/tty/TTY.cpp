@@ -19,22 +19,32 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <util.h>
 
+void HandleKeyboardEvent(void* data, char c) {
+    if (data == nullptr)
+        return;
+    ((TTY*)data)->HandleKeyEvent(c);
+}
+
 TTY* g_CurrentTTY = nullptr;
 
 TTY::TTY() : m_VGADevice(nullptr), m_foreground(), m_background() {
 
 }
 
-TTY::TTY(BasicVGA* VGADevice, const Colour& fg_colour, const Colour& bg_colour) : m_VGADevice(VGADevice), m_foreground(fg_colour), m_background(bg_colour) {
-    
+TTY::TTY(BasicVGA* VGADevice, KeyboardInput* input, const Colour& fg_colour, const Colour& bg_colour) : m_VGADevice(VGADevice), m_keyboardInput(input), m_foreground(fg_colour), m_background(bg_colour) {
+    if (m_keyboardInput != nullptr)
+        m_keyboardInput->OnKey(HandleKeyboardEvent, this);
 }
 
 TTY::~TTY() {
-
+    if (m_keyboardInput != nullptr)
+        m_keyboardInput->OnKey(nullptr, nullptr);
 }
 
-char TTY::getc() {
-    return '\0';
+int TTY::getc() {
+    if (m_keyboardInput == nullptr)
+        return -1;
+    return m_keyboardInput->GetChar();
 }
 
 void TTY::putc(char c) {
@@ -51,9 +61,8 @@ void TTY::putc(char c) {
             m_VGADevice->NewLine();
             break;
         case '\t':
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 4; i++)
                 m_VGADevice->putc(' ');
-            }
             break;
         case '\r':
             m_VGADevice->SetCursorPosition({0, m_VGADevice->GetCursorPosition().y});
@@ -94,4 +103,33 @@ BasicVGA* TTY::GetVGADevice() {
 
 void TTY::SetVGADevice(BasicVGA* device) {
     m_VGADevice = device;
+}
+
+KeyboardInput* TTY::GetKeyboardInput() {
+    return m_keyboardInput;
+}
+
+void TTY::SetKeyboardInput(KeyboardInput* input) {
+    if (m_keyboardInput != nullptr) // if input was enabled before, disable it
+        m_keyboardInput->OnKey(nullptr, nullptr);
+    m_keyboardInput = input;
+    if (m_keyboardInput != nullptr)
+        m_keyboardInput->OnKey(HandleKeyboardEvent, this);
+}
+
+void TTY::HandleKeyEvent(char c) {
+    if (m_inputMirroring)
+        putc(c);
+}
+
+void TTY::EnableInputMirroring() {
+    m_inputMirroring = true;
+}
+
+void TTY::DisableInputMirroring() {
+    m_inputMirroring = false;
+}
+
+bool TTY::isInputMirroringEnabled() const {
+    return m_inputMirroring;
 }

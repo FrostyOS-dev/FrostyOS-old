@@ -17,19 +17,18 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 04/11/2023
+## Latest Changes - 08/11/2023
 
-- Fixed bit masking in `x86_64_unmap_page` and `x86_64_remap_large_page`.
-- Removed call to `check` function at the end of `mrvn_free`.
-- Removed unnecessary debug printing in kernel `strrchr`, a `SimpleLinkedList` function and during ELF loading and user page table initialisation.
-- Updated the Scheduler's `PrintThreads` function to only print thread level name if there are threads at that level.
-- Implemented `x86_64_PrepareThreadExit` function which switches to the global stack and then calls the actual exit function.
-- Implemented new `do_exit` function which actually destroys the thread. The old function calls the x86_64 helper with the arguments required to call the real function after stopping the scheduler if necessary.
-- Implemented simple kernel headers with simple inline-able wrappers around system calls. These get copied over to the system root prior to LibC building
-- Added define to kernel parameters so the kernel headers can be included in the kernel.
-- Updated LibC to use the system call wrappers in the kernel headers instead of it's weird headers and slow wrapper functions. This also makes LibSSP fully independent of LibC.
-- Fixed kernel's `SystemCall.hpp` to use the new kernel headers instead of defining the system call numbers separately.
-- LibSSP is now copied to the system root as `libssp_nonshared.a` and `libssp.a`. This could probably be done with a symlink, but this is only temporary.
+- Fixed various `BasicVGA` functions such as `putc`, `NewLine` and `ScrollText`
+- Added total thread counter to scheduler. This allows for faster task switching if there are no other threads to switch to.
+- Cleaned up code style in `TTY.cpp`
+- Implemented basic stack data structure. Currently it just holds a stack of pointers.
+- Implemented basic dynamic buffer data structure. It holds a doubly-linked list of blocks. This prevents reallocation every time the buffer needs to increase in size.
+- Implemented basic Intel 8042 PS/2 controller driver.
+- Implemented basic PS/2 keyboard driver.
+- Added keyboard input support to TTYs. This also makes stdin function instead of just outputting zeros.
+- Added `-Wno-switch` flag when building kernel to prevent massive blocks of useless warnings about the PS/2 keyboard scancode handling.
+- Fixed the maximum value for `uint8_t` in the kernel's `stdint.h`
 
 ## Resources used
 

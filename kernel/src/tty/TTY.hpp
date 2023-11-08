@@ -23,13 +23,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Memory/PageManager.hpp>
 
+#include "KeyboardInput.hpp"
+
 class TTY {
 public:
     TTY();
-    TTY(BasicVGA* VGADevice, const Colour& fg_colour, const Colour& bg_colour); // Set the default foreground and background colours.
+    TTY(BasicVGA* VGADevice, KeyboardInput* input, const Colour& fg_colour, const Colour& bg_colour); // Set the default foreground and background colours.
     ~TTY();
 
-    char getc(); // just returns 0
+    int getc();
     void putc(char c);
     void puts(const char* str);
 
@@ -39,10 +41,22 @@ public:
     BasicVGA* GetVGADevice();
     void SetVGADevice(BasicVGA* device);
 
+    KeyboardInput* GetKeyboardInput();
+    void SetKeyboardInput(KeyboardInput* input);
+
+    void HandleKeyEvent(char c);
+
+    void EnableInputMirroring();
+    void DisableInputMirroring();
+
+    bool isInputMirroringEnabled() const;
+
 private:
     BasicVGA* m_VGADevice;
+    KeyboardInput* m_keyboardInput;
     Colour m_foreground;
     Colour m_background;
+    bool m_inputMirroring;
 };
 
 extern TTY* g_CurrentTTY;

@@ -44,6 +44,7 @@ namespace Scheduling {
         uint8_t g_kernel_run_count = 0; // the amount of times a kernel thread has been run in a row
         uint8_t g_high_run_count = 0; // the amount of times a high thread has been run in a row
         uint8_t g_normal_run_count = 0; // the amount of times a normal thread has been run in a row
+        uint64_t g_total_threads = 0;
         bool g_running = false;
         Thread* g_current = nullptr;
 
@@ -108,6 +109,7 @@ namespace Scheduling {
                         return; // just in case assertions are disabled
                 }
             }
+            g_total_threads++;
         }
 
         void RemoveThread(Thread* thread) {
@@ -154,9 +156,12 @@ namespace Scheduling {
                 if (thread == g_current) {
                     g_current = nullptr;
                     success = true;
+                    g_total_threads--;
                     PickNext();
                 }
             }
+            else
+                g_total_threads--;
         }
 
         void __attribute__((noreturn)) Start() {
@@ -245,6 +250,11 @@ namespace Scheduling {
         }
 
         void PickNext() {
+            if (g_total_threads == 0) {
+                PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
+            }
+            if (g_total_threads == 1 && g_current != nullptr)
+                return;
             if (g_current != nullptr) {
                 switch (g_current->GetParent()->GetPriority()) {
                     case Priority::KERNEL:

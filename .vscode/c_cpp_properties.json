@@ -29,6 +29,7 @@
                 "-Wstrict-aliasing",
                 "-Wno-pointer-arith",
                 "-Wno-unused-parameter",
+                "-Wno-switch",
                 "-nostdlib",
                 "-nostdinc",
                 "-ffreestanding",

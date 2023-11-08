@@ -24,10 +24,10 @@ kernel_c_object_files := $(patsubst src/%.c, bin-int/%.c.o, $(kernel_c_source_fi
 kernel_asm_source_files := $(shell find src -name *.asm)
 kernel_asm_object_files := $(patsubst src/%.asm, bin-int/%.asm.o, $(kernel_asm_source_files))
 
-KERNEL_CXXFLAGS = -mcmodel=kernel -std=c++20 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fstack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-use-cxa-atexit -fno-rtti -fno-omit-frame-pointer -D_IN_KERNEL=1
+KERNEL_CXXFLAGS = -mcmodel=kernel -std=c++20 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -Wno-switch -nostdlib -nostdinc -ffreestanding -fno-pie -fstack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-use-cxa-atexit -fno-rtti -fno-omit-frame-pointer -D_IN_KERNEL=1
 KERNEL_LDFLAGS = -Tkernel.ld -static -Bsymbolic -nostdlib -zmax-page-size=0x1000
 KERNEL_ASMFLAGS = -f elf64
-KERNEL_CFLAGS = -mcmodel=kernel -std=c17 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -nostdlib -nostdinc -ffreestanding -fno-pie -fstack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-omit-frame-pointer -D_IN_KERNEL=1
+KERNEL_CFLAGS = -mcmodel=kernel -std=c17 -g -Wall -Wextra -Wpedantic -Wstrict-aliasing -Wno-pointer-arith -Wno-unused-parameter -Wno-switch -nostdlib -nostdinc -ffreestanding -fno-pie -fstack-protector -fno-exceptions -Isrc -Iinclude -mgeneral-regs-only -mno-red-zone -O2 -fno-omit-frame-pointer -D_IN_KERNEL=1
 KERNEL_TARGET = bin/kernel.elf
 
 ifeq ($(config), release)

@@ -47,7 +47,7 @@ typedef          long  int64_t;
 
 #define  INT8_MAX  127
 #define  INT8_MIN -128
-#define UINT8_MAX  256
+#define UINT8_MAX  255
 
 #define  INT64_C(x) x ## L
 #define UINT64_C(x) x ## UL

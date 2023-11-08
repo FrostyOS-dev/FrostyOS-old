@@ -1,6 +1,19 @@
 # Changes
 
-## Latest Changes - 04/11/2023
+## Latest Changes - 08/11/2023
+
+- Fixed various `BasicVGA` functions such as `putc`, `NewLine` and `ScrollText`
+- Added total thread counter to scheduler. This allows for faster task switching if there are no other threads to switch to.
+- Cleaned up code style in `TTY.cpp`
+- Implemented basic stack data structure. Currently it just holds a stack of pointers.
+- Implemented basic dynamic buffer data structure. It holds a doubly-linked list of blocks. This prevents reallocation every time the buffer needs to increase in size.
+- Implemented basic Intel 8042 PS/2 controller driver.
+- Implemented basic PS/2 keyboard driver.
+- Added keyboard input support to TTYs. This also makes stdin function instead of just outputting zeros.
+- Added `-Wno-switch` flag when building kernel to prevent massive blocks of useless warnings about the PS/2 keyboard scancode handling.
+- Fixed the maximum value for `uint8_t` in the kernel's `stdint.h`
+
+## 04/11/2023
 
 - Fixed bit masking in `x86_64_unmap_page` and `x86_64_remap_large_page`.
 - Removed call to `check` function at the end of `mrvn_free`.
