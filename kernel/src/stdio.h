@@ -35,6 +35,9 @@ extern "C" {
 
 typedef long fd_t;
 
+int getc();
+int fgetc(const fd_t file);
+
 void putc(const char c);
 inline void putchar(const char c) { putc(c); }
 void dbgputc(const char c);

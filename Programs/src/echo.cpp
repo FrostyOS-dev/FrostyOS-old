@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2023  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,20 +15,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_X86_64_E9_H
-#define _KERNEL_X86_64_E9_H
+#include <stdio.h>
 
-#include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void x86_64_debug_putc(const char c);
-uint64_t x86_64_debug_puts(const char* str);
-
-#ifdef __cplusplus
+int main(int argc, char** argv) {
+    for (int i = 1; i < argc; i++)
+        printf("%s%s", argv[i], i < (argc - 1) ? " " : "");
+    putc('\n');
+    return 0;
 }
-#endif
-
-#endif /* _KERNEL_X86_64_E9_H */

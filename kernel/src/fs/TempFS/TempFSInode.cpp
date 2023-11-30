@@ -150,92 +150,100 @@ namespace TempFS {
         return true;
     }
     
-    bool TempFSInode::ReadStream(uint8_t* bytes, uint64_t count) {
+    uint64_t TempFSInode::ReadStream(uint8_t* bytes, uint64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
-            if (target == nullptr)
-                return false;
+            if (target == nullptr) // error is already set by GetTarget()
+                return 0;
             return target->ReadStream(bytes, count);
         }
         if (!p_isOpen) {
             SetLastError(InodeError::STREAM_CLOSED);
-            return false;
+            return 0;
         }
         if (p_type != InodeType::File) {
             SetLastError(InodeError::INVALID_TYPE);
-            return false;
+            return 0;
         }
-        if (bytes == nullptr || (p_CurrentOffset + count) > m_size) {
+        if (bytes == nullptr || count == 0) {
             SetLastError(InodeError::INVALID_ARGUMENTS);
-            return false;
+            return 0;
         }
-        count = ALIGN_UP(count, 8);
+        uint16_t bytes_read = 0;
         for (uint64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
+            if ((p_CurrentOffset + bytes_read) >= m_size) {
+                SetLastError(InodeError::INVALID_ARGUMENTS);
+                return bytes_read;
+            }
             m_currentBlock = m_data.get(m_currentBlockIndex);
             if (m_currentBlock == nullptr) {
                 p_CurrentOffset += currentCount;
                 SetLastError(InodeError::INTERNAL_ERROR);
-                return false;
+                return bytes_read;
             }
             if ((m_currentBlock->size - m_currentBlockOffset + currentCount) > count) {
-                fast_memcpy((void*)((uint64_t)bytes + currentCount), (void*)((uint64_t)(m_currentBlock->address) + m_currentBlockOffset), count - currentCount);
+                memcpy((void*)((uint64_t)bytes + currentCount), (void*)((uint64_t)(m_currentBlock->address) + m_currentBlockOffset), count - currentCount);
                 m_currentBlockOffset += count - currentCount;
+                bytes_read += count - currentCount;
                 break;
             }
-            fast_memcpy((void*)((uint64_t)bytes + currentCount), (void*)((uint64_t)m_currentBlock->address + m_currentBlockOffset), m_currentBlock->size - (m_currentBlockOffset + 1));
+            memcpy((void*)((uint64_t)bytes + currentCount), (void*)((uint64_t)m_currentBlock->address + m_currentBlockOffset), m_currentBlock->size - (m_currentBlockOffset + 1));
             currentCount += m_currentBlock->size - m_currentBlockOffset;
+            bytes_read += m_currentBlock->size - (m_currentBlockOffset + 1);
             m_currentBlockOffset = 0;
         }
         p_CurrentOffset += count;
         SetLastError(InodeError::SUCCESS);
-        return true;
+        return bytes_read;
     }
     
-    bool TempFSInode::WriteStream(const uint8_t* bytes, uint64_t count) {
+    uint64_t TempFSInode::WriteStream(const uint8_t* bytes, uint64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
-            if (target == nullptr)
-                return false;
+            if (target == nullptr) // error is already set by GetTarget()
+                return 0;
             return target->WriteStream(bytes, count);
         }
         if (!p_isOpen) {
             SetLastError(InodeError::STREAM_CLOSED);
-            return false;
+            return 0;
         }
         if (p_type != InodeType::File) {
             SetLastError(InodeError::INVALID_TYPE);
-            return false;
+            return 0;
         }
-        if (bytes == nullptr) {
+        if (bytes == nullptr || count == 0) {
             SetLastError(InodeError::INVALID_ARGUMENTS);
-            return false;
+            return 0;
         }
-        count = ALIGN_UP(count, 8);
+        uint64_t bytes_written = 0;
         for (uint64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
             m_currentBlock = m_data.get(m_currentBlockIndex);
             if (m_currentBlock == nullptr) {
-                if (!Expand(count)) {
+                if (!Expand(count)) { // error is already set by Expand()
                     p_CurrentOffset += currentCount;
-                    return false;
+                    return bytes_written;
                 }
                 m_currentBlock = m_data.get(m_currentBlockIndex);
                 if (m_currentBlock == nullptr) {
                     SetLastError(InodeError::INTERNAL_ERROR);
-                    return false;
+                    return bytes_written;
                 }
             }
             if ((m_currentBlock->size - m_currentBlockOffset + currentCount) > count) {
-                fast_memcpy((void*)((uint64_t)(m_currentBlock->address) + m_currentBlockOffset), (void*)((uint64_t)bytes + currentCount), count - currentCount);
+                memcpy((void*)((uint64_t)(m_currentBlock->address) + m_currentBlockOffset), (void*)((uint64_t)bytes + currentCount), count - currentCount);
                 m_currentBlockOffset += count - currentCount;
+                bytes_written += count - currentCount;
                 break;
             }
-            fast_memcpy((void*)((uint64_t)m_currentBlock->address + m_currentBlockOffset), (void*)((uint64_t)bytes + currentCount), m_currentBlock->size - (m_currentBlockOffset + 1));
+            memcpy((void*)((uint64_t)m_currentBlock->address + m_currentBlockOffset), (void*)((uint64_t)bytes + currentCount), m_currentBlock->size - (m_currentBlockOffset + 1));
             currentCount += m_currentBlock->size - m_currentBlockOffset;
+            bytes_written += m_currentBlock->size - (m_currentBlockOffset + 1);
             m_currentBlockOffset = 0;
         }
         p_CurrentOffset += count;
         SetLastError(InodeError::SUCCESS);
-        return true;
+        return bytes_written;
     }
     
     bool TempFSInode::Seek(uint64_t offset) {
@@ -300,43 +308,43 @@ namespace TempFS {
     }
     
 
-    bool TempFSInode::Read(uint64_t offset, uint8_t* bytes, uint64_t count) {
+    uint64_t TempFSInode::Read(uint64_t offset, uint8_t* bytes, uint64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
-            if (target == nullptr)
-                return false;
+            if (target == nullptr) // error is already set by GetTarget()
+                return 0;
             return target->Read(offset, bytes, count);
         }
         bool isOpen = p_isOpen;
         if (!p_isOpen) {
             if (!Open())
-                return false;
+                return 0;
         }
         if (!Seek(offset))
-            return false;
-        bool status = ReadStream(bytes, count);
+            return 0;
+        uint64_t status = ReadStream(bytes, count);
         if (!isOpen)
-            status |= Close();
+            Close(); // no need to check return value. error is set and the caller is responsible for checking it.
         return status;
     }
     
-    bool TempFSInode::Write(uint64_t offset, const uint8_t* bytes, uint64_t count) {
+    uint64_t TempFSInode::Write(uint64_t offset, const uint8_t* bytes, uint64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
-            if (target == nullptr)
-                return false;
+            if (target == nullptr) // error is already set by GetTarget()
+                return 0;
             return target->Write(offset, bytes, count);
         }
         bool isOpen = p_isOpen;
         if (!p_isOpen) {
             if (!Open())
-                return false;
+                return 0;
         }
         if (!Seek(offset))
-            return false;
-        bool status = WriteStream(bytes, count);
+            return 0;
+        uint64_t status = WriteStream(bytes, count);
         if (!isOpen)
-            status |= Close();
+            Close();
         return status;
     }
 

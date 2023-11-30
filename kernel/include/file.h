@@ -25,6 +25,8 @@ typedef long fd_t;
 #define O_CREATE 4UL
 #define O_APPEND 8UL
 
+#define EOF -1
+
 #ifdef __cplusplus
 extern "C" {
 #endif

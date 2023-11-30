@@ -41,7 +41,7 @@ ELFSymbols::ELFSymbols() : m_eternal(false) {
 
 }
 
-ELFSymbols::ELFSymbols(const void* data, size_t size, bool eternal) : m_eternal(eternal) {
+ELFSymbols::ELFSymbols(const void* data, size_t size, bool eternal) : m_eternal(eternal), m_symbols(eternal) {
     if (size < 10)
         return; // too small
     if (data == nullptr)

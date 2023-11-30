@@ -76,7 +76,6 @@ void PS2Keyboard::HandleInterrupt() {
         m_ScanCodeMetadata.ignore_next = false;
         return;
     }
-    //dbgprintf("Received keyboard data: 0x%02hhX\n", data);
     m_scancode[m_scancode_offset++] = data;
     if (!m_ScanCodeMetadata.e1 && !m_ScanCodeMetadata.e0 && !m_ScanCodeMetadata.special && data == 0xE0)
         m_ScanCodeMetadata.e0 = true;
@@ -104,7 +103,6 @@ void PS2Keyboard::Initialise() {
     x86_64_8042_RegisterIRQHandler((x86_64_8042_IRQHandler_t)&PS2Keyboard::HandleInterrupt, this, m_Channel);
 #endif
     m_Controller->EnableInterrupts(m_Channel);
-    dbgprintf("PS/2 keyboard initialised!\n");
 }
 
 void PS2Keyboard::Destroy() {

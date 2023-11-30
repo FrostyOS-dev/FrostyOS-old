@@ -23,8 +23,8 @@ Buffer::Buffer() : m_size(0), m_blockSize(DEFAULT_BUFFER_BLOCK_SIZE) {
 
 }
 
-Buffer::Buffer(size_t size, size_t blockSize) : m_size(ALIGN_UP(size, blockSize)), m_blockSize(blockSize) {
-    AddBlock(m_size);
+Buffer::Buffer(size_t size, size_t blockSize) : m_size(0), m_blockSize(blockSize), m_blocks() {
+    AddBlock(ALIGN_UP(size, m_blockSize));
 }
 
 Buffer::~Buffer() {
@@ -221,8 +221,8 @@ void Buffer::AddBlock(size_t size) {
 
 void Buffer::DeleteBlock(uint64_t index) {
     Block* block = m_blocks.get(index);
-    delete[] block->data;
     m_blocks.remove(index);
+    delete[] block->data;
     m_size -= block->size;
     delete block;
 }

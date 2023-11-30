@@ -139,4 +139,6 @@ struct GetCharReturn {
 
 GetCharReturn getChar(const char in);
 
+bool IsCharValid(char c);
+
 #endif /* _KERNEL_X86_64_VGA_FONT_HPP */

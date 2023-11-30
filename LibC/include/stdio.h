@@ -48,6 +48,9 @@ extern FILE* stddebug;
 
 #define FOPEN_MAX 8
 
+int getc();
+int fgetc(FILE* file);
+
 void putc(const char c);
 inline void putchar(const char c) { putc(c); }
 void fputc(FILE* file, const char c);

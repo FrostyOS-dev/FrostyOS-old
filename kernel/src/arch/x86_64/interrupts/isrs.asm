@@ -351,8 +351,16 @@ isr_common:
     mov es, ax
     mov fs, ax
     mov gs, ax
+
+    push QWORD [rsp+168] ; rip
+    push rbp
+    mov rbp, rsp ; get proper stack trace
+
+    lea rdi, QWORD [rsp+16]
     
     call x86_64_ISR_Handler
+
+    add rsp, 16 ; remove rip and rbp
 
     pop rax             ; restore old segment
     mov ds, ax

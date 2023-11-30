@@ -24,7 +24,7 @@ bool KeyboardEventHandler(void* data, KeyboardEvent event) {
     return input->HandleEvent(event);
 }
 
-KeyboardInput::KeyboardInput() : m_bufferOffset(0), m_keyboard(nullptr), m_keyboardState({false, false, false, false, false}), m_bufferSize(0), m_buffer(DEFAULT_BUFFER_BLOCK_SIZE, DEFAULT_BUFFER_BLOCK_SIZE), m_keyCallback({nullptr, nullptr}) {
+KeyboardInput::KeyboardInput() : m_bufferOffset(0), m_keyboard(nullptr), m_keyboardState({false, false, false, false, false}), m_bufferSize(0), m_buffer(nullptr), m_keyCallback({nullptr, nullptr}) {
 
 }
 
@@ -33,6 +33,7 @@ KeyboardInput::~KeyboardInput() {
 }
 
 void KeyboardInput::Initialise(Keyboard* keyboard) {
+    m_buffer = new Buffer(DEFAULT_BUFFER_BLOCK_SIZE, DEFAULT_BUFFER_BLOCK_SIZE);
     m_keyboard = keyboard;
     if (m_keyboard != nullptr)
         m_keyboard->RegisterEventHandler(KeyboardEventHandler, this);
@@ -41,20 +42,21 @@ void KeyboardInput::Initialise(Keyboard* keyboard) {
 void KeyboardInput::Destroy() {
     if (m_keyboard != nullptr)
         m_keyboard->RegisterEventHandler(nullptr, nullptr);
+    delete m_buffer;
 }
 
 int KeyboardInput::GetChar() {
     if (m_bufferSize == 0)
         return -1;
-    size_t initial_size = m_buffer.GetSize();
-    char c = 0;
-    m_buffer.Read(m_bufferOffset, (uint8_t*)&c, sizeof(char));
-    m_buffer.ClearUntil(m_bufferOffset + sizeof(char));
-    if (m_buffer.GetSize() < initial_size)
+    size_t initial_size = m_buffer->GetSize();
+    char c = (char)-1;
+    m_buffer->Read(m_bufferOffset, (uint8_t*)&c, sizeof(char));
+    m_buffer->ClearUntil(m_bufferOffset + sizeof(char));
+    if (m_buffer->GetSize() < initial_size)
         m_bufferOffset = 0;
     m_bufferOffset += sizeof(char);
     m_bufferSize--;
-    return (int)c;
+    return c == (char)-1 ? -1 : (int)c;
 }
 
 bool KeyboardInput::HandleEvent(KeyboardEvent event) {
@@ -256,7 +258,7 @@ void KeyboardInput::OnKey(void (*func)(void*, char), void* data) {
 }
 
 void KeyboardInput::AppendChar(char c) {
-    m_buffer.Write(m_bufferOffset, (const uint8_t*)&c, sizeof(char));
+    m_buffer->Write(m_bufferOffset, (const uint8_t*)&c, sizeof(char));
     m_bufferSize++;
     if (m_keyCallback.func != nullptr)
         m_keyCallback.func(m_keyCallback.data, c);

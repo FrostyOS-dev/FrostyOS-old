@@ -99,12 +99,12 @@
             ]
         },
         {
-            "name": "Test-program",
+            "name": "Programs",
             "includePath": [
-                "${workspaceFolder}/root/data/include/*"
+                "/home/frosty515/dev/WorldOS/Public/root/data/include/*"
             ],
             "defines": [],
-            "compilerPath": "/home/frosty515/opt/x86_64-worldos-cross/bin/x86_64-worldos-g++",
+            "compilerPath": "/home/frosty515/opt/x86_64-worldos-cross/bin/x86_64-worldos-gcc",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
@@ -112,10 +112,23 @@
                 "-std=c++20",
                 "-Wall",
                 "-Wextra",
-                "-mgeneral-regs-only",
                 "-fstack-protector",
-                "-O2"
-            ]
+                "-fno-exceptions",
+                "-mgeneral-regs-only",
+                "-O2",
+                "-fno-use-cxa-atexit",
+                "-fno-rtti",
+                "-fno-omit-frame-pointer"
+            ],
+            "compilerPathInCppPropertiesJson": "/home/frosty515/opt/x86_64-worldos-cross/bin/x86_64-worldos-g++",
+            "mergeConfigurations": false,
+            "browse": {
+                "path": [
+                    "/home/frosty515/dev/WorldOS/Public/root/data/include/*",
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
         }
     ],
     "version": 4

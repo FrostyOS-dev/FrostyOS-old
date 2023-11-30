@@ -53,7 +53,7 @@ private:
         bool num_lock;
     } m_keyboardState;
     size_t m_bufferSize;
-    Buffer m_buffer;
+    Buffer* m_buffer;
     struct {
         void (*func)(void*, char);
         void* data;

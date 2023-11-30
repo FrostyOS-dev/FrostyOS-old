@@ -19,8 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Bitmap.hpp"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <util.h>
+
 #include <Memory/newdelete.hpp> // required for creating and deleting nodes
+
+#include <HAL/hal.hpp>
 
 bool operator==(LinkedList::Node left, LinkedList::Node right) {
 	return ((left.data == right.data) && (left.next == right.next) && (left.previous == right.previous));
@@ -97,9 +101,11 @@ namespace LinkedList {
 		return count;
 	}
 
-	Node* newNode(uint64_t data) {
+	Node* newNode(uint64_t data, bool eternal) {
 		Node* node = nullptr;
-		if (NewDeleteInitialised())
+		if (eternal)
+			node = (Node*)kcalloc_eternal(1, sizeof(Node));
+		else if (NewDeleteInitialised())
 			node = new Node();
 		else
 			node = NodePool_AllocateNode();
@@ -113,10 +119,10 @@ namespace LinkedList {
 		return node;
 	}
 
-	void insertNode(Node*& head, uint64_t data) {
+	void insertNode(Node*& head, uint64_t data, bool eternal) {
 		// check if head is NULL
 		if (head == nullptr) {
-			head = newNode(data);
+			head = newNode(data, eternal);
 			return;
 		}
 
@@ -128,7 +134,7 @@ namespace LinkedList {
 		}
 
 		// get new node and set last node's next to it
-		current->next = newNode(data);
+		current->next = newNode(data, eternal);
 
 		// update newly created node's previous to the last node
 		current->next->previous = current;
@@ -206,6 +212,10 @@ namespace LinkedList {
 
 		// clear the value of current to protect the node it is pointing to from possible deletion
 		current = nullptr;
+	}
+
+	void panic(const char* str) {
+		PANIC(str);
 	}
 
 }

@@ -189,8 +189,8 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
         return; // page isn't mapped
 
     PageMapLevel2Entry* PML2 = &(((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3->Address) << 12)))[pd]);
-    if (PML2->Present == 0)
-        return; // page isn't mapped
+    if (PML2->Present == 0 || PML2->PageSize)
+        return; // page isn't mapped or is a 2MiB page
 
     fast_memset(&(((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2->Address) << 12)))[pt]), 0, (sizeof(PageMapLevel1Entry) >> 3));
 
@@ -231,7 +231,7 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
     if (!used) {
         x86_64_unmap_page_noflush(PML4Array, group3);
         g_PPFA->FreePage(group3);
-        PML3->Present = 0;
+        PML4->Present = 0;
     }
 }
 

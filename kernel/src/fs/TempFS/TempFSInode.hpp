@@ -38,13 +38,13 @@ namespace TempFS {
 
         bool Open() override;
         bool Close() override;
-        bool ReadStream(uint8_t* bytes, uint64_t count = 1) override;
-        bool WriteStream(const uint8_t* bytes, uint64_t count = 1) override;
+        uint64_t ReadStream(uint8_t* bytes, uint64_t count = 1) override;
+        uint64_t WriteStream(const uint8_t* bytes, uint64_t count = 1) override;
         bool Seek(uint64_t offset) override;
         bool Rewind() override;
 
-        bool Read(uint64_t offset, uint8_t* bytes, uint64_t count = 1) override;
-        bool Write(uint64_t offset, const uint8_t* bytes, uint64_t count = 1) override;
+        uint64_t Read(uint64_t offset, uint8_t* bytes, uint64_t count = 1) override;
+        uint64_t Write(uint64_t offset, const uint8_t* bytes, uint64_t count = 1) override;
 
         bool Expand(size_t new_size) override;
 

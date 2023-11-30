@@ -74,8 +74,8 @@ public:
     bool Open();
     bool Close();
 
-    bool Read(uint8_t* buffer, size_t count);
-    bool Write(const uint8_t* buffer, size_t count);
+    size_t Read(uint8_t* buffer, size_t count);
+    size_t Write(const uint8_t* buffer, size_t count);
 
     bool Seek(uint64_t offset);
     bool Rewind();

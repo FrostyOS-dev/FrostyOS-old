@@ -40,8 +40,8 @@ public:
 
     bool Open();
     bool Close();
-    bool ReadStream(uint8_t* bytes, uint64_t count = 1);
-    bool WriteStream(const uint8_t* bytes, uint64_t count = 1);
+    uint64_t ReadStream(uint8_t* bytes, uint64_t count = 1);
+    uint64_t WriteStream(const uint8_t* bytes, uint64_t count = 1);
     bool Seek(uint64_t offset);
     bool Rewind();
     uint64_t GetOffset() const;

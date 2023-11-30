@@ -29,3 +29,7 @@ GetCharReturn getChar(const char in) {
     return {out[15], out[14], out[13], out[12], out[11], out[10], out[9], out[8], out[7], out[6], out[5], out[4], out[3], out[2], out[1], out[0]};
 }
 
+bool IsCharValid(char c) {
+    return !(c < 32 || c > 126);
+}
+

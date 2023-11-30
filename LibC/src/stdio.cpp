@@ -58,14 +58,39 @@ long internal_read(FILE* file, void* data, size_t size) {
     if (file == nullptr) {
         __RETURN_WITH_ERRNO(-EFAULT);
     }
-    __RETURN_WITH_ERRNO(read(file->descriptor, data, size));
+    long status = read(file->descriptor, data, size);
+    if (status == EOF) {
+        if (file == stdin)
+            __SET_ERRNO(-ENODEV); // input device must have been disconnected
+        else
+            __SET_ERRNO(0);
+        return EOF;
+    }
+    __RETURN_WITH_ERRNO(status);
 }
 
 long internal_write(FILE* file, const void* data, size_t size) {
     if (file == nullptr) {
         __RETURN_WITH_ERRNO(-EFAULT);
     }
-    __RETURN_WITH_ERRNO(write(file->descriptor, data, size));
+    long status = write(file->descriptor, data, size);
+    if (status == EOF) {
+        __SET_ERRNO(0);
+        return EOF;
+    }
+    __RETURN_WITH_ERRNO(status);
+}
+
+int getc() {
+    int c = EOF;
+    long rc = internal_read(stdin, &c, 1); // errno already set by internal_read
+    return rc == EOF ? EOF : c;
+}
+
+int fgetc(FILE* file) {
+    int c = EOF;
+    long rc = internal_read(file, &c, 1); // errno already set by internal_read
+    return rc == EOF ? EOF : c;
 }
 
 extern "C" void putc(const char c) {
@@ -530,7 +555,7 @@ extern "C" FILE* fopen(const char* file, const char* mode) {
 
     uint8_t index = AllocateFile();
     if (index == FOPEN_MAX) {
-        __RETURN_NULL_WITH_ERRNO(-ENOTSUP);
+        __RETURN_NULL_WITH_ERRNO(-EMFILE);
     }
 
     FILE* i_file = &(g_files[index]);

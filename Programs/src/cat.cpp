@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2023  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,28 +15,31 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "E9.h"
+#include <stdio.h>
+#include <string.h>
 
-#include "io.h"
-#include <stdint.h>
-
-void x86_64_debug_putc(const char c) {
-#ifndef NDEBUG
-    x86_64_outb(0xE9, c);
-#endif
-}
-
-uint64_t x86_64_debug_puts(const char* str) {
-#ifdef NDEBUG
-    return 0;
-#else
-    uint64_t i = 0;
-    char c = str[i];
-    while (c != 0) {
-        x86_64_debug_putc(c);
-        i++;
-        c = str[i];
+int main(int argc, char** argv) {
+    if (argc <= 1) {
+        int c;
+        while ((c = getc()) != EOF)
+            putc(c);
+        return 0;
     }
-    return i;
-#endif
+    for (int i = 1; i < argc; i++) {
+        if (0 == strcmp(argv[i], "-")) {
+            int c;
+            while ((c = getc()) != EOF)
+                putc(c);
+        }
+        else {
+            FILE* f = fopen(argv[i], "r");
+            if (!f)
+                return 1;
+            int c;
+            while ((c = fgetc(f)) != EOF)
+                putc(c);
+            fclose(f);
+        }
+    }
+    return 0;
 }

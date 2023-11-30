@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <util.h>
 
+#include <file.h>
+
 void HandleKeyboardEvent(void* data, char c) {
     if (data == nullptr)
         return;
@@ -43,8 +45,12 @@ TTY::~TTY() {
 
 int TTY::getc() {
     if (m_keyboardInput == nullptr)
-        return -1;
-    return m_keyboardInput->GetChar();
+        return EOF;
+    int c;
+    do {
+        c = m_keyboardInput->GetChar();
+    } while (c == EOF);
+    return c;
 }
 
 void TTY::putc(char c) {

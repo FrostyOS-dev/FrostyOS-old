@@ -126,6 +126,7 @@ clean-all:
 clean-os:
 	@$(MAKE) -C kernel clean-kernel
 	@$(MAKE) -C LibC clean-libc
+	@$(MAKE) -C Programs clean-programs
 	@rm -fr iso dist root/kernel.map
 
 boot-iso: clean-os .WAIT dependencies toolchain
@@ -146,10 +147,18 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@echo --------------
 	@$(MAKE) -C utils build
 	@utils/bin/buildsymboltable kernel/bin/kernel.elf root/kernel.map
-	@echo ----------
-	@echo Installing
-	@echo ----------
+	@echo ---------------
+	@echo Installing LibC
+	@echo ---------------
 	@$(MAKE) -C LibC install-libc config=$(config)
+	@echo --------------------------
+	@echo Building Userland programs
+	@echo --------------------------
+	@$(MAKE) -C Programs programs config=$(config)
+	@echo ----------------------------
+	@echo Installing Userland programs
+	@echo ----------------------------
+	@$(MAKE) -C Programs install-programs config=$(config)
 	@$(MAKE) --no-print-directory initramfs
 	@echo -----------------
 	@echo Making disk image

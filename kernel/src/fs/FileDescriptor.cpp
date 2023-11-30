@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <math.h>
 
+#include <file.h>
+
 #ifdef __x86_64__
 #include <arch/x86_64/E9.h>
 #endif
@@ -120,30 +122,39 @@ bool FileDescriptor::Close() {
     }
 }
 
-bool FileDescriptor::Read(uint8_t* buffer, size_t count) {
+#include <HAL/hal.hpp>
+
+size_t FileDescriptor::Read(uint8_t* buffer, size_t count) {
     switch (m_mode) {
     case FileDescriptorMode::READ:
     case FileDescriptorMode::READ_WRITE:
         break;
     default:
         SetLastError(FileDescriptorError::INVALID_MODE);
-        return false;
+        return 0;
     }
     switch (m_type) {
     case FileDescriptorType::TTY: {
         uint64_t i = 0;
         while (i < count) {
-            buffer[i] = m_TTY->getc();
+            int c = m_TTY->getc();
+            if (c == EOF)
+                break;
+            buffer[i] = (uint8_t)c;
             i++;
         }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        if (i < count)
+            SetLastError(FileDescriptorError::STREAM_ERROR);
+        else
+            SetLastError(FileDescriptorError::SUCCESS);
+        return i; // NOTE: partial reads from TTYs mean the keyboard device had an error or was disconnected.
     }
     case FileDescriptorType::DEBUG:
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return false;
-    case FileDescriptorType::FILE_STREAM:
-        if (!m_FileStream->ReadStream(buffer, count)) {
+        return 0;
+    case FileDescriptorType::FILE_STREAM: {
+        size_t status = m_FileStream->ReadStream(buffer, count);
+        if (status != count) {
             switch (m_FileStream->GetLastError()) {
             case FileStreamError::INVALID_ARGUMENTS:
                 SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
@@ -155,17 +166,18 @@ bool FileDescriptor::Read(uint8_t* buffer, size_t count) {
                 SetLastError(FileDescriptorError::INTERNAL_ERROR);
                 break;
             }
-            return false;
         }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        else
+            SetLastError(FileDescriptorError::SUCCESS);
+        return status;
+    }
     default:
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return false;
+        return 0;
     }
 }
 
-bool FileDescriptor::Write(const uint8_t* buffer, size_t count) {
+size_t FileDescriptor::Write(const uint8_t* buffer, size_t count) {
     switch (m_mode) {
     case FileDescriptorMode::APPEND:
     case FileDescriptorMode::WRITE:
@@ -173,7 +185,7 @@ bool FileDescriptor::Write(const uint8_t* buffer, size_t count) {
         break;
     default:
         SetLastError(FileDescriptorError::INVALID_MODE);
-        return false;
+        return 0;
     }
     switch (m_type) {
     case FileDescriptorType::TTY: {
@@ -184,10 +196,11 @@ bool FileDescriptor::Write(const uint8_t* buffer, size_t count) {
         }
         //m_TTY->GetVGADevice()->SwapBuffers();
         SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        return count; // partial writes to TTYs are not supported
     }
-    case FileDescriptorType::FILE_STREAM:
-        if (!m_FileStream->WriteStream(buffer, count)) {
+    case FileDescriptorType::FILE_STREAM: {
+        uint64_t status = m_FileStream->WriteStream(buffer, count);
+        if (status != count) {
             switch (m_FileStream->GetLastError()) {
             case FileStreamError::INVALID_ARGUMENTS:
                 SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
@@ -200,24 +213,27 @@ bool FileDescriptor::Write(const uint8_t* buffer, size_t count) {
                 SetLastError(FileDescriptorError::INTERNAL_ERROR);
                 break;
             }
-            return false;
         }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        else
+            SetLastError(FileDescriptorError::SUCCESS);
+        return status;
+    }
     case FileDescriptorType::DEBUG: {
         uint64_t i = 0;
+#ifndef NDEBUG
         while (i < count) {
 #ifdef __x86_64__
             x86_64_debug_putc(buffer[i]);
 #endif
             i++;
         }
+#endif
         SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        return i;
     }
     default:
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return false;
+        return 0;
     }
 }
 

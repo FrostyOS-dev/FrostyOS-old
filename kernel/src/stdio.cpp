@@ -24,24 +24,74 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <fs/FileDescriptorManager.hpp>
 
-size_t internal_read(fd_t file, void* data, size_t size) {
+#include <HAL/hal.hpp>
+
+#include <file.h>
+
+int64_t internal_read(fd_t file, void* data, size_t size) {
+    if (data == nullptr)
+        return -EFAULT;
+    if (size == 0)
+        return -EINVAL;
     FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
     if (descriptor == nullptr)
-        return 0;
-    if (!descriptor->Read((uint8_t*)data, size))
-        return 0;
+        return -EBADF;
+    size_t status = descriptor->Read((uint8_t*)data, size);
+    if (status == 0) {
+        switch (descriptor->GetLastError()) {
+        case FileDescriptorError::INVALID_ARGUMENTS:
+            return EOF;
+        case FileDescriptorError::INVALID_MODE:
+        case FileDescriptorError::STREAM_ERROR:
+            return -EBADF;
+        default: {
+            PANIC("File descriptor internal error in kernel stdio.");
+        }
+        }
+    }
     else
-        return size;
+        return status;
 }
 
-size_t internal_write(fd_t file, const void* data, size_t size) {
+int64_t internal_write(fd_t file, const void* data, size_t size) {
+    if (data == nullptr)
+        return -EFAULT;
+    if (size == 0)
+        return -EINVAL;
     FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
     if (descriptor == nullptr)
-        return 0;
-    if (!descriptor->Write((const uint8_t*)data, size))
-        return 0;
+        return -EBADF;
+    size_t status = descriptor->Write((const uint8_t*)data, size);
+    if (status == 0) {
+        switch (descriptor->GetLastError()) {
+        case FileDescriptorError::INVALID_ARGUMENTS:
+            return EOF;
+        case FileDescriptorError::INVALID_MODE:
+        case FileDescriptorError::STREAM_ERROR: {
+            /* This gets complicated because we have no simple way to know if it is a allocation failure or a bad file descriptor.
+            We must check if the descriptor is a FileStream, and if it is, check if an allocation failure occurred.
+            If not, we can assume it is a bad file descriptor.
+            */
+            if (descriptor->GetType() == FileDescriptorType::FILE_STREAM) {
+                FileStream* stream = (FileStream*)descriptor->GetData();
+                if (stream != nullptr) {
+                    switch (stream->GetLastError()) {
+                    case FileStreamError::ALLOCATION_FAILED:
+                        return -ENOMEM;
+                    default:
+                        return -EBADF;
+                    }
+                }
+            }
+            return -EBADF;
+        }
+        default: {
+            PANIC("File descriptor internal error in kernel stdio.");
+        }
+        }
+    }
     else
-        return size;
+        return status;
 }
 
 fd_t internal_open(const char* path, unsigned long mode) {
@@ -174,6 +224,18 @@ long internal_seek(fd_t file, long offset) {
     }
 
     return offset;
+}
+
+extern "C" int getc() {
+    int c = EOF;
+    long rc = internal_read(stdin, &c, 1);
+    return rc == EOF ? EOF : c;
+}
+
+extern "C" int fgetc(const fd_t file) {
+    int c = EOF;
+    long rc = internal_read(file, &c, 1);
+    return rc == EOF ? EOF : c;
 }
 
 extern "C" void putc(const char c) {

@@ -85,15 +85,15 @@ bool FileStream::Close() {
     return true;
 }
 
-bool FileStream::ReadStream(uint8_t* bytes, uint64_t count) {
+uint64_t FileStream::ReadStream(uint8_t* bytes, uint64_t count) {
     if (m_mountPoint == nullptr) {
         SetLastError(FileStreamError::INVALID_MOUNTPOINT);
-        return false;
+        return 0;
     }
 
     if (!(m_modes & VFS_READ)) {
         SetLastError(FileStreamError::INVALID_MODE);
-        return false;
+        return 0;
     }
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS:
@@ -102,9 +102,10 @@ bool FileStream::ReadStream(uint8_t* bytes, uint64_t count) {
                 TempFSInode* inode = (TempFSInode*)m_inode;
                 if (inode == nullptr || inode->GetType() != InodeType::File) {
                     SetLastError(FileStreamError::INVALID_INODE);
-                    return false;
+                    return 0;
                 }
-                if (!inode->ReadStream(bytes, count)) {
+                uint64_t status = inode->ReadStream(bytes, count);
+                if (status != count) {
                     InodeError error = inode->GetLastError();
                     if (error == InodeError::INVALID_ARGUMENTS)
                         SetLastError(FileStreamError::INVALID_ARGUMENTS);
@@ -112,27 +113,29 @@ bool FileStream::ReadStream(uint8_t* bytes, uint64_t count) {
                         SetLastError(FileStreamError::STREAM_CLOSED);
                     else
                         SetLastError(FileStreamError::INTERNAL_ERROR);
-                    return false;
                 }
+                else
+                    SetLastError(FileStreamError::SUCCESS);
+                return status;
             }
             break;
         default:
             SetLastError(FileStreamError::INVALID_FS_TYPE);
-            return false;
+            return 0;
             break;
     }
-    SetLastError(FileStreamError::SUCCESS);
-    return true;
+    SetLastError(FileStreamError::INTERNAL_ERROR); // should be unreachable
+    return 0;
 }
 
-bool FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
+uint64_t FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
     if (m_mountPoint == nullptr) {
         SetLastError(FileStreamError::INVALID_MOUNTPOINT);
-        return false;
+        return 0;
     }
     if (!(m_modes & VFS_WRITE)) {
         SetLastError(FileStreamError::INVALID_MODE);
-        return false;
+        return 0;
     }
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS:
@@ -141,9 +144,10 @@ bool FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
                 TempFSInode* inode = (TempFSInode*)m_inode;
                 if (inode == nullptr || inode->GetType() != InodeType::File) {
                     SetLastError(FileStreamError::INVALID_INODE);
-                    return false;
+                    return 0;
                 }
-                if (!inode->WriteStream(bytes, count)) {
+                uint64_t status = inode->WriteStream(bytes, count);
+                if (status != count) {
                     InodeError error = inode->GetLastError();
                     if (error == InodeError::INVALID_ARGUMENTS)
                         SetLastError(FileStreamError::INVALID_ARGUMENTS);
@@ -153,17 +157,19 @@ bool FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
                         SetLastError(FileStreamError::STREAM_CLOSED);
                     else
                         SetLastError(FileStreamError::INTERNAL_ERROR);
-                    return false;
                 }
+                else
+                    SetLastError(FileStreamError::SUCCESS);
+                return status;
             }
             break;
         default:
             SetLastError(FileStreamError::INVALID_FS_TYPE);
-            return false;
+            return 0;
             break;
     }
-    SetLastError(FileStreamError::SUCCESS);
-    return true;
+    SetLastError(FileStreamError::INTERNAL_ERROR); // should be unreachable
+    return 0;
 }
 
 bool FileStream::Seek(uint64_t offset) {

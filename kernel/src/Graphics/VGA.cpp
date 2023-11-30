@@ -142,6 +142,9 @@ void BasicVGA::putc(const char c) {
         return;
     }
 
+    if (!IsCharValid(c))
+        return; // don't print anything if the character is invalid
+    
     /* Prepare */
     uint8_t mask[16];
     GetCharReturn charReturn = getChar(c);
@@ -187,7 +190,6 @@ void BasicVGA::putc(const char c) {
 void BasicVGA::ScrollText() {
     /* Copy everything up one row */
     for (uint64_t y = 16; y < (GetAmountOfTextRows() * 16); y += 16) {
-        dbgprintf("Copying row %ld to row %ld\n", y, y - 16);
         fast_memcpy((void*)((uint64_t)(m_FrameBuffer.FrameBufferAddress) + ((y - 16) * 4 * m_FrameBuffer.FrameBufferWidth)), (void*)((uint64_t)m_FrameBuffer.FrameBufferAddress + (y * 4 * m_FrameBuffer.FrameBufferWidth)), 4 * m_FrameBuffer.FrameBufferWidth * 16);
     }
 

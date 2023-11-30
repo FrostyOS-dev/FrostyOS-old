@@ -43,15 +43,15 @@ public:
 
     virtual bool Open() = 0;
     virtual bool Close() = 0;
-    virtual bool ReadStream(uint8_t* bytes, uint64_t count = 1) = 0;
-    virtual bool WriteStream(const uint8_t* bytes, uint64_t count = 1) = 0;
+    virtual uint64_t ReadStream(uint8_t* bytes, uint64_t count = 1) = 0;
+    virtual uint64_t WriteStream(const uint8_t* bytes, uint64_t count = 1) = 0;
     virtual bool Seek(uint64_t offset) = 0;
     virtual bool Rewind() = 0;
     virtual uint64_t GetOffset() const { return p_CurrentOffset; }
     virtual bool isOpen() const { return p_isOpen; }
 
-    virtual bool Read(uint64_t offset, uint8_t* bytes, uint64_t count = 1) = 0;
-    virtual bool Write(uint64_t offset, const uint8_t* bytes, uint64_t count = 1) = 0;
+    virtual uint64_t Read(uint64_t offset, uint8_t* bytes, uint64_t count = 1) = 0;
+    virtual uint64_t Write(uint64_t offset, const uint8_t* bytes, uint64_t count = 1) = 0;
 
     virtual bool Expand(size_t new_size) = 0;
 

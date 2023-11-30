@@ -33,8 +33,18 @@ _start:
     mov rdx, QWORD [rax+16]
     mov rcx, QWORD [rax+24]
 
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+
     call __init_libc
     call _init
+
+    pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
 
     call main
 

@@ -17,18 +17,29 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 08/11/2023
+## Latest Changes - 30/11/2023
 
-- Fixed various `BasicVGA` functions such as `putc`, `NewLine` and `ScrollText`
-- Added total thread counter to scheduler. This allows for faster task switching if there are no other threads to switch to.
-- Cleaned up code style in `TTY.cpp`
-- Implemented basic stack data structure. Currently it just holds a stack of pointers.
-- Implemented basic dynamic buffer data structure. It holds a doubly-linked list of blocks. This prevents reallocation every time the buffer needs to increase in size.
-- Implemented basic Intel 8042 PS/2 controller driver.
-- Implemented basic PS/2 keyboard driver.
-- Added keyboard input support to TTYs. This also makes stdin function instead of just outputting zeros.
-- Added `-Wno-switch` flag when building kernel to prevent massive blocks of useless warnings about the PS/2 keyboard scancode handling.
-- Fixed the maximum value for `uint8_t` in the kernel's `stdint.h`
+- Implemented Partial read/write support. This includes counting the number characters printed to debug and the display.
+- Implemented EOF support.
+- Implemented `getc` and `fgetc` support in kernel and LibC.
+- Implemented Eternal support in the `SimpleLinkedList` data structure.
+- Updated ELF symbol table class to take advantage of eternal support in `SimpleLinkedList`.
+- Updated KeyboardInput to use a heap allocated `Buffer` class instead of internal `Buffer` to prevent against some use-after-free issues.
+- Slight reordering of `Buffer::DeleteBlock` function to prevent against use-after-free issues.
+- Add a `IsValidChar` function to check if a character is displayable.
+- Updated `BasicVGA::putc` function to use the `IsValidChar` function instead of just printing a space for un-displayable characters.
+- Disabled printing of debug message when PS/2 keyboard is initialized.
+- Implemented better error handling in `Thread::sys$write` and `internal_write` functions.
+- Implemented proper error handling in `internal_read` function.
+- Minor changes to `isr_common` function on x86_64 to help with proper stack trace generation and registers and now passed as a pointer in `RDI` instead of raw data on the stack.
+- Added page size check to `x86_64_unmap_page` and fixed a bug where the wrong page level was being set as not present.
+- Added EOF check to `KeyboardInput::GetChar` function.
+- Updated `TTY::getc` to loop until a valid character is available.
+- Implemented x86_64 specific faster `memcpy` and `memset` functions in the kernel which use 64-bit operations for most of the buffer, then fall back to 8-bit operations for the rest. All usages of the old `fast_memcpy` and `fast_memset` functions should eventually be updated to use this new implementation.
+- Updated `crt0.asm` to push and pop important caller-saved registers after call to `__init_libc` function.
+- Implemented basic programs directory. These programs only have one source file each, and once compiled, get copied to the `/data/bin` directory in the system root. A VSCode C/C++ configuration was also added in replacement for the old `Test-program` configuration.
+- Implemented basic `cat` program.
+- Implemented basic `echo` program.
 
 ## Resources used
 

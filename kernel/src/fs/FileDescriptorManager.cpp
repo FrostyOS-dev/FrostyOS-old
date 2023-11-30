@@ -77,7 +77,6 @@ bool FileDescriptorManager::UnreserveFileDescriptor(fd_t ID) {
 }
 
 FileDescriptor* FileDescriptorManager::GetFileDescriptor(fd_t ID) const {
-    //dbgprintf("[%s(%ld)] INFO: m_bitmap.size = %lu", __extension__ __PRETTY_FUNCTION__, ID, m_bitmap.GetSize());
     if (ID >= (long)(m_bitmap.GetSize() << 3))
         return nullptr;
     for (uint64_t i = 0; i < m_descriptors.getCount(); i++) {

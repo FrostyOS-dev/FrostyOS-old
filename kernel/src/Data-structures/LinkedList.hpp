@@ -44,10 +44,10 @@ namespace LinkedList {
 
 
 	// Helper function that allocates a new node with the given data and NULL previous and next pointers.
-	Node* newNode(uint64_t data);
+	Node* newNode(uint64_t data, bool eternal = false);
 
 	// Recursive function to insert a node in the list with given data and returns the head node
-	void insertNode(Node*& head, uint64_t data);
+	void insertNode(Node*& head, uint64_t data, bool eternal = false);
 
 	// Get a pointer to a node from its data
 	Node* findNode(Node* head, uint64_t data);
@@ -61,20 +61,25 @@ namespace LinkedList {
 	// print the Linked list
 	void fprint(fd_t file, Node* head);
 
+	void panic(const char* str); // a tiny function which just expands the PANIC macro. This is so PANIC can be called from the template class below.
+
 	template <typename T> class SimpleLinkedList {
 	public:
-		SimpleLinkedList() : m_count(0), m_start(nullptr) {}
+		SimpleLinkedList(bool eternal = false) : m_count(0), m_start(nullptr), m_eternal(eternal) {}
 		~SimpleLinkedList() {
+			if (m_eternal) {
+				panic("Eternal SimpleLinkedList was deleted!");
+			}
 			for (uint64_t i = 0; i < m_count; i++)
 				remove(i);
 		}
 
 		void insert(const T* obj) {
-			/*if (findNode(m_start, (uint64_t)&obj) != nullptr) {
+			if (findNode(m_start, (uint64_t)&obj) != nullptr) {
 				dbgprintf("[%s] WARN: object already exists. Not inserting.\n", __extension__ __PRETTY_FUNCTION__);
 				return; // object already exists
-			}*/
-			insertNode(m_start, (uint64_t)obj);
+			}
+			insertNode(m_start, (uint64_t)obj, m_eternal);
 			m_count++;
 		}
 		T* get(uint64_t index) const {
@@ -102,10 +107,16 @@ namespace LinkedList {
 			return UINT64_MAX;
 		}
 		void remove(uint64_t index) {
+			if (m_eternal) {
+				panic("Eternal SimpleLinkedList node was deleted!");
+			}
 			deleteNode(m_start, (uint64_t)get(index));
 			m_count--;
 		}
 		void remove(const T* obj) {
+			if (m_eternal) {
+				panic("Eternal SimpleLinkedList node was deleted!");
+			}
 			deleteNode(m_start, (uint64_t)obj);
 			m_count--;
 		}
@@ -162,6 +173,7 @@ namespace LinkedList {
 	private:
 		uint64_t m_count;
 		Node* m_start;
+		bool m_eternal; // for a linked list that will never have nodes deleted
 	};
 
 }

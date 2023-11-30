@@ -64,14 +64,12 @@ void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler) 
 
 bool in_interrupt = false;
 
-extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers regs) {
-    x86_64_Interrupt_Registers* p_regs = &regs;
-
+extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
     /* Check if there is a designated handler */
-    if (g_ISRHandlers[p_regs->interrupt] != nullptr)
-        return g_ISRHandlers[p_regs->interrupt](p_regs);
+    if (g_ISRHandlers[regs->interrupt] != nullptr)
+        return g_ISRHandlers[regs->interrupt](regs);
 
-    dbgprintf("Interrupt occurred. RIP: %016lx Interrupt number: %02hhx\n", regs.rip, regs.interrupt);
+    dbgprintf("Interrupt occurred. RIP: %016lx Interrupt number: %02hhx\n", regs->rip, regs->interrupt);
 
     // prevent spam panic messages
     if (in_interrupt) {
@@ -84,12 +82,12 @@ extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers regs) {
     char tempReason[64];
     memset(tempReason, 0, 64);
 
-    const size_t strLength = g_ExceptionsSTRLengths[p_regs->interrupt];
+    const size_t strLength = g_ExceptionsSTRLengths[regs->interrupt];
 
-    memcpy(tempReason, g_Exceptions[p_regs->interrupt], strLength);
+    memcpy(tempReason, g_Exceptions[regs->interrupt], strLength);
 
     in_interrupt = true;
-    Panic(tempReason, p_regs, true);
+    Panic(tempReason, regs, true);
 
 
     while (true); // just hang

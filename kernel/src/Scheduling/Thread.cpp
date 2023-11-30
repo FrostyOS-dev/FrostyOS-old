@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <util.h>
 
+#include <file.h>
+
 namespace Scheduling {
 
     Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager() {
@@ -210,16 +212,20 @@ namespace Scheduling {
         if (descriptor == nullptr)
             return -EBADF;
         
-        if (!descriptor->Read((uint8_t*)buf, count)) {
+        size_t status = descriptor->Read((uint8_t*)buf, count);
+        if (status == 0) {
             switch (descriptor->GetLastError()) {
+            case FileDescriptorError::INVALID_ARGUMENTS:
+                return EOF;
             case FileDescriptorError::INVALID_MODE:
+            case FileDescriptorError::STREAM_ERROR:
                 return -EBADF;
-            default:
-                assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+            default: {
+                PANIC("File descriptor internal error in read syscall.");
+            }
             }
         }
-
-        return count; // partial reads are unsupported, so just return the full amount
+        return status;
     }
 
     long Thread::sys$write(fd_t file, const void* buf, unsigned long count) {
@@ -230,21 +236,40 @@ namespace Scheduling {
         if (descriptor == nullptr)
             return -EBADF;
         
-        if (!descriptor->Write((uint8_t*)buf, count)) {
+        size_t status = descriptor->Write((const uint8_t*)buf, count);
+        if (status == 0) {
             switch (descriptor->GetLastError()) {
+            case FileDescriptorError::INVALID_ARGUMENTS:
+                return EOF;
             case FileDescriptorError::INVALID_MODE:
+            case FileDescriptorError::STREAM_ERROR: {
+                /* This gets complicated because we have no simple way to know if it is a allocation failure or a bad file descriptor.
+                We must check if the descriptor is a FileStream, and if it is, check if an allocation failure occurred.
+                If not, we can assume it is a bad file descriptor.
+                */
+                if (descriptor->GetType() == FileDescriptorType::FILE_STREAM) {
+                    FileStream* stream = (FileStream*)descriptor->GetData();
+                    if (stream != nullptr) {
+                        switch (stream->GetLastError()) {
+                        case FileStreamError::ALLOCATION_FAILED:
+                            return -ENOMEM;
+                        default:
+                            return -EBADF;
+                        }
+                    }
+                }
                 return -EBADF;
-            case FileDescriptorError::STREAM_ERROR:
-                return -ENOMEM;
-            default:
-                assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+            }
+            default: {
+                PANIC("File descriptor internal error in write syscall.");
+            }
             }
         }
 
         if (descriptor->GetType() == FileDescriptorType::TTY)
             ((TTY*)descriptor->GetData())->GetVGADevice()->SwapBuffers(false);
 
-        return count; // partial writes are unsupported, so just return the full amount
+        return status;
     }
 
     int Thread::sys$close(fd_t file) {
@@ -297,29 +322,29 @@ namespace Scheduling {
         fprintf(file, "Cleanup function: %lp\n", m_cleanup.function);
         fprintf(file, "Cleanup data: %lp\n", m_cleanup.data);
         fprintf(file, "Registers:\n");
-        fprintf(file, "RAX: %016lx\n", m_regs.RAX);
-        fprintf(file, "RBX: %016lx\n", m_regs.RBX);
-        fprintf(file, "RCX: %016lx\n", m_regs.RCX);
+        fprintf(file, "RAX: %016lx  ", m_regs.RAX);
+        fprintf(file, "RBX: %016lx  ", m_regs.RBX);
+        fprintf(file, "RCX: %016lx  ", m_regs.RCX);
         fprintf(file, "RDX: %016lx\n", m_regs.RDX);
-        fprintf(file, "RSP: %016lx\n", m_regs.RSP);
-        fprintf(file, "RBP: %016lx\n", m_regs.RBP);
-        fprintf(file, "RDI: %016lx\n", m_regs.RDI);
+        fprintf(file, "RSP: %016lx  ", m_regs.RSP);
+        fprintf(file, "RBP: %016lx  ", m_regs.RBP);
+        fprintf(file, "RDI: %016lx  ", m_regs.RDI);
         fprintf(file, "RSI: %016lx\n", m_regs.RSI);
-        fprintf(file, "R8 : %016lx\n", m_regs.R8);
-        fprintf(file, "R9 : %016lx\n", m_regs.R9);
-        fprintf(file, "R10: %016lx\n", m_regs.R10);
+        fprintf(file, "R8 : %016lx  ", m_regs.R8);
+        fprintf(file, "R9 : %016lx  ", m_regs.R9);
+        fprintf(file, "R10: %016lx  ", m_regs.R10);
         fprintf(file, "R11: %016lx\n", m_regs.R11);
-        fprintf(file, "R12: %016lx\n", m_regs.R12);
-        fprintf(file, "R13: %016lx\n", m_regs.R13);
-        fprintf(file, "R14: %016lx\n", m_regs.R14);
+        fprintf(file, "R12: %016lx  ", m_regs.R12);
+        fprintf(file, "R13: %016lx  ", m_regs.R13);
+        fprintf(file, "R14: %016lx  ", m_regs.R14);
         fprintf(file, "R15: %016lx\n", m_regs.R15);
-        fprintf(file, "RIP: %016lx\n", m_regs.RIP);
+        fprintf(file, "RIP: %016lx  ", m_regs.RIP);
         fprintf(file, "RFLAGS: %016lx\n", m_regs.RFLAGS);
-        fprintf(file, "CS: %04lx\n", m_regs.CS);
-        fprintf(file, "DS: %04lx\n", m_regs.DS);
-        fprintf(file, "SS: %04lx\n", m_regs.DS);
-        fprintf(file, "ES: %04lx\n", m_regs.DS);
-        fprintf(file, "FS: %04lx\n", m_regs.DS);
+        fprintf(file, "CS: %04lx  ", m_regs.CS);
+        fprintf(file, "DS: %04lx  ", m_regs.DS);
+        fprintf(file, "SS: %04lx  ", m_regs.DS);
+        fprintf(file, "ES: %04lx  ", m_regs.DS);
+        fprintf(file, "FS: %04lx  ", m_regs.DS);
         fprintf(file, "GS: %04lx\n", m_regs.DS);
         fprintf(file, "CR3: %016lx\n", m_regs.CR3);
     }
