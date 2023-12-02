@@ -112,7 +112,7 @@ initramfs:
 	@echo Creating initial RAMFS
 	@echo ----------------------
 	@mkdir -p dist/boot/WorldOS root
-	@cd root && tar -c --no-auto-compress -f ../dist/boot/WorldOS/initramfs.tar *
+	@cd root && tar -c --no-auto-compress --owner=0 --group=0 -f ../dist/boot/WorldOS/initramfs.tar *
 
 clean-all:
 	@echo ------------

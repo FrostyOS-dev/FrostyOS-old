@@ -162,6 +162,9 @@ size_t FileDescriptor::Read(uint8_t* buffer, size_t count) {
             case FileStreamError::STREAM_CLOSED:
                 SetLastError(FileDescriptorError::STREAM_ERROR);
                 break;
+            case FileStreamError::NO_PERMISSION:
+                SetLastError(FileDescriptorError::NO_PERMISSION);
+                break;
             default:
                 SetLastError(FileDescriptorError::INTERNAL_ERROR);
                 break;
@@ -208,6 +211,9 @@ size_t FileDescriptor::Write(const uint8_t* buffer, size_t count) {
             case FileStreamError::ALLOCATION_FAILED:
             case FileStreamError::STREAM_CLOSED:
                 SetLastError(FileDescriptorError::STREAM_ERROR);
+                break;
+            case FileStreamError::NO_PERMISSION:
+                SetLastError(FileDescriptorError::NO_PERMISSION);
                 break;
             default:
                 SetLastError(FileDescriptorError::INTERNAL_ERROR);

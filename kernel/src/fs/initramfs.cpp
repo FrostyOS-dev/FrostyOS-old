@@ -35,7 +35,10 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
     while (memcmp(&(header->ID), "ustar", 5) == 0 && ((uint64_t)header - (uint64_t)address) < size) {
         assert(header->filepath[99] == 0);
         uint64_t size = ASCII_OCT_To_UInt(header->size, 12);
-        dbgprintf("initramfs item: path=\"%s\", size=%lu, type=%c\n", header->filepath, size, header->TypeFlag);
+        uint32_t uid = (uint32_t)ASCII_OCT_To_UInt(header->uid, 8);
+        uint32_t gid = (uint32_t)ASCII_OCT_To_UInt(header->gid, 8);
+        uint16_t ACL = (uint16_t)ASCII_OCT_To_UInt(header->mode, 8);
+        dbgprintf("initramfs item: path=\"%s\", size=%lu, type=%c, uid=%u, gid=%u, ACL=%03ho\n", header->filepath, size, header->TypeFlag, uid, gid, ACL);
 
         uint8_t last_separator = 255;
         for (uint8_t i = 0; i < 99 && header->filepath[i]; i++) {
@@ -53,11 +56,13 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
 
         assert(g_VFS != nullptr);
 
+        FilePrivilegeLevel privilege = {uid, gid, ACL};
+        
         switch (header->TypeFlag - '0') {
         case 0: // File
             {
-            assert(g_VFS->CreateFile(parent, name, size));
-            FileStream* stream = g_VFS->OpenStream(header->filepath, VFS_READ | VFS_WRITE);
+            assert(g_VFS->CreateFile({0, 0, 07777}, parent, name, size, false, privilege));
+            FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, header->filepath, VFS_READ | VFS_WRITE);
             assert(stream != nullptr);
             assert(stream->Open());
             assert(stream->WriteStream((const uint8_t*)((uint64_t)header + 512), size));
@@ -75,10 +80,10 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
             }
             break;
         case 2: // Symbolic Link
-            assert(g_VFS->CreateSymLink(parent, name, header->filename));
+            assert(g_VFS->CreateSymLink({0, 0, 07777}, parent, name, header->filename, false, privilege));
             break;
         case 5: // Folder
-            assert(g_VFS->CreateFolder(parent, name));
+            assert(g_VFS->CreateFolder({0, 0, 07777}, parent, name, false, privilege));
             break;
         default:
             assert(false);

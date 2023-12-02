@@ -29,7 +29,7 @@ extern "C" {
 
 struct FILE {
     fd_t descriptor;
-    unsigned long modes;
+    unsigned long flags;
 };
 
 typedef struct FILE FILE;

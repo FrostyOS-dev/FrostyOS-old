@@ -31,7 +31,17 @@ enum SystemCalls {
     SC_SEEK = 5,
     SC_MMAP = 6,
     SC_MUNMAP = 7,
-    SC_MPROTECT = 8
+    SC_MPROTECT = 8,
+    SC_GETUID = 9,
+    SC_GETGID = 10,
+    SC_GETEUID = 11,
+    SC_GETEGID = 12,
+    SC_STAT = 13,
+    SC_FSTAT = 14,
+    SC_CHOWN = 15,
+    SC_FCHOWN = 16,
+    SC_CHMOD = 17,
+    SC_FCHMOD = 18
 };
 
 #ifndef _IN_KERNEL

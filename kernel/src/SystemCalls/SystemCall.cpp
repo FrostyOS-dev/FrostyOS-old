@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "memory.hpp"
 
 #include <stdio.h>
+#include <errno.h>
 
 #include <Scheduling/Scheduler.hpp>
 #include <Scheduling/Thread.hpp>
@@ -48,7 +49,7 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
     case SC_WRITE:
         return (uint64_t)(current_thread->sys$write((fd_t)arg1, (const void*)arg2, arg3));
     case SC_OPEN:
-        return (uint64_t)(current_thread->sys$open((const char*)arg1, arg2));
+        return (uint64_t)(current_thread->sys$open((const char*)arg1, arg2, (unsigned short)arg3));
     case SC_CLOSE:
         return (uint64_t)(current_thread->sys$close((fd_t)arg1));
     case SC_SEEK:
@@ -59,6 +60,42 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
         return (uint64_t)sys$munmap((void*)arg1, arg2);
     case SC_MPROTECT:
         return (uint64_t)sys$mprotect((void*)arg1, arg2, arg3);
+    case SC_GETUID: {
+        Scheduling::Process* parent = current_thread->GetParent();
+        if (parent == nullptr)
+            return (uint64_t)-EFAULT;
+        return (uint64_t)(parent->GetUID());
+    }
+    case SC_GETGID: {
+        Scheduling::Process* parent = current_thread->GetParent();
+        if (parent == nullptr)
+            return (uint64_t)-EFAULT;
+        return (uint64_t)(parent->GetGID());
+    }
+    case SC_GETEUID: {
+        Scheduling::Process* parent = current_thread->GetParent();
+        if (parent == nullptr)
+            return (uint64_t)-EFAULT;
+        return (uint64_t)(parent->GetEUID());
+    }
+    case SC_GETEGID: {
+        Scheduling::Process* parent = current_thread->GetParent();
+        if (parent == nullptr)
+            return (uint64_t)-EFAULT;
+        return (uint64_t)(parent->GetEGID());
+    }
+    case SC_STAT:
+        return (uint64_t)(current_thread->sys$stat((const char*)arg1, (struct stat_buf*)arg2));
+    case SC_FSTAT:
+        return (uint64_t)(current_thread->sys$fstat((fd_t)arg1, (struct stat_buf*)arg2));
+    case SC_CHOWN:
+        return (uint64_t)(current_thread->sys$chown((const char*)arg1, (unsigned int)arg2, (unsigned int)arg3));
+    case SC_FCHOWN:
+        return (uint64_t)(current_thread->sys$fchown((fd_t)arg1, (unsigned int)arg2, (unsigned int)arg3));
+    case SC_CHMOD:
+        return (uint64_t)(current_thread->sys$chmod((const char*)arg1, (unsigned short)arg2));
+    case SC_FCHMOD:
+        return (uint64_t)(current_thread->sys$fchmod((fd_t)arg1, (unsigned short)arg2));
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

@@ -48,7 +48,7 @@ namespace Scheduling {
     class Process {
     public:
         Process();
-        Process(ProcessEntry_t entry, void* entry_data = nullptr, Priority priority = Priority::NORMAL, uint8_t flags = USER_DEFAULT, PageManager* pm = nullptr);
+        Process(ProcessEntry_t entry, void* entry_data, uint32_t UID, uint32_t GID, Priority priority = Priority::NORMAL, uint8_t flags = USER_DEFAULT, PageManager* pm = nullptr);
         ~Process();
 
         void SetEntry(ProcessEntry_t entry, void* entry_data = nullptr);
@@ -81,6 +81,16 @@ namespace Scheduling {
 
         void SyncRegion(); // ensure the region matches the page manager's region
 
+        void SetUID(uint32_t uid);
+        void SetGID(uint32_t gid);
+        void SetEUID(uint32_t euid);
+        void SetEGID(uint32_t egid);
+
+        uint32_t GetUID() const;
+        uint32_t GetGID() const;
+        uint32_t GetEUID() const;
+        uint32_t GetEGID() const;
+
     private:
         ProcessEntry_t m_Entry;
         void* m_entry_data;
@@ -94,6 +104,11 @@ namespace Scheduling {
         VirtualPageManager* m_VPM;
         bool m_main_thread_creation_requested;
         bool m_region_allocated;
+
+        uint32_t m_UID;
+        uint32_t m_GID;
+        uint32_t m_EUID; // effective UID
+        uint32_t m_EGID; // effective GID
     };
 }
 

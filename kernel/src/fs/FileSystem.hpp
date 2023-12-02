@@ -21,6 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stddef.h>
 
+#include "FilePrivilegeLevel.hpp"
+
 enum class FileSystemError {
     SUCCESS = 0,
     STREAM_CLOSED = 1,
@@ -28,7 +30,8 @@ enum class FileSystemError {
     INTERNAL_ERROR = 3, // An error with class data structure(s)
     ALLOCATION_FAILED = 4,
     RECURSION_ERROR = 5,
-    INVALID_FS = 6 // only for VFS. Filesystem type of mountpoint is invalid
+    INVALID_FS = 6, // only for VFS. Filesystem type of mountpoint is invalid
+    NO_PERMISSION = 7 // No permission to perform operation
 };
 
 enum class FileSystemType {
@@ -41,13 +44,15 @@ class FileSystem {
 public:
     virtual ~FileSystem() {}
 
-    virtual bool CreateFile(const char* parent, const char* name, size_t size = 0) = 0;
-    virtual bool CreateFolder(const char* parent, const char* name) = 0;
-    virtual bool CreateSymLink(const char* parent, const char* name, const char* target) = 0;
+    virtual bool CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) = 0;
+    virtual bool CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) = 0;
+    virtual bool CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) = 0;
 
-    virtual bool DeleteInode(const char* path, bool recursive = false) = 0;
+    virtual bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false) = 0;
 
     virtual FileSystemError GetLastError() const { return p_lastError; }
+
+    virtual FileSystemType GetType() const = 0;
 
 protected:
     virtual void SetLastError(FileSystemError error) const { p_lastError = error; } // const so const functions can perform error reporting

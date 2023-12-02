@@ -26,6 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <file.h>
 
+#include <fs/TempFS/TempFSInode.hpp>
+
 namespace Scheduling {
 
     Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager() {
@@ -108,34 +110,36 @@ namespace Scheduling {
         Scheduler::ScheduleThread(this);
     }
 
-    fd_t Thread::sys$open(const char* path, unsigned long mode) {
+    fd_t Thread::sys$open(const char* path, unsigned long flags, unsigned short mode) {
         if (m_Parent == nullptr || !m_Parent->ValidateStringRead(path))
             return -EFAULT;
 
-        bool create = mode & O_CREATE;
+        bool create = flags & O_CREATE;
         if (create)
-            mode &= ~O_CREATE;
+            flags &= ~O_CREATE;
 
         FileDescriptorMode new_mode;
         uint8_t vfs_modes;
-        if (mode == O_READ) {
+        if (flags == O_READ) {
             new_mode = FileDescriptorMode::READ;
             vfs_modes = VFS_READ;
         }
-        else if (mode == O_APPEND) {
+        else if (flags == O_APPEND) {
             new_mode = FileDescriptorMode::APPEND;
             vfs_modes = VFS_WRITE;
         }
-        else if (mode == O_WRITE) {
+        else if (flags == O_WRITE) {
             new_mode = FileDescriptorMode::WRITE;
             vfs_modes = VFS_WRITE;
         }
-        else if (mode == (O_READ | O_WRITE)) {
+        else if (flags == (O_READ | O_WRITE)) {
             new_mode = FileDescriptorMode::READ_WRITE;
             vfs_modes = VFS_READ | VFS_WRITE;
         }
         else
             return -EINVAL;
+
+        FilePrivilegeLevel current_privilege = {m_Parent->GetEUID(), m_Parent->GetEGID(), 0};
 
         bool valid_path = g_VFS->IsValidPath(path);
         if (create) {
@@ -156,7 +160,7 @@ namespace Scheduling {
                 }
                 else
                     parent = "/";
-                bool successful = g_VFS->CreateFile(parent, end == nullptr ? path : child_start);
+                bool successful = g_VFS->CreateFile(current_privilege, parent, end == nullptr ? path : child_start, 0, false, {m_Parent->GetEUID(), m_Parent->GetEGID(), mode});
                 if (end != nullptr)
                     delete[] parent;
                 if (!successful) {
@@ -174,7 +178,7 @@ namespace Scheduling {
         else if (!valid_path)
             return -ENOENT;
         
-        FileStream* stream = g_VFS->OpenStream(path, vfs_modes);
+        FileStream* stream = g_VFS->OpenStream(current_privilege, path, vfs_modes);
         if (stream == nullptr) {
             switch (g_VFS->GetLastError()) {
             case FileSystemError::ALLOCATION_FAILED:
@@ -220,6 +224,8 @@ namespace Scheduling {
             case FileDescriptorError::INVALID_MODE:
             case FileDescriptorError::STREAM_ERROR:
                 return -EBADF;
+            case FileDescriptorError::NO_PERMISSION:
+                return -EACCES;
             default: {
                 PANIC("File descriptor internal error in read syscall.");
             }
@@ -260,6 +266,8 @@ namespace Scheduling {
                 }
                 return -EBADF;
             }
+            case FileDescriptorError::NO_PERMISSION:
+                return -EACCES;
             default: {
                 PANIC("File descriptor internal error in write syscall.");
             }
@@ -309,6 +317,200 @@ namespace Scheduling {
         }
 
         return offset;
+    }
+
+    int Thread::sys$stat(const char* path, struct stat_buf* buf) {
+        if (m_Parent == nullptr || !m_Parent->ValidateWrite(buf, sizeof(struct stat_buf)) || !m_Parent->ValidateStringRead(path))
+            return -EFAULT;
+
+        // Validate path
+        if (!g_VFS->IsValidPath(path))
+            return -ENOENT;
+
+        FileSystem* fs = nullptr;
+        Inode* inode = g_VFS->GetInode(path, &fs);
+        if (inode == nullptr || fs == nullptr)
+            return -ENOENT;
+
+        FilePrivilegeLevel privilege = inode->GetPrivilegeLevel();
+        
+        struct stat_buf buffer;
+
+        buffer.st_uid = privilege.UID;
+        buffer.st_gid = privilege.GID;
+        buffer.st_mode = privilege.ACL;
+
+        switch (fs->GetType()) {
+        case FileSystemType::TMPFS: {
+            TempFS::TempFSInode* tempfs_inode = (TempFS::TempFSInode*)inode;
+            if (tempfs_inode->GetType() == InodeType::File)
+                buffer.st_size = tempfs_inode->GetSize();
+            else
+                buffer.st_size = 0;
+            break;
+        }
+        default:
+            return -ENOSYS;
+        }
+
+        memcpy(buf, &buffer, sizeof(struct stat_buf));
+        return ESUCCESS;
+    }
+
+    int Thread::sys$fstat(fd_t file, struct stat_buf* buf) {
+        if (m_Parent == nullptr || !m_Parent->ValidateWrite(buf, sizeof(struct stat_buf)))
+            return -EFAULT;
+
+        FileDescriptor* descriptor = m_FDManager.GetFileDescriptor(file);
+        if (descriptor == nullptr || descriptor->GetType() != FileDescriptorType::FILE_STREAM)
+            return -EBADF;
+
+        FileStream* stream = (FileStream*)descriptor->GetData();
+        if (stream == nullptr)
+            return -EBADF;
+
+        Inode* inode = stream->GetInode();
+        FileSystem* fs = stream->GetFileSystem();
+        if (inode == nullptr || fs == nullptr)
+            return -EBADF;
+
+        FilePrivilegeLevel privilege = inode->GetPrivilegeLevel();
+        
+        struct stat_buf buffer;
+
+        buffer.st_uid = privilege.UID;
+        buffer.st_gid = privilege.GID;
+        buffer.st_mode = privilege.ACL;
+
+        switch (fs->GetType()) {
+        case FileSystemType::TMPFS: {
+            TempFS::TempFSInode* tempfs_inode = (TempFS::TempFSInode*)inode;
+            if (tempfs_inode->GetType() == InodeType::File)
+                buffer.st_size = tempfs_inode->GetSize();
+            else
+                buffer.st_size = 0;
+            break;
+        }
+        default:
+            return -ENOSYS;
+        }
+
+        memcpy(buf, &buffer, sizeof(struct stat_buf));
+        return ESUCCESS;
+    }
+
+    int Thread::sys$chown(const char* path, unsigned int uid, unsigned int gid) {
+        if (m_Parent == nullptr || !m_Parent->ValidateStringRead(path))
+            return -EFAULT;
+        
+        if (uid == (unsigned int)-1 && gid == (unsigned int)-1)
+            return ESUCCESS; // no point checking anything if we are not changing anything
+
+        // Ensure we are UID 0
+        if (m_Parent->GetEUID() != 0)
+            return -EPERM;
+
+        // Validate path
+        if (!g_VFS->IsValidPath(path))
+            return -ENOENT;
+
+        Inode* inode = g_VFS->GetInode(path);
+        if (inode == nullptr)
+            return -ENOENT;
+
+        FilePrivilegeLevel privilege = inode->GetPrivilegeLevel();
+        if (uid != (unsigned int)-1)
+            privilege.UID = uid;
+        if (gid != (unsigned int)-1)
+            privilege.GID = gid;
+        inode->SetPrivilegeLevel(privilege);
+        return ESUCCESS;
+    }
+
+    int Thread::sys$fchown(fd_t file, unsigned int uid, unsigned int gid) {
+        if (m_Parent == nullptr)
+            return -EFAULT;
+
+        if (uid == (unsigned int)-1 && gid == (unsigned int)-1)
+            return ESUCCESS; // no point checking anything if we are not changing anything
+
+        // Ensure we are UID 0
+        if (m_Parent->GetEUID() != 0)
+            return -EPERM;
+
+        FileDescriptor* descriptor = m_FDManager.GetFileDescriptor(file);
+        if (descriptor == nullptr || descriptor->GetType() != FileDescriptorType::FILE_STREAM)
+            return -EBADF;
+
+        FileStream* stream = (FileStream*)descriptor->GetData();
+        if (stream == nullptr)
+            return -EBADF;
+
+        Inode* inode = stream->GetInode();
+        if (inode == nullptr)
+            return -EBADF;
+
+        FilePrivilegeLevel privilege = inode->GetPrivilegeLevel();
+        if (uid != (unsigned int)-1)
+            privilege.UID = uid;
+        if (gid != (unsigned int)-1)
+            privilege.GID = gid;
+        inode->SetPrivilegeLevel(privilege);
+        return ESUCCESS;
+    }
+
+    int Thread::sys$chmod(const char* path, unsigned short mode) {
+        if (m_Parent == nullptr || !m_Parent->ValidateStringRead(path))
+            return -EFAULT;
+
+        // Validate path
+        if (!g_VFS->IsValidPath(path))
+            return -ENOENT;
+
+        Inode* inode = g_VFS->GetInode(path);
+        if (inode == nullptr)
+            return -ENOENT;
+
+        FilePrivilegeLevel privilege = inode->GetPrivilegeLevel();
+        
+        // Ensure we are the owner or group owner of the file or we are UID/GID 0
+        uint32_t uid = m_Parent->GetEUID();
+        uint32_t gid = m_Parent->GetEGID();
+        if ((privilege.UID != uid && uid != 0) || (privilege.GID != gid && gid != 0))
+            return -EPERM;
+
+        privilege.ACL = mode;
+        inode->SetPrivilegeLevel(privilege);
+        return ESUCCESS;
+    }
+
+    int Thread::sys$fchmod(fd_t file, unsigned short mode) {
+        if (m_Parent == nullptr)
+            return -EFAULT;
+
+        FileDescriptor* descriptor = m_FDManager.GetFileDescriptor(file);
+        if (descriptor == nullptr || descriptor->GetType() != FileDescriptorType::FILE_STREAM)
+            return -EBADF;
+
+        FileStream* stream = (FileStream*)descriptor->GetData();
+        if (stream == nullptr)
+            return -EBADF;
+
+        Inode* inode = stream->GetInode();
+        if (inode == nullptr)
+            return -EBADF;
+
+        FilePrivilegeLevel privilege = inode->GetPrivilegeLevel();
+
+        // Ensure we are the owner or group owner of the file or we are UID/GID 0
+        uint32_t uid = m_Parent->GetEUID();
+        uint32_t gid = m_Parent->GetEGID();
+        if ((privilege.UID != uid && uid != 0) || (privilege.GID != gid && gid != 0))
+            return -EPERM;
+        
+        privilege.ACL = mode;
+        inode->SetPrivilegeLevel(privilege);
+        return ESUCCESS;
     }
 
     void Thread::PrintInfo(fd_t file) const {

@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <fs/FileDescriptorManager.hpp>
 
+#include <file.h>
+
 namespace Scheduling {
 
     typedef void (*ThreadEntry_t)(void*);
@@ -58,11 +60,18 @@ namespace Scheduling {
 
         void Start();
 
-        fd_t sys$open(const char* path, unsigned long mode);
+        fd_t sys$open(const char* path, unsigned long flags, unsigned short mode);
         long sys$read(fd_t file, void* buf, unsigned long count);
         long sys$write(fd_t file, const void* buf, unsigned long count);
         int sys$close(fd_t file);
         long sys$seek(fd_t file, long offset);
+
+        int sys$stat(const char* path, struct stat_buf* buf);
+        int sys$fstat(fd_t file, struct stat_buf* buf);
+        int sys$chown(const char* path, unsigned int uid, unsigned int gid);
+        int sys$fchown(fd_t file, unsigned int uid, unsigned int gid);
+        int sys$chmod(const char* path, unsigned short mode);
+        int sys$fchmod(fd_t file, unsigned short mode);
 
         void PrintInfo(fd_t file) const;
 

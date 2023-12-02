@@ -22,11 +22,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Memory/VirtualPageManager.hpp>
 
 namespace Scheduling {
-    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false) {
+    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_UID(0), m_GID(0), m_EUID(0), m_EGID(0) {
 
     }
 
-    Process::Process(ProcessEntry_t entry, void* entry_data, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false) {
+    Process::Process(ProcessEntry_t entry, void* entry_data, uint32_t UID, uint32_t GID, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_UID(UID), m_GID(GID), m_EUID(UID), m_EGID(GID) {
 
     }
 
@@ -182,5 +182,39 @@ namespace Scheduling {
 
     void Process::SyncRegion() {
         m_region = m_pm->GetRegion();
+    }
+
+    void Process::SetUID(uint32_t uid) {
+        m_UID = uid;
+        m_EUID = uid;
+    }
+
+    void Process::SetGID(uint32_t gid) {
+        m_GID = gid;
+        m_EGID = gid;
+    }
+
+    void Process::SetEUID(uint32_t euid) {
+        m_EUID = euid;
+    }
+
+    void Process::SetEGID(uint32_t egid) {
+        m_EGID = egid;
+    }
+
+    uint32_t Process::GetUID() const {
+        return m_UID;
+    }
+
+    uint32_t Process::GetGID() const {
+        return m_GID;
+    }
+
+    uint32_t Process::GetEUID() const {
+        return m_EUID;
+    }
+
+    uint32_t Process::GetEGID() const {
+        return m_EGID;
     }
 }

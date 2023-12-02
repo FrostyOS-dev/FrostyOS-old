@@ -26,29 +26,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace TempFS {
 
-    
-
     class TempFileSystem : public FileSystem {
     public:
-        TempFileSystem(size_t blockSize);
+        TempFileSystem(size_t blockSize, FilePrivilegeLevel rootPrivilege);
         ~TempFileSystem();
 
-        bool CreateFile(const char* parent, const char* name, size_t size = 0) override;
-        bool CreateFile(TempFSInode* parent, const char* name, size_t size = 0);
-        bool CreateFolder(const char* parent, const char* name) override;
-        bool CreateFolder(TempFSInode* parent, const char* name);
-        bool CreateSymLink(const char* parent, const char* name, const char* target) override;
-        bool CreateSymLink(TempFSInode* parent, const char* name, TempFSInode* target);
+        bool CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+        bool CreateFile(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
+        bool CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+        bool CreateFolder(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
+        bool CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+        bool CreateSymLink(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, TempFSInode* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
 
-        bool DeleteInode(const char* path, bool recursive = false) override;
-        bool DeleteInode(TempFSInode* inode, bool recursive = false);
+        bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false) override;
+        bool DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive = false);
 
         void CreateNewRootInode(TempFSInode* inode);
         void DeleteRootInode(TempFSInode* inode);
 
         TempFSInode* GetInode(const char* path, TempFSInode** lastInode = nullptr, int64_t* end_index = nullptr); // last_inode and end_index are only filled if it is a non-null pointer
 
+        FileSystemType GetType() const override;
+
     private:
+        FilePrivilegeLevel m_rootPrivilege;
         LinkedList::SimpleLinkedList<TempFSInode> m_rootInodes;
     };
 }

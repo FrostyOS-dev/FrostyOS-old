@@ -27,6 +27,13 @@ typedef long fd_t;
 
 #define EOF -1
 
+struct stat_buf {
+    unsigned long st_size;
+    unsigned int st_uid;
+    unsigned int st_gid;
+    unsigned short st_mode;
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,9 +43,9 @@ extern "C" {
 
 #include "syscall.h"
 
-static inline fd_t open(const char* path, unsigned long mode) {
+static inline fd_t open(const char* path, unsigned long flags, unsigned short mode) {
     unsigned long ret;
-    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_OPEN), "D"(path), "S"(mode) : "rcx", "r11", "memory");
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_OPEN), "D"(path), "S"(flags), "d"(mode) : "rcx", "r11", "memory");
     return (fd_t)ret;
 }
 
@@ -66,9 +73,69 @@ static inline long seek(fd_t file, long offset) {
     return (long)ret;
 }
 
+static inline unsigned int getuid() {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_GETUID) : "rcx", "r11", "memory");
+    return (unsigned int)ret;
+}
+
+static inline unsigned int getgid() {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_GETGID) : "rcx", "r11", "memory");
+    return (unsigned int)ret;
+}
+
+static inline unsigned int geteuid() {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_GETEUID) : "rcx", "r11", "memory");
+    return (unsigned int)ret;
+}
+
+static inline unsigned int getegid() {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_GETEGID) : "rcx", "r11", "memory");
+    return (unsigned int)ret;
+}
+
+static inline int stat(const char* path, struct stat_buf* buf) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_STAT), "D"(path), "S"(buf) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+static inline int fstat(fd_t file, struct stat_buf* buf) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_FSTAT), "D"(file), "S"(buf) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+static inline int chown(const char* path, unsigned int uid, unsigned int gid) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_CHOWN), "D"(path), "S"(uid), "d"(gid) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+static inline int fchown(fd_t file, unsigned int uid, unsigned int gid) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_FCHOWN), "D"(file), "S"(uid), "d"(gid) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+static inline int chmod(const char* path, unsigned short mode) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_CHMOD), "D"(path), "S"(mode) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+static inline int fchmod(fd_t file, unsigned short mode) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_FCHMOD), "D"(file), "S"(mode) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
 #else /* _IN_KERNEL */
 
-fd_t open(const char* path, unsigned long mode);
+fd_t open(const char* path, unsigned long flags, unsigned short mode);
 
 long read(fd_t file, void* buf, unsigned long count);
 long write(fd_t file, const void* buf, unsigned long count);
@@ -76,6 +143,21 @@ long write(fd_t file, const void* buf, unsigned long count);
 int close(fd_t file);
 
 long seek(fd_t file, long offset);
+
+unsigned int getuid();
+unsigned int getgid();
+unsigned int geteuid();
+unsigned int getegid();
+
+int stat(const char* path, struct stat_buf* buf);
+int fstat(fd_t file, struct stat_buf* buf);
+
+int chown(const char* path, unsigned int uid, unsigned int gid);
+int fchown(fd_t file, unsigned int uid, unsigned int gid);
+
+int chmod(const char* path, unsigned short mode);
+int fchmod(fd_t file, unsigned short mode);
+
 
 #endif /* _IN_KERNEL */
 

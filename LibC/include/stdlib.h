@@ -37,6 +37,10 @@ typedef unsigned long size_t;
 int atoi(const char* str);
 long atol(const char* str);
 
+long strtol(const char* str, char** endptr, int base);
+long long strtoll(const char* str, char** endptr, int base);
+unsigned long strtoul(const char* str, char** endptr, int base);
+unsigned long long strtoull(const char* str, char** endptr, int base);
 
 void* calloc(size_t num, size_t size);
 void free(void* ptr);

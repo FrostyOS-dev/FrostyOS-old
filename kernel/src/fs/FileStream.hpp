@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "VFS.hpp"
 #include "Inode.hpp"
+#include "FilePrivilegeLevel.hpp"
 
 enum class FileStreamError {
     SUCCESS = 0,
@@ -30,12 +31,13 @@ enum class FileStreamError {
     INVALID_INODE = 5, // Invalid Inode. e.g. a folder Inode or a NULL inode
     INVALID_FS_TYPE = 6, // Invalid FileSystem type
     INVALID_MOUNTPOINT = 7, // Invalid VFS Mount-point
-    STREAM_CLOSED = 8 // File stream is closed
+    STREAM_CLOSED = 8, // File stream is closed
+    NO_PERMISSION = 9 // No permission to perform operation
 };
 
 class FileStream {
 public:
-    FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes);
+    FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes, FilePrivilegeLevel privilege);
     ~FileStream();
 
     bool Open();
@@ -48,6 +50,9 @@ public:
     bool isOpen() const;
     size_t GetSize() const;
 
+    Inode* GetInode() const;
+    FileSystem* GetFileSystem() const;
+
     FileStreamError GetLastError() const;
 
 private:
@@ -58,6 +63,7 @@ private:
     Inode* m_inode;
     VFS_MountPoint* m_mountPoint;
     uint8_t m_modes;
+    FilePrivilegeLevel m_privilege;
 
     mutable FileStreamError m_lastError;
 };

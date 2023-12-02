@@ -17,29 +17,23 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 30/11/2023
+## Latest Changes - 02/12/2023
 
-- Implemented Partial read/write support. This includes counting the number characters printed to debug and the display.
-- Implemented EOF support.
-- Implemented `getc` and `fgetc` support in kernel and LibC.
-- Implemented Eternal support in the `SimpleLinkedList` data structure.
-- Updated ELF symbol table class to take advantage of eternal support in `SimpleLinkedList`.
-- Updated KeyboardInput to use a heap allocated `Buffer` class instead of internal `Buffer` to prevent against some use-after-free issues.
-- Slight reordering of `Buffer::DeleteBlock` function to prevent against use-after-free issues.
-- Add a `IsValidChar` function to check if a character is displayable.
-- Updated `BasicVGA::putc` function to use the `IsValidChar` function instead of just printing a space for un-displayable characters.
-- Disabled printing of debug message when PS/2 keyboard is initialized.
-- Implemented better error handling in `Thread::sys$write` and `internal_write` functions.
-- Implemented proper error handling in `internal_read` function.
-- Minor changes to `isr_common` function on x86_64 to help with proper stack trace generation and registers and now passed as a pointer in `RDI` instead of raw data on the stack.
-- Added page size check to `x86_64_unmap_page` and fixed a bug where the wrong page level was being set as not present.
-- Added EOF check to `KeyboardInput::GetChar` function.
-- Updated `TTY::getc` to loop until a valid character is available.
-- Implemented x86_64 specific faster `memcpy` and `memset` functions in the kernel which use 64-bit operations for most of the buffer, then fall back to 8-bit operations for the rest. All usages of the old `fast_memcpy` and `fast_memset` functions should eventually be updated to use this new implementation.
-- Updated `crt0.asm` to push and pop important caller-saved registers after call to `__init_libc` function.
-- Implemented basic programs directory. These programs only have one source file each, and once compiled, get copied to the `/data/bin` directory in the system root. A VSCode C/C++ configuration was also added in replacement for the old `Test-program` configuration.
-- Implemented basic `cat` program.
-- Implemented basic `echo` program.
+- Implemented proper `strtol` and `strtoul` functions in LibC. These currently do not support detecting the base.
+- Implemented `VFS::GetInode` function which optionally outputs the file system of the inode.
+- Implemented `FileSystem::GetType` function.
+- Implemented `FileStream::GetInode` and `FileStream::GetFileSystem` functions.
+- Implemented proper file permissions in TempFS, the VFS, initramfs, file streams, file descriptors and processes. Processes store UID, GID, effective UID and effective GID.
+- Implemented `getuid`, `getgid`, `geteuid` and `getegid` system calls.
+- Implemented `chown` and `fchown` system calls. These are currently non-recursive.
+- Implemented `chmod` and `fchmod` system calls. These are currently non-recursive.
+- Implemented `stat` and `fstat` system calls. These currently only support files. This returns the UID, GID, mode and size of a file.
+- Updated `open` system call to take a mode argument which determines the mode (ACL) for a file if it is created.
+- Created simple `chown` command.
+- Created simple `chmod` command.
+- Created simple `stat` command.
+- Updated initramfs creation in `Makefile` to set the UID and GID of all files to 0.
+- Added `GNU tar` to build dependencies.
 
 ## Resources used
 
@@ -67,6 +61,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - git
 - nasm
 - ovmf
+- GNU tar
 
 #### Toolchain build
 

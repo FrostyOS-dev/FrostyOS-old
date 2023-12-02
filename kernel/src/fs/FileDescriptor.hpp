@@ -62,7 +62,8 @@ enum class FileDescriptorError {
     INVALID_ARGUMENTS = 1,
     INTERNAL_ERROR = 2,
     STREAM_ERROR = 3,
-    INVALID_MODE = 4
+    INVALID_MODE = 4,
+    NO_PERMISSION = 5
 };
 
 class FileDescriptor {

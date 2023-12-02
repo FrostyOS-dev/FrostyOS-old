@@ -222,6 +222,8 @@ bool ELF_Executable::Execute() {
     m_process->SetFlags(Scheduling::USER_DEFAULT);
     m_process->SetEntry(m_entry, m_new_entry_data);
     m_process->SetPriority(Scheduling::Priority::NORMAL);
+    m_process->SetUID(0);
+    m_process->SetGID(0);
     m_process->CreateMainThread();
     m_process->GetMainThread()->SetCleanupFunction({(void (*)(void*))&ELF_Executable::End_Handler, (void*)this});
     m_process->Start();

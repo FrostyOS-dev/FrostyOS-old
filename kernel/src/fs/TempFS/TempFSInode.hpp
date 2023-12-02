@@ -33,18 +33,18 @@ namespace TempFS {
         TempFSInode();
         ~TempFSInode() override;
 
-        bool Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, size_t blockSize = PAGE_SIZE, void* extra = nullptr, uint32_t seed = 0);
+        bool Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, FilePrivilegeLevel privilege, size_t blockSize = PAGE_SIZE, void* extra = nullptr, uint32_t seed = 0);
         bool Delete(bool delete_target = false); // normally just deletes this and not the target
 
         bool Open() override;
         bool Close() override;
-        uint64_t ReadStream(uint8_t* bytes, uint64_t count = 1) override;
-        uint64_t WriteStream(const uint8_t* bytes, uint64_t count = 1) override;
+        uint64_t ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, uint64_t count = 1) override;
+        uint64_t WriteStream(FilePrivilegeLevel privilege, const uint8_t* bytes, uint64_t count = 1) override;
         bool Seek(uint64_t offset) override;
         bool Rewind() override;
 
-        uint64_t Read(uint64_t offset, uint8_t* bytes, uint64_t count = 1) override;
-        uint64_t Write(uint64_t offset, const uint8_t* bytes, uint64_t count = 1) override;
+        uint64_t Read(FilePrivilegeLevel privilege, uint64_t offset, uint8_t* bytes, uint64_t count = 1) override;
+        uint64_t Write(FilePrivilegeLevel privilege, uint64_t offset, const uint8_t* bytes, uint64_t count = 1) override;
 
         bool Expand(size_t new_size) override;
 
@@ -62,6 +62,9 @@ namespace TempFS {
 
         void ResetID(uint32_t seed = 0) override;
 
+        FilePrivilegeLevel GetPrivilegeLevel() const override;
+        void SetPrivilegeLevel(FilePrivilegeLevel privilege) override;
+
         size_t GetSize() const;
 
     protected:
@@ -74,9 +77,7 @@ namespace TempFS {
     private:
         TempFSInode* m_parent;
         TempFileSystem* m_fileSystem;
-        uint32_t m_UID;
-        uint32_t m_GID;
-        uint16_t m_ACL; // only 12 lowest bits are used
+        FilePrivilegeLevel m_privilegeLevel;
 
         LinkedList::SimpleLinkedList<TempFSInode> m_children;
 

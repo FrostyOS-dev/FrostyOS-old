@@ -145,7 +145,7 @@ extern "C" void StartKernel(KernelParams* params) {
         .initramfs_size = params->initramfs_size
     };
 
-    KProcess = new Scheduling::Process(Kernel_Stage2, (void*)&Kernel_Stage2Params, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
+    KProcess = new Scheduling::Process(Kernel_Stage2, (void*)&Kernel_Stage2Params, 0, 0, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
     KProcess->Start();
 
     Scheduling::Scheduler::Start();

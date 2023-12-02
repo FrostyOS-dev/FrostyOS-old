@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "TempFS/TempFSInode.hpp"
 
-FileStream::FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes) : m_inode(inode), m_mountPoint(mountPoint), m_modes(modes) {
+FileStream::FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes, FilePrivilegeLevel privilege) : m_inode(inode), m_mountPoint(mountPoint), m_modes(modes), m_privilege(privilege) {
 
 }
 
@@ -104,13 +104,15 @@ uint64_t FileStream::ReadStream(uint8_t* bytes, uint64_t count) {
                     SetLastError(FileStreamError::INVALID_INODE);
                     return 0;
                 }
-                uint64_t status = inode->ReadStream(bytes, count);
+                uint64_t status = inode->ReadStream(m_privilege, bytes, count);
                 if (status != count) {
                     InodeError error = inode->GetLastError();
                     if (error == InodeError::INVALID_ARGUMENTS)
                         SetLastError(FileStreamError::INVALID_ARGUMENTS);
                     else if (error == InodeError::STREAM_CLOSED)
                         SetLastError(FileStreamError::STREAM_CLOSED);
+                    else if (error == InodeError::NO_PERMISSION)
+                        SetLastError(FileStreamError::NO_PERMISSION);
                     else
                         SetLastError(FileStreamError::INTERNAL_ERROR);
                 }
@@ -146,7 +148,7 @@ uint64_t FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
                     SetLastError(FileStreamError::INVALID_INODE);
                     return 0;
                 }
-                uint64_t status = inode->WriteStream(bytes, count);
+                uint64_t status = inode->WriteStream(m_privilege, bytes, count);
                 if (status != count) {
                     InodeError error = inode->GetLastError();
                     if (error == InodeError::INVALID_ARGUMENTS)
@@ -155,6 +157,8 @@ uint64_t FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
                         SetLastError(FileStreamError::ALLOCATION_FAILED);
                     else if (error == InodeError::STREAM_CLOSED)
                         SetLastError(FileStreamError::STREAM_CLOSED);
+                    else if (error == InodeError::NO_PERMISSION)
+                        SetLastError(FileStreamError::NO_PERMISSION);
                     else
                         SetLastError(FileStreamError::INTERNAL_ERROR);
                 }
@@ -279,6 +283,20 @@ size_t FileStream::GetSize() const {
     }
     SetLastError(FileStreamError::INTERNAL_ERROR); // should be unreachable
     return 0;
+}
+
+Inode* FileStream::GetInode() const {
+    SetLastError(FileStreamError::SUCCESS);
+    return m_inode;
+}
+
+FileSystem* FileStream::GetFileSystem() const {
+    if (m_mountPoint == nullptr) {
+        SetLastError(FileStreamError::INVALID_MOUNTPOINT);
+        return nullptr;
+    }
+    SetLastError(FileStreamError::SUCCESS);
+    return m_mountPoint->fs;
 }
 
 FileStreamError FileStream::GetLastError() const {

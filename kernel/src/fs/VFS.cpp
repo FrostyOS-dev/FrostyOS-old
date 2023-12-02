@@ -44,7 +44,7 @@ bool VFS::MountRoot(FileSystemType type) {
     m_root->RootInode = nullptr;
     switch (type) {
         case FileSystemType::TMPFS:
-            m_root->fs = (FileSystem*)(new TempFS::TempFileSystem(PAGE_SIZE));
+            m_root->fs = (FileSystem*)(new TempFS::TempFileSystem(PAGE_SIZE, {0, 0, 00755}));
             break;
         default:
             delete m_root;
@@ -59,7 +59,7 @@ bool VFS::Mount(const char* path, FileSystemType type) {
     return false;
 }
 
-bool VFS::CreateFile(const char* parent, const char* name, size_t size) {
+bool VFS::CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size, bool inherit_permissions, FilePrivilegeLevel privilege) {
     Inode* parent_inode = nullptr;
     VFS_MountPoint* mountPoint = GetMountPoint(parent, &parent_inode);
     if (mountPoint == nullptr || (parent_inode == nullptr && GetLastError() != FileSystemError::SUCCESS) || name == nullptr || (parent_inode != nullptr && parent_inode->GetType() != InodeType::Folder)) {
@@ -75,7 +75,7 @@ bool VFS::CreateFile(const char* parent, const char* name, size_t size) {
             {
                 using namespace TempFS;
                 TempFileSystem* fs = (TempFileSystem*)mountPoint->fs;
-                bool rc = fs->CreateFile((TempFSInode*)parent_inode, name, size);
+                bool rc = fs->CreateFile(current_privilege, (TempFSInode*)parent_inode, name, size, inherit_permissions, privilege);
                 SetLastError(fs->GetLastError());
                 return rc;
             }
@@ -89,7 +89,7 @@ bool VFS::CreateFile(const char* parent, const char* name, size_t size) {
     return false;
 }
 
-bool VFS::CreateFolder(const char* parent, const char* name) {
+bool VFS::CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions, FilePrivilegeLevel privilege) {
     Inode* parent_inode = nullptr;
     VFS_MountPoint* mountPoint = GetMountPoint(parent, &parent_inode);
     if (mountPoint == nullptr || (parent_inode == nullptr && GetLastError() != FileSystemError::SUCCESS) || name == nullptr || (parent_inode != nullptr && parent_inode->GetType() != InodeType::Folder)) {
@@ -112,7 +112,7 @@ bool VFS::CreateFolder(const char* parent, const char* name) {
             {
                 using namespace TempFS;
                 TempFileSystem* fs = (TempFileSystem*)mountPoint->fs;
-                bool rc = fs->CreateFolder((TempFSInode*)parent_inode, i_name);
+                bool rc = fs->CreateFolder(current_privilege, (TempFSInode*)parent_inode, i_name, inherit_permissions, privilege);
                 SetLastError(fs->GetLastError());
                 return rc;
             }
@@ -126,7 +126,7 @@ bool VFS::CreateFolder(const char* parent, const char* name) {
     return false;
 }
 
-bool VFS::CreateSymLink(const char* parent, const char* name, const char* target) {
+bool VFS::CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions, FilePrivilegeLevel privilege) {
     Inode* parent_inode = nullptr;
     VFS_MountPoint* mountPoint = GetMountPoint(parent, &parent_inode);
     Inode* target_inode = nullptr;
@@ -151,7 +151,7 @@ bool VFS::CreateSymLink(const char* parent, const char* name, const char* target
             {
                 using namespace TempFS;
                 TempFileSystem* fs = (TempFileSystem*)mountPoint->fs;
-                bool rc = fs->CreateSymLink((TempFSInode*)parent_inode, i_name, (TempFSInode*)target_inode);
+                bool rc = fs->CreateSymLink(current_privilege, (TempFSInode*)parent_inode, i_name, (TempFSInode*)target_inode, inherit_permissions, privilege);
                 SetLastError(fs->GetLastError());
                 return rc;
             }
@@ -166,7 +166,7 @@ bool VFS::CreateSymLink(const char* parent, const char* name, const char* target
 }
 
 
-bool VFS::DeleteInode(const char* path, bool recursive) {
+bool VFS::DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive) {
     Inode* parent_inode = nullptr;
     VFS_MountPoint* mountPoint = GetMountPoint(path, &parent_inode);
     if (mountPoint == nullptr || parent_inode == nullptr) {
@@ -182,7 +182,7 @@ bool VFS::DeleteInode(const char* path, bool recursive) {
             {
                 using namespace TempFS;
                 TempFileSystem* fs = (TempFileSystem*)mountPoint->fs;
-                bool rc = fs->DeleteInode((TempFSInode*)parent_inode, recursive);
+                bool rc = fs->DeleteInode(current_privilege, (TempFSInode*)parent_inode, recursive);
                 SetLastError(fs->GetLastError());
                 return rc;
             }
@@ -197,7 +197,7 @@ bool VFS::DeleteInode(const char* path, bool recursive) {
 }
 
 
-FileStream* VFS::OpenStream(const char* path, uint8_t modes) {
+FileStream* VFS::OpenStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes) {
     Inode* inode = nullptr;
     VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
     if (mountPoint == nullptr || inode == nullptr) {
@@ -212,7 +212,7 @@ FileStream* VFS::OpenStream(const char* path, uint8_t modes) {
             }
             {
                 using namespace TempFS;
-                FileStream* stream = new FileStream(inode, mountPoint, modes);
+                FileStream* stream = new FileStream(inode, mountPoint, modes, current_privilege);
                 if (stream == nullptr) {
                     SetLastError(FileSystemError::ALLOCATION_FAILED);
                     return nullptr;
@@ -273,6 +273,18 @@ bool VFS::IsValidPath(const char* path) const {
     }
     SetLastError(FileSystemError::SUCCESS);
     return true;
+}
+
+Inode* VFS::GetInode(const char* path, FileSystem** fs) const {
+    Inode* inode = nullptr;
+    VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
+    if (mountPoint == nullptr || inode == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return nullptr;
+    }
+    if (fs != nullptr)
+        *fs = mountPoint->fs;
+    return inode;
 }
 
 /* Private functions */

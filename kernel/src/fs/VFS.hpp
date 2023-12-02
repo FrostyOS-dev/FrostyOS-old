@@ -48,16 +48,18 @@ public:
     bool MountRoot(FileSystemType type);
     bool Mount(const char* path, FileSystemType type);
 
-    bool CreateFile(const char* parent, const char* name, size_t size = 0) override;
-    bool CreateFolder(const char* parent, const char* name) override;
-    bool CreateSymLink(const char* parent, const char* name, const char* target) override;
+    bool CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+    bool CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+    bool CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
 
-    bool DeleteInode(const char* path, bool recursive = false) override;
+    bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false) override;
 
-    FileStream* OpenStream(const char* path, uint8_t modes);
+    FileStream* OpenStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes);
     bool CloseStream(FileStream* stream);
 
     bool IsValidPath(const char* path) const;
+
+    Inode* GetInode(const char* path, FileSystem** fs = nullptr) const;
 
 private:
     VFS_MountPoint* GetMountPoint(const char* path, Inode** inode = nullptr) const;

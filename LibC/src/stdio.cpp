@@ -532,23 +532,23 @@ extern "C" FILE* fopen(const char* file, const char* mode) {
         __RETURN_NULL_WITH_ERRNO(-EFAULT);
     }
     
-    unsigned long i_modes;
+    unsigned long flags;
 
     if (strcmp(mode, "r") == 0)
-        i_modes = O_READ;
+        flags = O_READ;
     else if (strcmp(mode, "w") == 0)
-        i_modes = O_WRITE | O_CREATE;
+        flags = O_WRITE | O_CREATE;
     else if (strcmp(mode, "a") == 0)
-        i_modes = O_APPEND;
+        flags = O_APPEND;
     else if (strcmp(mode, "r+") == 0)
-        i_modes = O_READ | O_WRITE;
+        flags = O_READ | O_WRITE;
     else if (strcmp(mode, "w+") == 0)
-        i_modes = O_READ | O_WRITE | O_CREATE;
+        flags = O_READ | O_WRITE | O_CREATE;
     else { // FIXME: implement support for binary files and append/update mode
         __RETURN_NULL_WITH_ERRNO(-EINVAL);
     }
 
-    fd_t fd = open(file, i_modes);
+    fd_t fd = open(file, flags, 00644);
     if (fd < 0) {
         __RETURN_NULL_WITH_ERRNO(fd);
     }
@@ -560,7 +560,7 @@ extern "C" FILE* fopen(const char* file, const char* mode) {
 
     FILE* i_file = &(g_files[index]);
     i_file->descriptor = fd;
-    i_file->modes = i_modes;
+    i_file->flags = flags;
 
     __SET_ERRNO(ESUCCESS);
 

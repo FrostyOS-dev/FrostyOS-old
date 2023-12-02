@@ -32,16 +32,14 @@ namespace TempFS {
 
     }
 
-    bool TempFSInode::Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, size_t blockSize, void* extra, uint32_t seed) {
+    bool TempFSInode::Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, FilePrivilegeLevel privilege, size_t blockSize, void* extra, uint32_t seed) {
         if (name == nullptr || fileSystem == nullptr || blockSize == 0 || type == InodeType::Unkown || (type == InodeType::SymLink && extra == nullptr)) {
             SetLastError(InodeError::INVALID_ARGUMENTS);
             return false;
         }
         m_parent = parent;
         m_fileSystem = fileSystem;
-        m_UID = 0;
-        m_GID = 0;
-        m_ACL = 00644;
+        m_privilegeLevel = privilege;
         m_size = 0;
         p_name = name;
         p_type = type;
@@ -150,12 +148,12 @@ namespace TempFS {
         return true;
     }
     
-    uint64_t TempFSInode::ReadStream(uint8_t* bytes, uint64_t count) {
+    uint64_t TempFSInode::ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, uint64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr) // error is already set by GetTarget()
                 return 0;
-            return target->ReadStream(bytes, count);
+            return target->ReadStream(privilege, bytes, count);
         }
         if (!p_isOpen) {
             SetLastError(InodeError::STREAM_CLOSED);
@@ -168,6 +166,24 @@ namespace TempFS {
         if (bytes == nullptr || count == 0) {
             SetLastError(InodeError::INVALID_ARGUMENTS);
             return 0;
+        }
+        if (privilege.UID == m_privilegeLevel.UID || privilege.UID == 0) {
+            if (!((m_privilegeLevel.ACL & ACL_USER_READ) > 0)) {
+                SetLastError(InodeError::NO_PERMISSION);
+                return 0;
+            }
+        }
+        else if (privilege.GID == m_privilegeLevel.GID || privilege.GID == 0) {
+            if (!((m_privilegeLevel.ACL & ACL_GROUP_READ) > 0)) {
+                SetLastError(InodeError::NO_PERMISSION);
+                return 0;
+            }
+        }
+        else {
+            if (!((m_privilegeLevel.ACL & ACL_OTHER_READ) > 0)) {
+                SetLastError(InodeError::NO_PERMISSION);
+                return 0;
+            }
         }
         uint16_t bytes_read = 0;
         for (uint64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
@@ -197,12 +213,12 @@ namespace TempFS {
         return bytes_read;
     }
     
-    uint64_t TempFSInode::WriteStream(const uint8_t* bytes, uint64_t count) {
+    uint64_t TempFSInode::WriteStream(FilePrivilegeLevel privilege, const uint8_t* bytes, uint64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr) // error is already set by GetTarget()
                 return 0;
-            return target->WriteStream(bytes, count);
+            return target->WriteStream(privilege, bytes, count);
         }
         if (!p_isOpen) {
             SetLastError(InodeError::STREAM_CLOSED);
@@ -215,6 +231,24 @@ namespace TempFS {
         if (bytes == nullptr || count == 0) {
             SetLastError(InodeError::INVALID_ARGUMENTS);
             return 0;
+        }
+        if (privilege.UID == m_privilegeLevel.UID || privilege.UID == 0) {
+            if (!((m_privilegeLevel.ACL & ACL_USER_WRITE) > 0)) {
+                SetLastError(InodeError::NO_PERMISSION);
+                return 0;
+            }
+        }
+        else if (privilege.GID == m_privilegeLevel.GID || privilege.GID == 0) {
+            if (!((m_privilegeLevel.ACL & ACL_GROUP_WRITE) > 0)) {
+                SetLastError(InodeError::NO_PERMISSION);
+                return 0;
+            }
+        }
+        else {
+            if (!((m_privilegeLevel.ACL & ACL_OTHER_WRITE) > 0)) {
+                SetLastError(InodeError::NO_PERMISSION);
+                return 0;
+            }
         }
         uint64_t bytes_written = 0;
         for (uint64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
@@ -308,12 +342,12 @@ namespace TempFS {
     }
     
 
-    uint64_t TempFSInode::Read(uint64_t offset, uint8_t* bytes, uint64_t count) {
+    uint64_t TempFSInode::Read(FilePrivilegeLevel privilege, uint64_t offset, uint8_t* bytes, uint64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr) // error is already set by GetTarget()
                 return 0;
-            return target->Read(offset, bytes, count);
+            return target->Read(privilege, offset, bytes, count);
         }
         bool isOpen = p_isOpen;
         if (!p_isOpen) {
@@ -322,18 +356,18 @@ namespace TempFS {
         }
         if (!Seek(offset))
             return 0;
-        uint64_t status = ReadStream(bytes, count);
+        uint64_t status = ReadStream(privilege, bytes, count);
         if (!isOpen)
             Close(); // no need to check return value. error is set and the caller is responsible for checking it.
         return status;
     }
     
-    uint64_t TempFSInode::Write(uint64_t offset, const uint8_t* bytes, uint64_t count) {
+    uint64_t TempFSInode::Write(FilePrivilegeLevel privilege, uint64_t offset, const uint8_t* bytes, uint64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr) // error is already set by GetTarget()
                 return 0;
-            return target->Write(offset, bytes, count);
+            return target->Write(privilege, offset, bytes, count);
         }
         bool isOpen = p_isOpen;
         if (!p_isOpen) {
@@ -342,7 +376,7 @@ namespace TempFS {
         }
         if (!Seek(offset))
             return 0;
-        uint64_t status = WriteStream(bytes, count);
+        uint64_t status = WriteStream(privilege, bytes, count);
         if (!isOpen)
             Close();
         return status;
@@ -603,6 +637,14 @@ namespace TempFS {
             SetLastError(InodeError::SUCCESS);
             return this;
         }
+    }
+
+    FilePrivilegeLevel TempFSInode::GetPrivilegeLevel() const {
+        return m_privilegeLevel;
+    }
+
+    void TempFSInode::SetPrivilegeLevel(FilePrivilegeLevel privilege) {
+        m_privilegeLevel = privilege;
     }
 
     size_t TempFSInode::GetSize() const {

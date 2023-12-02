@@ -139,7 +139,7 @@ fd_t internal_open(const char* path, unsigned long mode) {
             }
             else
                 parent = "/";
-            bool successful = g_VFS->CreateFile(parent, end == nullptr ? path : child_start);
+            bool successful = g_VFS->CreateFile({0, 0, 07777}, parent, end == nullptr ? path : child_start, 0, false, {0, 0, 00644});
             if (end != nullptr)
                 delete[] parent;
             if (!successful) {
@@ -157,7 +157,7 @@ fd_t internal_open(const char* path, unsigned long mode) {
     else if (!valid_path)
         return -ENOENT;
     
-    FileStream* stream = g_VFS->OpenStream(path, vfs_modes);
+    FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, path, vfs_modes);
     if (stream == nullptr) {
         switch (g_VFS->GetLastError()) {
         case FileSystemError::ALLOCATION_FAILED:
