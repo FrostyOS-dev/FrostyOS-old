@@ -26,7 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Data-structures/LinkedList.hpp>
 
-#define TICKS_PER_SCHEDULER_CYCLE 4
+// The scheduler needs to switch task every 40ms and the timer runs at 200Hz (or a tick every 5ms), so we need to switch every 8 ticks.
+#define TICKS_PER_SCHEDULER_CYCLE 8
 
 namespace Scheduling {
 
