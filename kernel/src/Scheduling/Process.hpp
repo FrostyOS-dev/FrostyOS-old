@@ -20,6 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 
+#include <process.h>
+
 #include <HAL/hal.hpp>
 
 #include <Data-structures/LinkedList.hpp>
@@ -81,6 +83,10 @@ namespace Scheduling {
 
         void SyncRegion(); // ensure the region matches the page manager's region
 
+        void SetPID(pid_t pid);
+
+        pid_t GetPID() const;
+
         void SetUID(uint32_t uid);
         void SetGID(uint32_t gid);
         void SetEUID(uint32_t euid);
@@ -104,6 +110,9 @@ namespace Scheduling {
         VirtualPageManager* m_VPM;
         bool m_main_thread_creation_requested;
         bool m_region_allocated;
+
+        pid_t m_PID;
+        tid_t m_NextTID;
 
         uint32_t m_UID;
         uint32_t m_GID;

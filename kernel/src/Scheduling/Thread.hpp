@@ -39,7 +39,7 @@ namespace Scheduling {
 
     class Thread {
     public:
-        Thread(Process* parent, ThreadEntry_t entry = nullptr, void* entry_data = nullptr, uint8_t flags = THREAD_USER_DEFAULT);
+        Thread(Process* parent, ThreadEntry_t entry = nullptr, void* entry_data = nullptr, uint8_t flags = THREAD_USER_DEFAULT, tid_t TID = -1);
         ~Thread();
 
         void SetEntry(ThreadEntry_t entry, void* entry_data);
@@ -75,6 +75,9 @@ namespace Scheduling {
 
         void PrintInfo(fd_t file) const;
 
+        void SetTID(tid_t TID);
+        tid_t GetTID() const;
+
     private:
         Process* m_Parent;
         ThreadEntry_t m_entry;
@@ -88,6 +91,8 @@ namespace Scheduling {
         mutable CPU_Registers m_regs;
         ThreadCleanup_t m_cleanup;
         FileDescriptorManager m_FDManager;
+
+        tid_t m_TID;
     };
 }
 

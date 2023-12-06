@@ -41,7 +41,9 @@ enum SystemCalls {
     SC_CHOWN = 15,
     SC_FCHOWN = 16,
     SC_CHMOD = 17,
-    SC_FCHMOD = 18
+    SC_FCHMOD = 18,
+    SC_GETPID = 19,
+    SC_GETTID = 20
 };
 
 #ifndef _IN_KERNEL

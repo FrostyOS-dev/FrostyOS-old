@@ -1,6 +1,12 @@
 # Changes
 
-## Latest Changes - 02/12/2023
+## Latest Changes - 06/12/2023
+
+- Added `stdbool` include to kernel x86_64 syscall header when we are in C.
+- Implemented PID and TID support. Each process has a unique 64-bit PID, and within each process, each thread has a unique 64-bit TID.
+- Implemented `getpid` and `gettid` syscalls.
+
+## 02/12/2023
 
 - Implemented proper `strtol` and `strtoul` functions in LibC. These currently do not support detecting the base.
 - Implemented `VFS::GetInode` function which optionally outputs the file system of the inode.

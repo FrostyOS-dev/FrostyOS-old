@@ -20,6 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <assert.h>
 #include <stdio.h>
 
+#include <process.h>
+
 #include <HAL/hal.hpp>
 
 #ifdef __x86_64__
@@ -47,9 +49,12 @@ namespace Scheduling {
         uint64_t g_total_threads = 0;
         bool g_running = false;
         Thread* g_current = nullptr;
+        pid_t g_NextPID = 0;
 
         void AddProcess(Process* process) {
             g_processes.insert(process);
+            process->SetPID(g_NextPID);
+            g_NextPID++;
         }
 
         void RemoveProcess(Process* process) {

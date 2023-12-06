@@ -17,23 +17,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 02/12/2023
+## Latest Changes - 06/12/2023
 
-- Implemented proper `strtol` and `strtoul` functions in LibC. These currently do not support detecting the base.
-- Implemented `VFS::GetInode` function which optionally outputs the file system of the inode.
-- Implemented `FileSystem::GetType` function.
-- Implemented `FileStream::GetInode` and `FileStream::GetFileSystem` functions.
-- Implemented proper file permissions in TempFS, the VFS, initramfs, file streams, file descriptors and processes. Processes store UID, GID, effective UID and effective GID.
-- Implemented `getuid`, `getgid`, `geteuid` and `getegid` system calls.
-- Implemented `chown` and `fchown` system calls. These are currently non-recursive.
-- Implemented `chmod` and `fchmod` system calls. These are currently non-recursive.
-- Implemented `stat` and `fstat` system calls. These currently only support files. This returns the UID, GID, mode and size of a file.
-- Updated `open` system call to take a mode argument which determines the mode (ACL) for a file if it is created.
-- Created simple `chown` command.
-- Created simple `chmod` command.
-- Created simple `stat` command.
-- Updated initramfs creation in `Makefile` to set the UID and GID of all files to 0.
-- Added `GNU tar` to build dependencies.
+- Added `stdbool` include to kernel x86_64 syscall header when we are in C.
+- Implemented PID and TID support. Each process has a unique 64-bit PID, and within each process, each thread has a unique 64-bit TID.
+- Implemented `getpid` and `gettid` syscalls.
 
 ## Resources used
 

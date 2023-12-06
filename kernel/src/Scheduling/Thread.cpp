@@ -30,7 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Scheduling {
 
-    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager() {
+    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, tid_t TID) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager(), m_TID(TID) {
         fast_memset(&m_regs, 0, DIV_ROUNDUP(sizeof(m_regs), 8));
         m_frame.kernel_stack = (uint64_t)g_KPM->AllocatePages(KERNEL_STACK_SIZE >> 12, PagePermissions::READ_WRITE) + KERNEL_STACK_SIZE; // FIXME: use actual page size
     }
@@ -549,5 +549,13 @@ namespace Scheduling {
         fprintf(file, "FS: %04lx  ", m_regs.DS);
         fprintf(file, "GS: %04lx\n", m_regs.DS);
         fprintf(file, "CR3: %016lx\n", m_regs.CR3);
+    }
+
+    void Thread::SetTID(tid_t TID) {
+        m_TID = TID;
+    }
+
+    tid_t Thread::GetTID() const {
+        return m_TID;
     }
 }

@@ -96,6 +96,14 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
         return (uint64_t)(current_thread->sys$chmod((const char*)arg1, (unsigned short)arg2));
     case SC_FCHMOD:
         return (uint64_t)(current_thread->sys$fchmod((fd_t)arg1, (unsigned short)arg2));
+    case SC_GETPID: {
+        Scheduling::Process* parent = current_thread->GetParent();
+        if (parent == nullptr)
+            return (uint64_t)-EFAULT;
+        return (uint64_t)(parent->GetPID());
+    }
+    case SC_GETTID:
+        return (uint64_t)(current_thread->GetTID());
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

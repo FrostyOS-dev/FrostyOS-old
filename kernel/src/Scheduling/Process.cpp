@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Memory/VirtualPageManager.hpp>
 
 namespace Scheduling {
-    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_UID(0), m_GID(0), m_EUID(0), m_EGID(0) {
+    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_region(nullptr, nullptr), m_VPM(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_PID(-1), m_NextTID(0), m_UID(0), m_GID(0), m_EUID(0), m_EGID(0) {
 
     }
 
@@ -104,7 +104,8 @@ namespace Scheduling {
     }
 
     void Process::CreateMainThread() {
-        m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags);
+        m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags, m_NextTID);
+        m_NextTID++;
         m_threads.insert(m_main_thread);
         m_main_thread_initialised = true;
         m_main_thread_creation_requested = true;
@@ -136,6 +137,8 @@ namespace Scheduling {
             return;
         m_threads.insert(thread);
         thread->SetParent(this);
+        thread->SetTID(m_NextTID);
+        m_NextTID++;
         thread->Start();
     }
 
@@ -182,6 +185,14 @@ namespace Scheduling {
 
     void Process::SyncRegion() {
         m_region = m_pm->GetRegion();
+    }
+
+    void Process::SetPID(pid_t pid) {
+        m_PID = pid;
+    }
+
+    pid_t Process::GetPID() const {
+        return m_PID;
     }
 
     void Process::SetUID(uint32_t uid) {
