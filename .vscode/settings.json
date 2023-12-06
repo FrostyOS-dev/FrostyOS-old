@@ -120,7 +120,10 @@
         "clang-diagnostic-error",
         "clang-diagnostic-switch",
         "clang-diagnostic-error",
-        "clang-diagnostic-error"
+        "clang-diagnostic-error",
+        "clang-diagnostic-error",
+        "clang-diagnostic-empty-body",
+        "clang-diagnostic-abstract-final-class"
     ],
     "C_Cpp.files.exclude": {
         "**/toolchain" : true,

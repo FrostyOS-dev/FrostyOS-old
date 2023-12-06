@@ -30,7 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/Memory/PagingUtil.hpp>
 #endif
 
-ELF_Executable::ELF_Executable(void* addr, size_t size) : m_addr(addr), m_header(nullptr), m_fileSize(size), m_VPM(nullptr), m_process(nullptr), m_entry(nullptr), m_entry_data({0, nullptr, 0, nullptr}), m_new_entry_data(nullptr), m_entry_data_size(0) {
+ELF_Executable::ELF_Executable(void* addr, size_t size) : m_addr(addr), m_header(nullptr), m_fileSize(size), m_VPM(nullptr), m_process(nullptr), m_entry(nullptr), m_entry_data({0, nullptr, 0, nullptr}), m_new_entry_data(nullptr), m_entry_data_size(0), m_error(ELFError::SUCCESS) {
 
 }
 
@@ -53,10 +53,14 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
     {
         ELF_Header64* header = (ELF_Header64*)m_addr;
         char magic[4] = { 0x7F, 'E', 'L', 'F' };
-        if (memcmp(magic, header->magic, 4) != 0)
+        if (memcmp(magic, header->magic, 4) != 0) {
+            SetLastError(ELFError::INVALID_ELF);
             return false; // invalid magic
-        if (header->file_type != 2 || header->bit_arch != 2 || header->endianess != 1 || header->InstructionSet != 0x3e) // must be an Executable, 64-bit, little-endian and x86_64
+        }
+        if (header->file_type != 2 || header->bit_arch != 2 || header->endianess != 1 || header->InstructionSet != 0x3e) { // must be an Executable, 64-bit, little-endian and x86_64
+            SetLastError(ELFError::INVALID_ELF);
             return false;
+        }
         m_header = header;
     }
     void* lowest_addr = (void*)UINT64_MAX;
@@ -82,6 +86,7 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
                 break;
             }
             default: // unknown
+                SetLastError(ELFError::INVALID_ELF);
                 return false;
         }
     }
@@ -134,6 +139,7 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
 #ifdef __x86_64__
                     x86_64_EnableInterrupts();
 #endif
+                    SetLastError(ELFError::ALLOCATION_FAILED);
                     return false;
                 }
                 fast_memset(page_start, 0, mem_size >> 3);
@@ -145,6 +151,7 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
                 break;
             }
             default: // unknown
+                SetLastError(ELFError::INVALID_ELF);
                 return false;
         }
     }
@@ -160,8 +167,10 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
         total_size += strlen(m_entry_data.envv[i]) + 1;
     total_size += 1;
     char* entry_data_address = (char*)m_PM->AllocatePages(DIV_ROUNDUP(total_size, PAGE_SIZE));
-    if (entry_data_address == nullptr)
+    if (entry_data_address == nullptr) {
+        SetLastError(ELFError::ALLOCATION_FAILED);
         return false;
+    }
     ELF_entry_data* new_entry_data = (ELF_entry_data*)entry_data_address;
     fast_memset(entry_data_address, 0, (ALIGN_UP(total_size, PAGE_SIZE)) >> 3);
     uint64_t current_offset = 0;
@@ -209,12 +218,15 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
 #ifdef __x86_64__
     x86_64_LoadCR3(old_CR3);
 #endif
+    SetLastError(ELFError::SUCCESS);
     return true;
 }
 
 bool ELF_Executable::Execute() {
-    if (m_VPM == nullptr || m_PM == nullptr)
+    if (m_VPM == nullptr || m_PM == nullptr) {
+        SetLastError(ELFError::INTERNAL_ERROR);
         return false;
+    }
     m_process = new Scheduling::Process;
     m_process->SetPageManager(m_PM);
     m_process->SetVirtualPageManager(m_VPM);
@@ -227,7 +239,12 @@ bool ELF_Executable::Execute() {
     m_process->CreateMainThread();
     m_process->GetMainThread()->SetCleanupFunction({(void (*)(void*))&ELF_Executable::End_Handler, (void*)this});
     m_process->Start();
+    SetLastError(ELFError::SUCCESS);
     return true;
+}
+
+ELFError ELF_Executable::GetLastError() const {
+    return m_error;
 }
 
 void ELF_Executable::End_Handler() {
@@ -243,4 +260,8 @@ void ELF_Executable::End_Handler() {
         delete m_VPM;
     }
     kfree(this);
+}
+
+void ELF_Executable::SetLastError(ELFError error) {
+    m_error = error;
 }

@@ -44,7 +44,7 @@ bool operator==(RTCTime a, RTCTime b) {
 int8_t g_null_days[12] = {1, 12, 5, 2, 7, 4, 9, 6, 3, 8, 12, 10};
 
 uint8_t GetWeekDay(uint16_t y, uint8_t m, uint8_t d) {
-    int w = (d+=m<3 ? y-- : y-2,23*m/9+d+4+y/4-y/100+y/400) % 7; // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Keith
+    int w = (d += m < 3 ? y-- : y - 2, 23 * m / 9 + d + 4 + y / 4 - y / 100 + y / 400) % 7; // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Keith
     return (uint8_t)w + 1;
 }
 

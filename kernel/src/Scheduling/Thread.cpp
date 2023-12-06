@@ -235,6 +235,9 @@ namespace Scheduling {
     }
 
     long Thread::sys$write(fd_t file, const void* buf, unsigned long count) {
+        if (count == 0)
+            return ESUCCESS; // no point as there is nothing to write
+
         if (m_Parent == nullptr || !m_Parent->ValidateRead(buf, count))
             return -EFAULT;
 
@@ -269,6 +272,7 @@ namespace Scheduling {
             case FileDescriptorError::NO_PERMISSION:
                 return -EACCES;
             default: {
+                dbgprintf("File descriptor internal error %d in write syscall. fd = %ld, buf = %lp, count = %lu\n", (int)descriptor->GetLastError(), file, buf, count);
                 PANIC("File descriptor internal error in write syscall.");
             }
             }

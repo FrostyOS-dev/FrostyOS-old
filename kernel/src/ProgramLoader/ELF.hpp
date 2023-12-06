@@ -67,6 +67,13 @@ struct ELF_entry_data {
     char** envv;
 } __attribute__((packed));
 
+enum class ELFError {
+    SUCCESS,
+    ALLOCATION_FAILED,
+    INVALID_ELF,
+    INTERNAL_ERROR
+};
+
 class ELF_Executable {
 public:
     ELF_Executable(void* addr, size_t size);
@@ -75,8 +82,12 @@ public:
     bool Load(ELF_entry_data* entry_data);
     bool Execute();
 
+    ELFError GetLastError() const;
+
 private:
     void End_Handler();
+
+    void SetLastError(ELFError error);
 
 private:
     void* m_addr;
@@ -90,6 +101,7 @@ private:
     ELF_entry_data m_entry_data;
     ELF_entry_data* m_new_entry_data;
     size_t m_entry_data_size;
+    ELFError m_error;
 };
 
 #endif /* _ELF_HPP */

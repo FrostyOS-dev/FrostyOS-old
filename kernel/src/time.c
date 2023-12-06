@@ -28,6 +28,16 @@ time_t time(time_t* timer) {
     return current_time;
 }
 
+bool is_leap_year(int year) {
+    if ((year % 4) != 0)
+        return false;
+    else if ((year % 100) != 0)
+        return true;
+    else if ((year % 400) != 0)
+        return false;
+    return true;
+}
+
 int day_seek_table[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
 
 int day_of_year(int year, int month, int day) {
@@ -37,7 +47,7 @@ int day_of_year(int year, int month, int day) {
         month = 12;
     int year_day = day_seek_table[month - 1] + day - 1;
 
-    if (year % 4 && month >= 3)
+    if (is_leap_year(year) && month >= 3)
         year_day++;
     return year_day;
 }
@@ -59,7 +69,7 @@ int64_t years_to_days_since_epoch(int year) {
     int64_t days = 0;
     for (int64_t i = begin_year; i < end_year; i++) {
         days += 365;
-        if ((i % 4) == 0)
+        if (is_leap_year(i))
             days += 1;
     }
     if (sign)

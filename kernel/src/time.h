@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +36,7 @@ time_t time(time_t* timer);
 
 /* Extra functions */
 
+bool is_leap_year(int year); // Check if year is a leap year
 int64_t years_to_days_since_epoch(int year); // Turn year into days since 01/01/1970
 int64_t days_since_epoch(int year, int month, int day); // Get days since 01/01/1970
 

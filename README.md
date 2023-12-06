@@ -17,11 +17,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 06/12/2023
+## Latest Changes - 06/12/2023 Evening
 
-- Added `stdbool` include to kernel x86_64 syscall header when we are in C.
-- Implemented PID and TID support. Each process has a unique 64-bit PID, and within each process, each thread has a unique 64-bit TID.
-- Implemented `getpid` and `gettid` syscalls.
+- Implemented proper ELF error reporting.
+- Updated write system call to just return success if the size is 0.
+- Implemented `Execute` function in the kernel which loads an ELF file and executes it.
+- Implemented `exec` system call, which is a wrapper around `Execute`.
+- Implemented `is_leap_year` function that properly checks if a year is a leap year. This is now used in functions `years_to_days_since_epoch` and `days_since_epoch`
+- Add spacing to `GetWeekDay` function in RTC driver to make it more readable.
+- Updated `stdbool` include in kernel x86_64 syscall header to always be included, as the header has C++ checks.
 
 ## Resources used
 

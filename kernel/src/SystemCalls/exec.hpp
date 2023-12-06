@@ -15,26 +15,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _X86_64_SYSCALL_H
-#define _X86_64_SYSCALL_H
+#ifndef _EXEC_HPP
+#define _EXEC_HPP
 
-#include <stdint.h>
-#include <stdbool.h>
+#include <Scheduling/Process.hpp>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// Userland wrapper around exec
+int sys$exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]);
 
+// Execute a program. No memory checks are performed on any arguments, as they are assumed to be valid.
+int Execute(Scheduling::Process* parent, const char *path, int argc, char *const argv[], int envc, char *const envv[]);
 
-bool x86_64_IsSystemCallSupported();
-
-uint64_t x86_64_HandleSystemCall();
-
-bool x86_64_EnableSystemCalls(uint16_t kernel_code_segment, uint16_t user_code_segment, uint64_t (*handler)(void));
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _X86_64_SYSCALL_H */
+#endif /* _EXEC_HPP */

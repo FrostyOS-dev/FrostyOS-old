@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "SystemCall.hpp"
 #include "exit.hpp"
 #include "memory.hpp"
+#include "exec.hpp"
 
 #include <stdio.h>
 #include <errno.h>
@@ -104,6 +105,8 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
     }
     case SC_GETTID:
         return (uint64_t)(current_thread->GetTID());
+    case SC_EXEC:
+        return sys$exec(current_thread->GetParent(), (const char*)arg1, (char* const*)arg2, (char* const*)arg3);
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

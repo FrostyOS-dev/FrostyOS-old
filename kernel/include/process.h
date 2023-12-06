@@ -24,11 +24,19 @@ tid_t gettid() {
     return ret;
 }
 
+int exec(const char *path, char *const argv[], char *const envv[]) {
+    int ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_EXEC), "D"(path), "S"(argv), "d"(envv) : "rcx", "r11", "memory");
+    return ret;
+}
+
 #else
 
 pid_t getpid();
 
 tid_t gettid();
+
+int exec(const char *path, char *const argv[], char *const envv[]);
 
 #endif /* _IN_KERNEL */
 
