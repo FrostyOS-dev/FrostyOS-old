@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     }
 
     if (chmod(argv[1], mode) < 0) {
-        printf("Failed to chmod. errno = %d\n", errno);
+        perror("chmod");
         return 1;
     }
 

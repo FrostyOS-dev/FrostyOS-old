@@ -21,15 +21,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 int main(int argc, char** argv) {
     if (argc <= 1) {
         int c;
-        while ((c = getc()) != EOF)
-            putc(c);
+        while ((c = getchar()) != EOF)
+            putchar(c);
         return 0;
     }
     for (int i = 1; i < argc; i++) {
         if (0 == strcmp(argv[i], "-")) {
             int c;
-            while ((c = getc()) != EOF)
-                putc(c);
+            while ((c = getchar()) != EOF)
+                putchar(c);
         }
         else {
             FILE* f = fopen(argv[i], "r");
@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
                 return 1;
             int c;
             while ((c = fgetc(f)) != EOF)
-                putc(c);
+                putchar(c);
             fclose(f);
         }
     }

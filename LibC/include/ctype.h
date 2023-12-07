@@ -15,30 +15,33 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
+#ifndef _CTYPE_H
+#define _CTYPE_H
 
-int main(int argc, char** argv) {
-    if (argc < 3) {
-        printf("Usage: chown <file> <uid>[:<gid>]\n");
-        return 1;
-    }
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-    unsigned int uid = 0;
-    unsigned int gid = (unsigned int)-1;
-    char* colon = strchr(argv[2], ':');
-    if (colon != nullptr) {
-        *colon = 0;
-        gid = atoi(colon + 1);
-    }
-    uid = atoi(argv[2]);
 
-    if (chown(argv[1], uid, gid) < 0) {
-        perror("chown");
-        return 1;
-    }
+int isalnum(int c);
+int isalpha(int c);
+int isblank(int c);
+int iscntrl(int c);
+int isdigit(int c);
+int isgraph(int c);
+int islower(int c);
+int isprint(int c);
+int ispunct(int c);
+int isspace(int c);
+int isupper(int c);
+int isxdigit(int c);
 
-    return 0;
+int tolower(int c);
+int toupper(int c);
+
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* _CTYPE_H */

@@ -46,6 +46,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fs/FileDescriptorManager.hpp>
 
 #include <SystemCalls/SystemCall.hpp>
+#include <SystemCalls/exec.hpp>
 
 FrameBuffer m_InitialFrameBuffer;
 Colour g_fgcolour;

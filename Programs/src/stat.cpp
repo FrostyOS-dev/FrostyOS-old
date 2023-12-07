@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 
     struct stat_buf buf = {0, 0, 0, 0};
     if (stat(argv[1], &buf) < 0) {
-        printf("Failed to stat. errno = %d\n", errno);
+        perror("stat");
         return 1;
     }
 

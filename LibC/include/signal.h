@@ -15,30 +15,35 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
+#ifndef _SIGNAL_H
+#define _SIGNAL_H
 
-int main(int argc, char** argv) {
-    if (argc < 3) {
-        printf("Usage: chown <file> <uid>[:<gid>]\n");
-        return 1;
-    }
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-    unsigned int uid = 0;
-    unsigned int gid = (unsigned int)-1;
-    char* colon = strchr(argv[2], ':');
-    if (colon != nullptr) {
-        *colon = 0;
-        gid = atoi(colon + 1);
-    }
-    uid = atoi(argv[2]);
 
-    if (chown(argv[1], uid, gid) < 0) {
-        perror("chown");
-        return 1;
-    }
+#define SIGABRT 1
+#define SIGFPE 2
+#define SIGILL 3
+#define SIGINT 4
+#define SIGSEGV 5
+#define SIGTERM 6
 
-    return 0;
+#define SIG_DFL 0
+#define SIG_IGN 1
+#define SIG_ERR -1
+
+typedef int sig_atomic_t;
+
+typedef void (*sighandler_t)(int);
+
+sighandler_t signal(int signum, sighandler_t handler);
+int raise(int sig);
+
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* _SIGNAL_H */

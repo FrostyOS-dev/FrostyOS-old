@@ -57,6 +57,10 @@ long atol(const char* str) {
     return value;
 }
 
+long long atoll(const char* str) {
+    return atol(str);
+}
+
 long strtol(const char* str, char** endptr, int base) {
     long value = 0;
     unsigned char is_negative = 0;
@@ -180,3 +184,42 @@ void exit(int status) {
 void abort() {
     system_call(SC_EXIT, EXIT_FAILURE, 0, 0);
 }
+
+
+int abs(int n) {
+    return n < 0 ? -n : n;
+}
+
+long labs(long n) {
+    return n < 0 ? -n : n;
+}
+
+long long llabs(long long n) {
+    return n < 0 ? -n : n;
+}
+
+// x86_64 has faster, more reliable versions of these functions
+#ifndef __x86_64__
+
+div_t div(int numer, int denom) {
+    div_t result;
+    result.quot = numer / denom;
+    result.rem = numer % denom;
+    return result;
+}
+
+ldiv_t ldiv(long numer, long denom) {
+    ldiv_t result;
+    result.quot = numer / denom;
+    result.rem = numer % denom;
+    return result;
+}
+
+lldiv_t lldiv(long long numer, long long denom) {
+    lldiv_t result;
+    result.quot = numer / denom;
+    result.rem = numer % denom;
+    return result;
+}
+
+#endif

@@ -81,40 +81,55 @@ long internal_write(FILE* file, const void* data, size_t size) {
     __RETURN_WITH_ERRNO(status);
 }
 
-int getc() {
-    int c = EOF;
-    long rc = internal_read(stdin, &c, 1); // errno already set by internal_read
-    return rc == EOF ? EOF : c;
-}
-
-int fgetc(FILE* file) {
+extern "C" int getc(FILE* file) {
     int c = EOF;
     long rc = internal_read(file, &c, 1); // errno already set by internal_read
     return rc == EOF ? EOF : c;
 }
 
-extern "C" void putc(const char c) {
-    __RETURN_VOID_WITH_ERRNO(internal_write(stdout, &c, 1));
+extern "C" int getchar() {
+    int c = EOF;
+    long rc = internal_read(stdin, &c, 1); // errno already set by internal_read
+    return rc == EOF ? EOF : c;
 }
 
-extern "C" void puts(const char* str) {
-    __RETURN_VOID_WITH_ERRNO(internal_write(stdout, str, strlen(str)));
+extern "C" int fgetc(FILE* file) {
+    int c = EOF;
+    long rc = internal_read(file, &c, 1); // errno already set by internal_read
+    return rc == EOF ? EOF : c;
 }
 
-extern "C" void dbgputc(const char c) {
-    __RETURN_VOID_WITH_ERRNO(internal_write(stddebug, &c, 1));
+extern "C" int putc(int c, FILE* file) {
+    __RETURN_WITH_ERRNO(internal_write(file, (char*)&c, 1));
 }
 
-extern "C" void dbgputs(const char* str) {
-    __RETURN_VOID_WITH_ERRNO(internal_write(stddebug, str, strlen(str)));
+extern "C" int putchar(int c) {
+    __RETURN_WITH_ERRNO(internal_write(stdout, (char*)&c, 1));
 }
 
-extern "C" void fputc(FILE* file, const char c) {
-    __RETURN_VOID_WITH_ERRNO(internal_write(file, &c, 1));
+extern "C" int puts(const char* str) {
+    int rc = internal_write(stdout, str, strlen(str));
+    if (rc < 0) {
+        __RETURN_WITH_ERRNO(rc);
+    }
+    rc = internal_write(stdout, "\n", 1);
+    __RETURN_WITH_ERRNO(rc);
 }
 
-extern "C" void fputs(FILE* file, const char* str) {
-    __RETURN_VOID_WITH_ERRNO(internal_write(file, str, strlen(str)));
+extern "C" int dbgputc(const char c) {
+    __RETURN_WITH_ERRNO(internal_write(stddebug, (char*)&c, 1));
+}
+
+extern "C" int dbgputs(const char* str) {
+    __RETURN_WITH_ERRNO(internal_write(stddebug, str, strlen(str)));
+}
+
+extern "C" int fputc(int c, FILE* file) {
+    __RETURN_WITH_ERRNO(internal_write(file, (char*)&c, 1));
+}
+
+extern "C" int fputs(const char* str, FILE* file) {
+    __RETURN_WITH_ERRNO(internal_write(file, str, strlen(str)));
 }
 
 enum class CUSTOM_PRINTF_MODES {
@@ -156,22 +171,33 @@ int fprintf_uint(FILE* file, int min_length, uint64_t num, int radix, bool paddi
     if (min_length > pos) {
         min_length -= pos;
         for (int i = 0; i < min_length; i++) {
-            if (padding_type)
-                fputc(file, '0');
-            else
-                fputc(file, ' ');
-            chars_printed++;
+            if (padding_type) {
+                if (fputc('0', file) >= 0)
+                    chars_printed++;
+                else
+                    return chars_printed;
+            }
+            else {
+                if (fputc(' ', file) >= 0)
+                    chars_printed++;
+                else
+                    return chars_printed;
+            }
         }
         for (pos--; pos >= 0; pos--) {
-            fputc(file, buffer[pos]);
-            chars_printed++;
+            if (fputc(buffer[pos], file) >= 0)
+                chars_printed++;
+            else
+                return chars_printed;
         }
     }
     else {
         pos--;
         for (; pos >= 0; pos--) {
-            fputc(file, buffer[pos]);
-            chars_printed++;
+            if (fputc(buffer[pos], file) >= 0)
+                chars_printed++;
+            else
+                return chars_printed;
         }
     }
     return chars_printed;
@@ -180,14 +206,18 @@ int fprintf_uint(FILE* file, int min_length, uint64_t num, int radix, bool paddi
 int fprintf_int(FILE* file, int64_t num, bool force_sign, int min_length, int radix, bool padding_type, bool uppercase) {
     int chars_printed = 0;
     if (num < 0) {
-        fputc(file, '-');
-        chars_printed++;
+        if (fputc('-', file) >= 0)
+            chars_printed++;
+        else
+            return chars_printed;
         min_length--;
         num *= -1;
     }
     else if (force_sign) {
-        fputc(file, '+');
-        chars_printed++;
+        if (fputc('+', file) >= 0)
+            chars_printed++;
+        else
+            return chars_printed;
         min_length--;
     }
     return fprintf_uint(file, min_length, num, radix, padding_type, uppercase) + chars_printed;
@@ -217,9 +247,11 @@ extern "C" int vfprintf(FILE* file, const char* format, va_list args) {
                 gotoNextChar = true;
                 break;
             default:
-                fputc(file, c);
+                if (fputc(c, file) >= 0)
+                    symbols_printed++;
+                else
+                    return symbols_printed;
                 gotoNextChar = true;
-                symbols_printed++;
                 break;
             }
             break;
@@ -323,12 +355,19 @@ extern "C" int vfprintf(FILE* file, const char* format, va_list args) {
                 upper = true;
                 break;
             case 'c': // character
-                fputc(file, va_arg(args, int /* char is promoted to int */));
-                symbols_printed++;
+                if (fputc(va_arg(args, int), file) >= 0)
+                    symbols_printed++;
+                else
+                    return symbols_printed;
                 break;
-            case 's': // string. requires max length implementation
-                fputs(file, va_arg(args, const char*));
+            case 's': { // string. requires max length implementation
+                int rc = fputs(va_arg(args, const char*), file);
+                if (rc >= 0)
+                    symbols_printed += rc;
+                else
+                    return symbols_printed;
                 break;
+            }
             case 'n': // send symbols_printed to va_arg
                 switch (len) {
                 case (int)CUSTOM_PRINTF_LENGTH::L_CHAR:
@@ -358,8 +397,10 @@ extern "C" int vfprintf(FILE* file, const char* format, va_list args) {
                 }
                 break;
             case '%': // print a '%'
-                fputc(file, '%');
-                symbols_printed++;
+                if (fputc('%', file) >= 0)
+                    symbols_printed++;
+                else
+                    return symbols_printed;
                 break;
             default: // ignore invalid spec
                 break;
@@ -589,4 +630,11 @@ extern "C" int fseek(FILE* file, long int offset, int origin) {
 
 extern "C" void rewind(FILE* file) {
     (void)fseek(file, 0, SEEK_SET);
+}
+
+extern "C" void perror(const char* str) {
+    int error = errno;
+    if (str != nullptr)
+        fprintf(stderr, "%s: ", str);
+    fprintf(stderr, "%s\n", strerror(error));
 }

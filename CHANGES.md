@@ -1,6 +1,12 @@
 # Changes
 
-## Latest Changes - 06/12/2023 Evening
+## Latest Changes - 07/12/2023
+
+- Either fixed or created `ctype.h`, `fenv.h`, `inttypes.h`, `math.h`, `signal.h`, `stdio.h`, `stdlib.h`, `string.h` and `time.h` ISO C headers to make them compliant with the C99 standard. Most functions have not been implemented. Some that already existed have been fixed, and a couple of simple ones have been implemented that are similar to already implemented ones.
+- Updated `stat`, `chown` and `chmod` to use the new `perror` function.
+- Updated `cat` and `echo` to use correct `stdio.h` functions.
+
+## 06/12/2023 Evening
 
 - Implemented proper ELF error reporting.
 - Updated write system call to just return success if the size is 0.

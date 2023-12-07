@@ -30,35 +30,80 @@ extern "C" {
 #define NULL ((void*)0)
 #endif
 
+#define RAND_MAX 4294967295
+
+
+#ifndef size_t
+typedef unsigned long int size_t;
+#endif
+
+typedef struct _div_t {
+    int quot;
+    int rem;
+} div_t;
+
+typedef struct _ldiv_t {
+    long quot;
+    long rem;
+} ldiv_t;
+
+typedef struct _lldiv_t {
+    long long quot;
+    long long rem;
+} lldiv_t;
+
 
 typedef unsigned long size_t;
 
-
+double atof(const char* str);
 int atoi(const char* str);
 long atol(const char* str);
-
+long long atoll(const char* str);
+double strtod(const char* str, char** endptr);
+float strtof(const char* str, char** endptr);
 long strtol(const char* str, char** endptr, int base);
+long double strtold(const char* str, char** endptr);
 long long strtoll(const char* str, char** endptr, int base);
 unsigned long strtoul(const char* str, char** endptr, int base);
 unsigned long long strtoull(const char* str, char** endptr, int base);
+
+unsigned int rand();
+void srand(unsigned int);
 
 void* calloc(size_t num, size_t size);
 void free(void* ptr);
 void* malloc(size_t size);
 void* realloc(void* ptr, size_t size);
 
-unsigned int rand();
-void srand(unsigned int);
-
 void abort();
-
 int atexit(void (*func)(void));
-
+int at_quick_exit(void (*func)(void));
+void exit(int status);
 char* getenv(const char* name);
+void quick_exit(int status);
+int system(const char* command);
+void _Exit(int status);
+
+void* bsearch(const void* key, const void* base, size_t num, size_t size, int (*compar)(const void*, const void*));
+void qsort(void* base, size_t num, size_t size, int (*compar)(const void*, const void*));
 
 int abs(int n);
+long labs(long n);
+long long llabs(long long n);
+div_t div(int numer, int denom);
+ldiv_t ldiv(long numer, long denom);
+lldiv_t lldiv(long long numer, long long denom);
 
-void exit(int status);
+/* 
+
+int mblen(const char* str, size_t n);
+int mbtowc(wchar_t* pwc, const char* str, size_t n);
+int wctomb(char* str, wchar_t wchar);
+
+size_t mbstowcs(wchar_t* dst, const char* src, size_t n);
+size_t wcstombs(char* dst, const wchar_t* src, size_t n);
+
+*/
 
 #ifdef __cplusplus
 }

@@ -17,15 +17,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 06/12/2023 Evening
+## Latest Changes - 07/12/2023
 
-- Implemented proper ELF error reporting.
-- Updated write system call to just return success if the size is 0.
-- Implemented `Execute` function in the kernel which loads an ELF file and executes it.
-- Implemented `exec` system call, which is a wrapper around `Execute`.
-- Implemented `is_leap_year` function that properly checks if a year is a leap year. This is now used in functions `years_to_days_since_epoch` and `days_since_epoch`
-- Add spacing to `GetWeekDay` function in RTC driver to make it more readable.
-- Updated `stdbool` include in kernel x86_64 syscall header to always be included, as the header has C++ checks.
+- Either fixed or created `ctype.h`, `fenv.h`, `inttypes.h`, `math.h`, `signal.h`, `stdio.h`, `stdlib.h`, `string.h` and `time.h` ISO C headers to make them compliant with the C99 standard. Most functions have not been implemented. Some that already existed have been fixed, and a couple of simple ones have been implemented that are similar to already implemented ones.
+- Updated `stat`, `chown` and `chmod` to use the new `perror` function.
+- Updated `cat` and `echo` to use correct `stdio.h` functions.
 
 ## Resources used
 
