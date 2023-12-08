@@ -17,11 +17,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 07/12/2023
+## Latest Changes - 08/12/2023
 
-- Either fixed or created `ctype.h`, `fenv.h`, `inttypes.h`, `math.h`, `signal.h`, `stdio.h`, `stdlib.h`, `string.h` and `time.h` ISO C headers to make them compliant with the C99 standard. Most functions have not been implemented. Some that already existed have been fixed, and a couple of simple ones have been implemented that are similar to already implemented ones.
-- Updated `stat`, `chown` and `chmod` to use the new `perror` function.
-- Updated `cat` and `echo` to use correct `stdio.h` functions.
+- Fixed x86_64 system call entry function. Some spelling mistakes, segment errors and improper saving of user stack were fixed.
+- Added optional process priority parameter to `Execute` and `ELF_Executable::Execute` functions. If not specified, the priority will be set to NORMAL.
+- Implemented sleeping thread support in the scheduler. Threads must for a time in multiples of 5ms currently has the timer is running at 200Hz.
+- Add `sleep` system call which sleeps the current thread for the specified amount of time in seconds.
+- Add `msleep` system call which sleeps the current thread for the specified amount of time in milliseconds.
+- Added useful timer macros to `HAL/time.h` to make creating timers easier.
+- Added `MS_PER_SCHEDULER_CYCLE` macro which gives the number of milliseconds for each scheduler cycle.
 
 ## Resources used
 

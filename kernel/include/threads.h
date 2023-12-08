@@ -15,15 +15,34 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _EXEC_HPP
-#define _EXEC_HPP
+#ifndef _THREADS_H
+#define _THREADS_H
 
-#include <Scheduling/Process.hpp>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// Userland wrapper around exec
-int sys$exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]);
+#ifndef _IN_KERNEL
 
-// Execute a program. No memory checks are performed on any arguments, as they are assumed to be valid.
-int Execute(Scheduling::Process* parent, const char *path, int argc, char *const argv[], int envc, char *const envv[], Scheduling::Priority priority = Scheduling::Priority::NORMAL);
+#include "syscall.h"
 
-#endif /* _EXEC_HPP */
+void sleep(unsigned long s) {
+    __asm__ volatile("syscall" : : "a"(SC_SLEEP), "D"(s) : "rcx", "r11", "memory");
+}
+
+void msleep(unsigned long ms) {
+    __asm__ volatile("syscall" : : "a"(SC_MSLEEP), "D"(ms) : "rcx", "r11", "memory");
+}
+
+#else
+
+void sleep(unsigned long s);
+void msleep(unsigned long ms);
+
+#endif /* _IN_KERNEL */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _THREADS_H */

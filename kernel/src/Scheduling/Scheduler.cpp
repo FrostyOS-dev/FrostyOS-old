@@ -43,6 +43,7 @@ namespace Scheduling {
         LinkedList::SimpleLinkedList<Thread> g_high_threads;
         LinkedList::SimpleLinkedList<Thread> g_normal_threads;
         LinkedList::SimpleLinkedList<Thread> g_low_threads;
+        LinkedList::SimpleLinkedList<Thread> g_sleeping_threads;
         uint8_t g_kernel_run_count = 0; // the amount of times a kernel thread has been run in a row
         uint8_t g_high_run_count = 0; // the amount of times a high thread has been run in a row
         uint8_t g_normal_run_count = 0; // the amount of times a normal thread has been run in a row
@@ -315,6 +316,16 @@ namespace Scheduling {
 
         void TimerTick(void* iregs) {
             g_ticks++;
+            for (uint64_t i = 0; i < g_sleeping_threads.getCount(); i++) {
+                Thread* thread = g_sleeping_threads.get(i);
+                thread->SetRemainingSleepTime(thread->GetRemainingSleepTime() - MS_PER_TICK);
+                if (thread->GetRemainingSleepTime() == 0) {
+                    thread->SetSleeping(false);
+                    g_sleeping_threads.remove(i);
+                    ReaddThread(thread);
+                    i--;
+                }
+            }
             if (g_ticks == TICKS_PER_SCHEDULER_CYCLE) {
                 g_ticks = 0;
                 if (!g_running)
@@ -349,6 +360,85 @@ namespace Scheduling {
             Next();
         }
 
+        void SleepThread(Thread* thread, uint64_t ms) {
+            assert(thread != nullptr);
+            // Remove the thread
+            bool found = false;
+            switch (thread->GetParent()->GetPriority()) {
+            case Priority::KERNEL: {
+                uint64_t i = g_kernel_threads.getIndex(thread);
+                if (i != UINT64_MAX) {
+                    g_kernel_threads.remove(i);
+                    found = true;
+                }
+                break;
+            }
+            case Priority::HIGH: {
+                uint64_t i = g_high_threads.getIndex(thread);
+                if (i != UINT64_MAX) {
+                    g_high_threads.remove(i);
+                    found = true;
+                }
+                break;
+            }
+            case Priority::NORMAL: {
+                uint64_t i = g_normal_threads.getIndex(thread);
+                if (i != UINT64_MAX) {
+                    g_normal_threads.remove(i);
+                    found = true;
+                }
+                break;
+            }
+            case Priority::LOW: {
+                uint64_t i = g_low_threads.getIndex(thread);
+                if (i != UINT64_MAX) {
+                    g_low_threads.remove(i);
+                    found = true;
+                }
+                break;
+            }
+            default:
+                return;
+            }
+            if (!found) {
+                if (thread == g_current) {
+                    g_current = nullptr;
+                    found = true;
+                    g_total_threads--;
+                    PickNext();
+                }
+            }
+            else
+                return;
+
+            thread->SetSleeping(true);
+            thread->SetRemainingSleepTime(ALIGN_UP(ms, MS_PER_TICK));
+            assert(thread->GetCPURegisters() != nullptr);
+            //thread->GetCPURegisters()->RIP = (uint64_t)return_address;
+            g_sleeping_threads.insert(thread);
+            Next();
+        }
+
+        void ReaddThread(Thread* thread) {
+            assert(thread != nullptr);
+            switch (thread->GetParent()->GetPriority()) {
+            case Priority::KERNEL:
+                g_kernel_threads.insert(thread);
+                break;
+            case Priority::HIGH:
+                g_high_threads.insert(thread);
+                break;
+            case Priority::NORMAL:
+                g_normal_threads.insert(thread);
+                break;
+            case Priority::LOW:
+                g_low_threads.insert(thread);
+                break;
+            default:
+                return;
+            }
+        }
+
         void PrintThreads(fd_t file) {
             if (g_kernel_threads.getCount() > 0) {
                 fprintf(file, "Kernel Threads:\n");
@@ -375,6 +465,13 @@ namespace Scheduling {
                 fprintf(file, "Low Threads:\n");
                 for (uint64_t i = 0; i < g_low_threads.getCount(); i++) {
                     g_low_threads.get(i)->PrintInfo(file);
+                    fputc(file, '\n');
+                }
+            }
+            if (g_sleeping_threads.getCount() > 0) {
+                fprintf(file, "Sleeping Threads:\n");
+                for (uint64_t i = 0; i < g_sleeping_threads.getCount(); i++) {
+                    g_sleeping_threads.get(i)->PrintInfo(file);
                     fputc(file, '\n');
                 }
             }

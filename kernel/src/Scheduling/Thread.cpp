@@ -517,6 +517,14 @@ namespace Scheduling {
         return ESUCCESS;
     }
 
+    void Thread::sys$sleep(unsigned long s) {
+        Scheduler::SleepThread(this, s * 1000);
+    }
+
+    void Thread::sys$msleep(unsigned long ms) {
+        Scheduler::SleepThread(this, ms);
+    }
+
     void Thread::PrintInfo(fd_t file) const {
         fprintf(file, "Thread %lp\n", this);
         fprintf(file, "Entry: %lp\n", m_entry);
@@ -561,5 +569,21 @@ namespace Scheduling {
 
     tid_t Thread::GetTID() const {
         return m_TID;
+    }
+
+    bool Thread::IsSleeping() const {
+        return m_sleeping;
+    }
+
+    void Thread::SetSleeping(bool sleeping) {
+        m_sleeping = sleeping;
+    }
+
+    uint64_t Thread::GetRemainingSleepTime() const {
+        return m_remaining_sleep_time;
+    }
+
+    void Thread::SetRemainingSleepTime(uint64_t remaining_sleep_time) {
+        m_remaining_sleep_time = remaining_sleep_time;
     }
 }

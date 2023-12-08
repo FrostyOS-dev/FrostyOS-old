@@ -222,7 +222,7 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
     return true;
 }
 
-bool ELF_Executable::Execute() {
+bool ELF_Executable::Execute(Scheduling::Priority priority) {
     if (m_VPM == nullptr || m_PM == nullptr) {
         SetLastError(ELFError::INTERNAL_ERROR);
         return false;
@@ -233,7 +233,7 @@ bool ELF_Executable::Execute() {
     m_process->SetRegion(m_region);
     m_process->SetFlags(Scheduling::USER_DEFAULT);
     m_process->SetEntry(m_entry, m_new_entry_data);
-    m_process->SetPriority(Scheduling::Priority::NORMAL);
+    m_process->SetPriority(priority);
     m_process->SetUID(0);
     m_process->SetGID(0);
     m_process->CreateMainThread();

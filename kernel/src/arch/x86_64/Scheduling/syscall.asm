@@ -115,20 +115,21 @@ x86_64_HandleSystemCall:
     mov rsp, QWORD [gs:8] ; get kernel stack
 
     sub rsp, 4 ; used to fix alignment later
-    push 0 ; dummy cr3 value until week can actual save it
+    push 0 ; dummy cr3 value until we can actually save it
     push r11 ; rflags
 
     sub rsp, 2
-    mov WORD [rsp], 0x23 ; DS
+    mov WORD [rsp], 0x1b ; DS
     sub rsp, 2
-    mov WORD [rsp], 0x1b ; CS
+    mov WORD [rsp], 0x23 ; CS
 
     push rcx ; rip
     push r15
     push r14
 
-    ; we now have at least 1 free GPRs, so we can save the kernel stack better
+    ; we now have at least 2 free GPRs, so we can save the kernel stack better and save the user stack in the register frame.
     lea r14, QWORD [rsp+36]
+    mov r15, QWORD [gs:0]
 
     ; don't need gs base anymore, so we can restore it
     swapgs

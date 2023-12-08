@@ -107,6 +107,12 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
         return (uint64_t)(current_thread->GetTID());
     case SC_EXEC:
         return sys$exec(current_thread->GetParent(), (const char*)arg1, (char* const*)arg2, (char* const*)arg3);
+    case SC_SLEEP:
+        current_thread->sys$sleep(arg1);
+        return 0;
+    case SC_MSLEEP:
+        current_thread->sys$msleep(arg1);
+        return 0;
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

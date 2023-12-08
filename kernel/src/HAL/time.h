@@ -21,6 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <time.h>
 
+#define TICKS_PER_SECOND 200
+#define MS_PER_TICK (1000 / TICKS_PER_SECOND)
+
 #ifdef __cplusplus
 extern "C" {
 #endif

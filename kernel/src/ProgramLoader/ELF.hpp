@@ -80,7 +80,7 @@ public:
     ~ELF_Executable();
 
     bool Load(ELF_entry_data* entry_data);
-    bool Execute();
+    bool Execute(Scheduling::Priority priority = Scheduling::Priority::NORMAL);
 
     ELFError GetLastError() const;
 

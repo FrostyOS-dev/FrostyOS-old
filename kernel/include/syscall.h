@@ -44,7 +44,9 @@ enum SystemCalls {
     SC_FCHMOD = 18,
     SC_GETPID = 19,
     SC_GETTID = 20,
-    SC_EXEC = 21
+    SC_EXEC = 21,
+    SC_SLEEP = 22,
+    SC_MSLEEP = 23
 };
 
 #ifndef _IN_KERNEL

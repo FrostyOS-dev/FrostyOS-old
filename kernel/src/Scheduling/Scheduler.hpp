@@ -21,13 +21,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stddef.h>
 
+#include <HAL/time.h>
+
 #include "Process.hpp"
 #include "Thread.hpp"
 
 #include <Data-structures/LinkedList.hpp>
 
 // The scheduler needs to switch task every 40ms and the timer runs at 200Hz (or a tick every 5ms), so we need to switch every 8 ticks.
-#define TICKS_PER_SCHEDULER_CYCLE 8
+
+#define MS_PER_SCHEDULER_CYCLE 40
+#define TICKS_PER_SCHEDULER_CYCLE MS_PER_SCHEDULER_CYCLE / MS_PER_TICK
 
 namespace Scheduling {
 
@@ -57,6 +61,10 @@ namespace Scheduling {
 
         void Stop();
         void Resume();
+
+        void SleepThread(Thread* thread, uint64_t ms);
+
+        void ReaddThread(Thread* thread);
 
         void PrintThreads(fd_t file);
     }

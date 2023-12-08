@@ -73,10 +73,19 @@ namespace Scheduling {
         int sys$chmod(const char* path, unsigned short mode);
         int sys$fchmod(fd_t file, unsigned short mode);
 
+        void sys$sleep(unsigned long s);
+        void sys$msleep(unsigned long ms);
+
         void PrintInfo(fd_t file) const;
 
         void SetTID(tid_t TID);
         tid_t GetTID() const;
+
+        bool IsSleeping() const;
+        void SetSleeping(bool sleeping);
+
+        uint64_t GetRemainingSleepTime() const;
+        void SetRemainingSleepTime(uint64_t time);
 
     private:
         Process* m_Parent;
@@ -93,6 +102,9 @@ namespace Scheduling {
         FileDescriptorManager m_FDManager;
 
         tid_t m_TID;
+
+        bool m_sleeping;
+        uint64_t m_remaining_sleep_time;
     };
 }
 

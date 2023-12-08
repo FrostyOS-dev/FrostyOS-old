@@ -76,7 +76,7 @@ int sys$exec(Scheduling::Process* parent, const char *path, char *const argv[], 
     return rc;
 }
 
-int Execute(Scheduling::Process* parent, const char *path, int argc, char *const argv[], int envc, char *const envv[]) {
+int Execute(Scheduling::Process* parent, const char *path, int argc, char *const argv[], int envc, char *const envv[], Scheduling::Priority priority) {
     if (!g_VFS->IsValidPath(path))
         return -ENOENT;
 
@@ -142,7 +142,7 @@ int Execute(Scheduling::Process* parent, const char *path, int argc, char *const
         }
     }
 
-    assert(exe->Execute());
+    assert(exe->Execute(priority));
 
     return ESUCCESS;
 }
