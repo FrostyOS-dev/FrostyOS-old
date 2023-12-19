@@ -17,15 +17,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 08/12/2023
+## Latest Changes - 19/12/2023
 
-- Fixed x86_64 system call entry function. Some spelling mistakes, segment errors and improper saving of user stack were fixed.
-- Added optional process priority parameter to `Execute` and `ELF_Executable::Execute` functions. If not specified, the priority will be set to NORMAL.
-- Implemented sleeping thread support in the scheduler. Threads must for a time in multiples of 5ms currently has the timer is running at 200Hz.
-- Add `sleep` system call which sleeps the current thread for the specified amount of time in seconds.
-- Add `msleep` system call which sleeps the current thread for the specified amount of time in milliseconds.
-- Added useful timer macros to `HAL/time.h` to make creating timers easier.
-- Added `MS_PER_SCHEDULER_CYCLE` macro which gives the number of milliseconds for each scheduler cycle.
+- Add `ENOLCK` errno code, which is identical to `ENOLOCK`.
+- Implemented ISO C11 compliant `locale.h` and `setjmp.h` header files.
+- Add `fdopen` function declaration to `stdio.h`.
+- Updated toolchain build script to use git repositories instead of tarballs. This included telling the binutils configure script explicitly to not build gdb.
+- Moved kernel headers to `kernel/headers` instead of `kernel/include`.
+- Added a kernel library to `kernel/lib`, which just as all the kernel variants of the LibC code. This used to be part of the main kernel code, but it was moved to make the kernel code cleaner.
+- Added some C++ headers which wrap the C headers to the kernel.
 
 ## Resources used
 

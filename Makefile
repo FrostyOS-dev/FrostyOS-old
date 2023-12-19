@@ -71,10 +71,8 @@ ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld -v 2>/dev/null | grep 2
 	@echo Building binutils
 	@echo -----------------
 	@mkdir -p toolchain/binutils/{src,build}
-	@curl -o toolchain/binutils/binutils-2.41.tar.xz -L https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.xz
-	@tar -xJf toolchain/binutils/binutils-2.41.tar.xz -C toolchain/binutils/src/
-	@cd toolchain/binutils/src && patch -s -p0 < ../../../patches/binutils.patch
-	@cd toolchain/binutils/build && ../src/binutils-2.41/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --disable-werror --enable-shared
+	@cd toolchain/binutils/src && git clone https://github.com/WorldOS-dev/binutils-gdb.git --depth 1 --branch binutils-2_41-release-point binutils-2.41
+	@cd toolchain/binutils/build && $(HOME)/binutils-2.41/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --disable-werror --enable-shared --disable-gdb
 	@$(MAKE) -C toolchain/binutils/build -j4
 	@$(MAKE) -C toolchain/binutils/build install
 	@rm -fr toolchain/binutils
@@ -84,9 +82,7 @@ ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion 2>/dev/n
 	@echo Building GCC
 	@echo ------------
 	@mkdir -p toolchain/gcc/{src,build}
-	@curl -o toolchain/gcc/gcc-13.2.0.tar.xz -L https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz
-	@tar -xJf toolchain/gcc/gcc-13.2.0.tar.xz -C toolchain/gcc/src/
-	@cd toolchain/gcc/src && patch -s -p0 < ../../../patches/gcc.patch
+	@cd toolchain/gcc/src && git clone https://github.com/WorldOS-dev/gcc.git --depth 1 --branch releases/gcc-13 gcc-13.2.0
 	@cd toolchain/gcc/build && ../src/gcc-13.2.0/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --enable-shared --enable-languages=c,c++
 	@$(MAKE) -C toolchain/gcc/build -j4 all-gcc all-target-libgcc
 	@$(MAKE) -C toolchain/gcc/build install-gcc install-target-libgcc

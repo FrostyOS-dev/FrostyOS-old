@@ -1,6 +1,16 @@
 # Changes
 
-## Latest Changes - 08/12/2023
+## Latest Changes - 19/12/2023
+
+- Add `ENOLCK` errno code, which is identical to `ENOLOCK`.
+- Implemented ISO C11 compliant `locale.h` and `setjmp.h` header files.
+- Add `fdopen` function declaration to `stdio.h`.
+- Updated toolchain build script to use git repositories instead of tarballs. This included telling the binutils configure script explicitly to not build gdb.
+- Moved kernel headers to `kernel/headers` instead of `kernel/include`.
+- Added a kernel library to `kernel/lib`, which just as all the kernel variants of the LibC code. This used to be part of the main kernel code, but it was moved to make the kernel code cleaner.
+- Added some C++ headers which wrap the C headers to the kernel.
+
+## 08/12/2023
 
 - Fixed x86_64 system call entry function. Some spelling mistakes, segment errors and improper saving of user stack were fixed.
 - Added optional process priority parameter to `Execute` and `ELF_Executable::Execute` functions. If not specified, the priority will be set to NORMAL.

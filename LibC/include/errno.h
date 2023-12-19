@@ -145,6 +145,7 @@ enum ErrorCodes {
 #define ECHILD ECHILD
 #define ENOBUFS ENOBUFS
 #define ENOLOCK ENOLOCK
+#define ENOLCK ENOLOCK
 #define ENOLINK ENOLINK
 #define ENODATA ENODATA
 #define ENOMSG ENOMSG

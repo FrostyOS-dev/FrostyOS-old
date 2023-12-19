@@ -78,6 +78,7 @@ char* tmpnam(char* str);
 int fclose(FILE* stream);
 int fflush(FILE* stream);
 FILE* fopen(const char* filename, const char* mode);
+FILE* fdopen(int fd, const char* mode);
 FILE* freopen(const char* filename, const char* mode, FILE* stream);
 void setbuf(FILE* stream, char* buffer);
 int setvbuf(FILE* stream, char* buffer, int mode, size_t size);
