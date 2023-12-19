@@ -54,7 +54,7 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
     case SC_CLOSE:
         return (uint64_t)(current_thread->sys$close((fd_t)arg1));
     case SC_SEEK:
-        return (uint64_t)(current_thread->sys$seek((fd_t)arg1, (long)arg2));
+        return (uint64_t)(current_thread->sys$seek((fd_t)arg1, (long)arg2, (long)arg3));
     case SC_MMAP:
         return (uint64_t)sys$mmap(arg1, arg2, (void*)arg3);
     case SC_MUNMAP:

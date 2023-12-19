@@ -64,7 +64,7 @@ namespace Scheduling {
         long sys$read(fd_t file, void* buf, unsigned long count);
         long sys$write(fd_t file, const void* buf, unsigned long count);
         int sys$close(fd_t file);
-        long sys$seek(fd_t file, long offset);
+        long sys$seek(fd_t file, long offset, long whence);
 
         int sys$stat(const char* path, struct stat_buf* buf);
         int sys$fstat(fd_t file, struct stat_buf* buf);

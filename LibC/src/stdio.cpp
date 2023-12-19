@@ -619,13 +619,10 @@ extern "C" int fclose(FILE* file) {
 }
 
 extern "C" int fseek(FILE* file, long int offset, int origin) {
-    if (origin != SEEK_SET) {
-        __RETURN_WITH_ERRNO(-EINVAL);
-    }
     if (file == nullptr) {
         __RETURN_WITH_ERRNO(-EFAULT);
     }
-    __RETURN_WITH_ERRNO(seek(file->descriptor, offset));
+    __RETURN_WITH_ERRNO(seek(file->descriptor, offset, (long)origin));
 }
 
 extern "C" void rewind(FILE* file) {

@@ -4,12 +4,13 @@
             "name": "Kernel",
             "includePath": [
                 "/home/frosty515/dev/WorldOS/Public/kernel/src/*",
-                "/home/frosty515/dev/WorldOS/Public/kernel/include/*"
+                "/home/frosty515/dev/WorldOS/Public/kernel/headers/*",
+                "/home/frosty515/dev/WorldOS/Public/kernel/lib/include/*"
             ],
             "defines": [
                 "_IN_KERNEL=1"
             ],
-            "compilerPath": "/home/frosty515/opt/x86_64-worldos-cross/bin/x86_64-worldos-gcc",
+            "compilerPath": "/home/frosty515/dev/WorldOS/WorldOS/toolchain/local/bin/x86_64-worldos-gcc",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
@@ -37,6 +38,8 @@
                 "-fstack-protector",
                 "-fno-exceptions",
                 "-Ikernel/src",
+                "-Ikernel/headers",
+                "-Ikernel/lib/include",
                 "-mgeneral-regs-only",
                 "-mno-red-zone",
                 "-O2",
@@ -46,8 +49,7 @@
                 "-static",
                 "-Bsymbolic",
                 "-zmax-page-size=0x1000"
-            ],
-            "compilerPathInCppPropertiesJson": "${HOME}/opt/x86_64-worldos-cross/bin/x86_64-worldos-gcc"
+            ]
         },
         {
             "name": "Utils",
@@ -72,7 +74,7 @@
                 "${workspaceFolder}/LibC/src/*"
             ],
             "defines": [],
-            "compilerPath": "/home/frosty515/opt/x86_64-worldos-cross/bin/x86_64-worldos-g++",
+            "compilerPath": "/home/frosty515/dev/WorldOS/WorldOS/toolchain/local/bin/x86_64-worldos-g++",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
@@ -104,7 +106,7 @@
                 "/home/frosty515/dev/WorldOS/Public/root/data/include/*"
             ],
             "defines": [],
-            "compilerPath": "/home/frosty515/opt/x86_64-worldos-cross/bin/x86_64-worldos-gcc",
+            "compilerPath": "/home/frosty515/dev/WorldOS/WorldOS/toolchain/local/bin/x86_64-worldos-gcc",
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "linux-gcc-x64",
@@ -120,7 +122,6 @@
                 "-fno-rtti",
                 "-fno-omit-frame-pointer"
             ],
-            "compilerPathInCppPropertiesJson": "/home/frosty515/opt/x86_64-worldos-cross/bin/x86_64-worldos-g++",
             "mergeConfigurations": false,
             "browse": {
                 "path": [

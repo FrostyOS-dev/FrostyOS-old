@@ -300,15 +300,45 @@ namespace Scheduling {
         return ESUCCESS;
     }
 
-    long Thread::sys$seek(fd_t file, long offset) {
+    long Thread::sys$seek(fd_t file, long offset, long whence) {
         FileDescriptor* descriptor = m_FDManager.GetFileDescriptor(file);
-        if (descriptor == nullptr)
+        if (descriptor == nullptr || descriptor->GetType() != FileDescriptorType::FILE_STREAM)
             return -EBADF;
 
-        if (offset < 0)
+        FileStream* stream = (FileStream*)descriptor->GetData();
+        if (stream == nullptr)
+            return -EBADF;
+
+        long i_offset;
+        if (whence == SEEK_SET) {
+            if (offset < 0)
+                return -EINVAL;
+            i_offset = offset;
+        }
+        else if (whence == SEEK_CUR)
+                i_offset = stream->GetOffset() + offset;
+        else if (whence == SEEK_END) {
+            Inode* inode = stream->GetInode();
+            FileSystem* fs = stream->GetFileSystem();
+            if (inode == nullptr || fs == nullptr)
+                return -EBADF;
+            switch (fs->GetType()) {
+            case FileSystemType::TMPFS: {
+                TempFS::TempFSInode* tempfs_inode = (TempFS::TempFSInode*)inode;
+                if (tempfs_inode->GetType() == InodeType::File)
+                    i_offset = tempfs_inode->GetSize() - 1 + offset;
+                else
+                    return -EINVAL;
+                break;
+            }
+            default:
+                return -ENOSYS;
+            }
+        }
+        else
             return -EINVAL;
 
-        if (!descriptor->Seek((uint64_t)offset)) {
+        if (!descriptor->Seek((uint64_t)i_offset)) {
             switch (descriptor->GetLastError()) {
             case FileDescriptorError::INVALID_ARGUMENTS:
                 return -EINVAL;
@@ -320,7 +350,7 @@ namespace Scheduling {
             }
         }
 
-        return offset;
+        return i_offset;
     }
 
     int Thread::sys$stat(const char* path, struct stat_buf* buf) {

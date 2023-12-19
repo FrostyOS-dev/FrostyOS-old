@@ -1,6 +1,14 @@
 # Changes
 
-## Latest Changes - 19/12/2023
+## Latest Changes - 19/12/2023 Afternoon
+
+- Moved toolchain prefix to `toolchain/local` to avoid conflicts with other toolchains.
+- Updated GCC to 13.2.1
+- Added additional parameter to `seek` system call to allow seeking from a pre-defined position instead of always seeking from the start of the file. This pre-defined position can be either the start of the file, the current position or the end of the file.
+- Updated LibC `fseek` to utilise new `seek` support.
+- Updated LibC `stdio.h` header to only set the `SEEK_SET`, `SEEK_CUR` and `SEEK_END` macros if they aren't already defined.
+
+## 19/12/2023
 
 - Add `ENOLCK` errno code, which is identical to `ENOLOCK`.
 - Implemented ISO C11 compliant `locale.h` and `setjmp.h` header files.

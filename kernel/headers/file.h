@@ -27,6 +27,10 @@ typedef long fd_t;
 
 #define EOF -1
 
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
 struct stat_buf {
     unsigned long st_size;
     unsigned int st_uid;
@@ -67,9 +71,9 @@ static inline int close(fd_t file) {
     return (int)ret;
 }
 
-static inline long seek(fd_t file, long offset) {
+static inline long seek(fd_t file, long offset, long whence) {
     unsigned long ret;
-    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_SEEK), "D"(file), "S"(offset) : "rcx", "r11", "memory");
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_SEEK), "D"(file), "S"(offset), "d"(whence) : "rcx", "r11", "memory");
     return (long)ret;
 }
 
@@ -142,7 +146,7 @@ long write(fd_t file, const void* buf, unsigned long count);
 
 int close(fd_t file);
 
-long seek(fd_t file, long offset);
+long seek(fd_t file, long offset, long whence);
 
 unsigned int getuid();
 unsigned int getgid();

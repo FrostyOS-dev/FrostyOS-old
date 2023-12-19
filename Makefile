@@ -19,7 +19,7 @@ ifndef config
 	config=debug
 endif
 
-TOOLCHAIN_PREFIX = $(HOME)/opt/x86_64-worldos-cross
+TOOLCHAIN_PREFIX = $(PWD)/toolchain/local
 
 PATH := $(PATH):$(TOOLCHAIN_PREFIX)/bin
 SHELL := env PATH=$(PATH) /bin/bash
@@ -66,6 +66,7 @@ mkgpt:
 	@rm -fr depend/tools/build/mkgpt
 
 toolchain:
+	@mkdir -p $(TOOLCHAIN_PREFIX)
 ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld -v 2>/dev/null | grep 2.41)", "")
 	@echo -----------------
 	@echo Building binutils
@@ -77,17 +78,17 @@ ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld -v 2>/dev/null | grep 2
 	@$(MAKE) -C toolchain/binutils/build install
 	@rm -fr toolchain/binutils
 endif
-ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion 2>/dev/null)", "13.2.0")
+ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion 2>/dev/null)", "13.2.1")
 	@echo ------------
 	@echo Building GCC
 	@echo ------------
 	@mkdir -p toolchain/gcc/{src,build}
-	@cd toolchain/gcc/src && git clone https://github.com/WorldOS-dev/gcc.git --depth 1 --branch releases/gcc-13 gcc-13.2.0
-	@cd toolchain/gcc/build && ../src/gcc-13.2.0/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --enable-shared --enable-languages=c,c++
+	@cd toolchain/gcc/src && git clone https://github.com/WorldOS-dev/gcc.git --depth 1 --branch releases/gcc-13 gcc-13.2.1
+	@cd toolchain/gcc/build && ../src/gcc-13.2.1/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --enable-shared --enable-languages=c,c++
 	@$(MAKE) -C toolchain/gcc/build -j4 all-gcc all-target-libgcc
 	@$(MAKE) -C toolchain/gcc/build install-gcc install-target-libgcc
+	@rm -fr toolchain/gcc
 endif
-	@rm -fr toolchain
 
 dependencies:
 	@mkdir -p dist/boot/EFI/BOOT
