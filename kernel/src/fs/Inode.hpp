@@ -80,6 +80,9 @@ public:
     virtual FilePrivilegeLevel GetPrivilegeLevel() const = 0;
     virtual void SetPrivilegeLevel(FilePrivilegeLevel privilege) = 0;
 
+    virtual uint64_t GetChildCount() const = 0;
+    virtual Inode* GetChild(uint64_t index) const = 0;
+
 protected:
     virtual void SetLastError(InodeError error) const { p_lastError = error; } // const so const functions can perform error reporting
 

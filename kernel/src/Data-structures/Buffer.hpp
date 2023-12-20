@@ -44,15 +44,11 @@ public:
     // Remove any unused blocks at the end
     void AutoShrink();
 
-    // Clear the buffer until offset. Will delete any empty blocks
-    void ClearUntil(uint64_t offset);
+    // Clear the buffer until offset. Will delete any empty blocks. Returns the number of blocks deleted.
+    uint64_t ClearUntil(uint64_t offset);
 
     // Get the size of the buffer
     size_t GetSize() const;
-
-private:
-    void AddBlock(size_t size);
-    void DeleteBlock(uint64_t index);
 
 private:
     struct Block {
@@ -60,6 +56,11 @@ private:
         size_t size;
         bool empty;
     };
+    
+    Block* AddBlock(size_t size);
+    void DeleteBlock(uint64_t index);
+
+private:
     size_t m_size;
     size_t m_blockSize;
     LinkedList::SimpleLinkedList<Block> m_blocks;

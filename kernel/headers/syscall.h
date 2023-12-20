@@ -46,7 +46,8 @@ enum SystemCalls {
     SC_GETTID = 20,
     SC_EXEC = 21,
     SC_SLEEP = 22,
-    SC_MSLEEP = 23
+    SC_MSLEEP = 23,
+    SC_GETDIRENTS = 24
 };
 
 #ifndef _IN_KERNEL

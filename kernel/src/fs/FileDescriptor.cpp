@@ -16,6 +16,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "FileDescriptor.hpp"
+#include "DirectoryStream.hpp"
+#include "FileStream.hpp"
+
+#include "TempFS/TempFSInode.hpp"
 
 #include <math.h>
 
@@ -25,14 +29,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/E9.h>
 #endif
 
-FileDescriptor::FileDescriptor() : m_TTY(nullptr), m_FileStream(nullptr), m_is_open(false), m_type(FileDescriptorType::UNKNOWN), m_mode(FileDescriptorMode::READ), m_ID(-1) {
+FileDescriptor::FileDescriptor() : m_TTY(nullptr), m_Stream(nullptr), m_is_open(false), m_type(FileDescriptorType::UNKNOWN), m_mode(FileDescriptorMode::READ), m_ID(-1) {
 
 }
 
-FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode, fd_t ID) : m_TTY(nullptr), m_FileStream(nullptr), m_is_open(false), m_type(type), m_mode(mode), m_ID(ID) {
+FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode, fd_t ID) : m_TTY(nullptr), m_Stream(nullptr), m_is_open(false), m_type(type), m_mode(mode), m_ID(ID) {
     switch (m_type) {
     case FileDescriptorType::FILE_STREAM:
-        m_FileStream = (FileStream*)data;
+        m_Stream = data;
+        break;
+    case FileDescriptorType::DIRECTORY_STREAM:
+        switch (m_mode) {
+        case FileDescriptorMode::READ:
+            m_Stream = data;
+            break;
+        case FileDescriptorMode::WRITE:
+        case FileDescriptorMode::APPEND:
+        case FileDescriptorMode::READ_WRITE:
+            SetLastError(FileDescriptorError::INVALID_ARGUMENTS); // writing is not supported on directory streams
+            return;
+        }
         break;
     case FileDescriptorType::TTY:
         switch (m_mode) {
@@ -84,19 +100,33 @@ bool FileDescriptor::Open() {
     case FileDescriptorType::TTY:
         SetLastError(FileDescriptorError::SUCCESS); // already open
         return true;
-    case FileDescriptorType::FILE_STREAM:
-        if (!m_FileStream->Open()) {
+    case FileDescriptorType::FILE_STREAM: {
+        FileStream* fileStream = (FileStream*)m_Stream;
+        if (!fileStream->Open()) {
             SetLastError(FileDescriptorError::INTERNAL_ERROR); // if open fails, something is most likely wrong with the VFS
             return false;
         }
         if (m_mode == FileDescriptorMode::APPEND) {
-            if (!m_FileStream->Seek(m_FileStream->GetSize() - 1)) { // seek to end
+            if (!fileStream->Seek(fileStream->GetSize() - 1)) { // seek to end
                 SetLastError(FileDescriptorError::INTERNAL_ERROR); // if seeking to a known value fails, something is most likely wrong with the VFS
                 return false;
             }
         }
         SetLastError(FileDescriptorError::SUCCESS);
         return true;
+    }
+    case FileDescriptorType::DIRECTORY_STREAM: {
+        DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
+        if (!directoryStream->Open()) {
+            if (directoryStream->GetLastError() == DirectoryStreamError::NO_PERMISSION)
+                SetLastError(FileDescriptorError::NO_PERMISSION);
+            else
+                SetLastError(FileDescriptorError::INTERNAL_ERROR); // if open fails, something is most likely wrong with the VFS
+            return false;
+        }
+        SetLastError(FileDescriptorError::SUCCESS);
+        return true;
+    }
     default:
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
         return false;
@@ -109,13 +139,24 @@ bool FileDescriptor::Close() {
     case FileDescriptorType::TTY:
         SetLastError(FileDescriptorError::SUCCESS); // cannot be closed
         return true;
-    case FileDescriptorType::FILE_STREAM:
-        if (!m_FileStream->Close()) {
+    case FileDescriptorType::FILE_STREAM: {
+        FileStream* fileStream = (FileStream*)m_Stream;
+        if (!fileStream->Close()) {
             SetLastError(FileDescriptorError::INTERNAL_ERROR); // if close fails, something is most likely wrong with the VFS
             return false;
         }
         SetLastError(FileDescriptorError::SUCCESS);
         return true;
+    }
+    case FileDescriptorType::DIRECTORY_STREAM: {
+        DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
+        if (!directoryStream->Close()) {
+            SetLastError(FileDescriptorError::INTERNAL_ERROR); // if close fails, something is most likely wrong with the VFS
+            return false;
+        }
+        SetLastError(FileDescriptorError::SUCCESS);
+        return true;
+    }
     default:
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
         return false;
@@ -153,9 +194,10 @@ size_t FileDescriptor::Read(uint8_t* buffer, size_t count) {
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
         return 0;
     case FileDescriptorType::FILE_STREAM: {
-        size_t status = m_FileStream->ReadStream(buffer, count);
+        FileStream* fileStream = (FileStream*)m_Stream;
+        size_t status = fileStream->ReadStream(buffer, count);
         if (status != count) {
-            switch (m_FileStream->GetLastError()) {
+            switch (fileStream->GetLastError()) {
             case FileStreamError::INVALID_ARGUMENTS:
                 SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
                 break;
@@ -173,6 +215,45 @@ size_t FileDescriptor::Read(uint8_t* buffer, size_t count) {
         else
             SetLastError(FileDescriptorError::SUCCESS);
         return status;
+    }
+    case FileDescriptorType::DIRECTORY_STREAM: {
+        DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
+        Inode* inode = directoryStream->GetNextInode();
+        if (inode == nullptr) {
+            switch (directoryStream->GetLastError()) {
+            case DirectoryStreamError::INVALID_ARGUMENTS:
+                dbgprintf("Invalid arguments\n");
+                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
+                break;
+            case DirectoryStreamError::STREAM_CLOSED:
+                SetLastError(FileDescriptorError::STREAM_ERROR);
+                break;
+            case DirectoryStreamError::NO_PERMISSION:
+                SetLastError(FileDescriptorError::NO_PERMISSION);
+                break;
+            default:
+                SetLastError(FileDescriptorError::INTERNAL_ERROR);
+                break;
+            }
+            return 0;
+        }
+        size_t inode_size = 0;
+        // switch for the file system type
+        switch (directoryStream->GetFileSystemType()) {
+        case FileSystemType::TMPFS:
+            inode_size = sizeof(TempFS::TempFSInode);
+            break;
+        default:
+            SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
+            return 0;
+        }
+        if (count != inode_size) {
+            SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
+            return 0;
+        }
+        memcpy(buffer, inode, inode_size);
+        SetLastError(FileDescriptorError::SUCCESS);
+        return inode_size;
     }
     default:
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
@@ -202,9 +283,10 @@ size_t FileDescriptor::Write(const uint8_t* buffer, size_t count) {
         return count; // partial writes to TTYs are not supported
     }
     case FileDescriptorType::FILE_STREAM: {
-        uint64_t status = m_FileStream->WriteStream(buffer, count);
+        FileStream* fileStream = (FileStream*)m_Stream;
+        uint64_t status = fileStream->WriteStream(buffer, count);
         if (status != count) {
-            switch (m_FileStream->GetLastError()) {
+            switch (fileStream->GetLastError()) {
             case FileStreamError::INVALID_ARGUMENTS:
                 SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
                 break;
@@ -224,6 +306,9 @@ size_t FileDescriptor::Write(const uint8_t* buffer, size_t count) {
             SetLastError(FileDescriptorError::SUCCESS);
         return status;
     }
+    case FileDescriptorType::DIRECTORY_STREAM:
+        SetLastError(FileDescriptorError::STREAM_ERROR); // writing is not supported on directory streams
+        return 0;
     case FileDescriptorType::DEBUG: {
         uint64_t i = 0;
 #ifndef NDEBUG
@@ -263,9 +348,10 @@ bool FileDescriptor::Seek(uint64_t offset) {
         SetLastError(FileDescriptorError::SUCCESS);
         return true;
     }
-    case FileDescriptorType::FILE_STREAM:
-        if (!m_FileStream->Seek(offset)) {
-            switch (m_FileStream->GetLastError()) {
+    case FileDescriptorType::FILE_STREAM: {
+        FileStream* fileStream = (FileStream*)m_Stream;
+        if (!fileStream->Seek(offset)) {
+            switch (fileStream->GetLastError()) {
             case FileStreamError::INVALID_ARGUMENTS:
                 SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
                 break;
@@ -280,6 +366,26 @@ bool FileDescriptor::Seek(uint64_t offset) {
         }
         SetLastError(FileDescriptorError::SUCCESS);
         return true;
+    }
+    case FileDescriptorType::DIRECTORY_STREAM: {
+        DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
+        if (!directoryStream->Seek(offset)) {
+            switch (directoryStream->GetLastError()) {
+            case DirectoryStreamError::INVALID_ARGUMENTS:
+                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
+                break;
+            case DirectoryStreamError::STREAM_CLOSED:
+                SetLastError(FileDescriptorError::STREAM_ERROR);
+                break;
+            default:
+                SetLastError(FileDescriptorError::INTERNAL_ERROR);
+                break;
+            }
+            return false;
+        }
+        SetLastError(FileDescriptorError::SUCCESS);
+        return true;
+    }
     default:
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
         return false;
@@ -304,9 +410,10 @@ bool FileDescriptor::Rewind() {
         m_TTY->putc('\f'); // clear the screen
         SetLastError(FileDescriptorError::SUCCESS); // this case should have already been caught by the constructor
         return true;
-    case FileDescriptorType::FILE_STREAM:
-        if (!m_FileStream->Rewind()) {
-            switch (m_FileStream->GetLastError()) {
+    case FileDescriptorType::FILE_STREAM: {
+        FileStream* fileStream = (FileStream*)m_Stream;
+        if (!fileStream->Rewind()) {
+            switch (fileStream->GetLastError()) {
             case FileStreamError::STREAM_CLOSED:
                 SetLastError(FileDescriptorError::STREAM_ERROR);
                 break;
@@ -318,6 +425,26 @@ bool FileDescriptor::Rewind() {
         }
         SetLastError(FileDescriptorError::SUCCESS);
         return true;
+    }
+    case FileDescriptorType::DIRECTORY_STREAM: {
+        DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
+        if (!directoryStream->Seek(0)) {
+            switch (directoryStream->GetLastError()) {
+            case DirectoryStreamError::INVALID_ARGUMENTS:
+                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
+                break;
+            case DirectoryStreamError::STREAM_CLOSED:
+                SetLastError(FileDescriptorError::STREAM_ERROR);
+                break;
+            default:
+                SetLastError(FileDescriptorError::INTERNAL_ERROR);
+                break;
+            }
+            return false;
+        }
+        SetLastError(FileDescriptorError::SUCCESS);
+        return true;
+    }
     default:
         SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
         return false;
@@ -333,7 +460,8 @@ void* FileDescriptor::GetData() const {
     SetLastError(FileDescriptorError::SUCCESS);
     switch (m_type) {
     case FileDescriptorType::FILE_STREAM:
-        return m_FileStream;
+    case FileDescriptorType::DIRECTORY_STREAM:
+        return m_Stream;
     case FileDescriptorType::TTY:
         return m_TTY;
     case FileDescriptorType::DEBUG:

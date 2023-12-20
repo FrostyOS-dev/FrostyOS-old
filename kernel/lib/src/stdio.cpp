@@ -23,6 +23,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <tty/TTY.hpp>
 
 #include <fs/FileDescriptorManager.hpp>
+#include <fs/FileStream.hpp>
+#include <fs/VFS.hpp>
 
 #include <HAL/hal.hpp>
 

@@ -264,10 +264,68 @@ bool VFS::CloseStream(FileStream* stream) {
     return false;
 }
 
+DirectoryStream* VFS::OpenDirectoryStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes) {
+    if (modes != VFS_READ) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS); // can only read from a directory stream
+        return nullptr;
+    }
+    Inode* inode = nullptr;
+    VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
+    if (mountPoint == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return nullptr;
+    }
+    DirectoryStream* stream = nullptr;
+    if (isMountpoint(path, strlen(path)))
+        stream = new DirectoryStream(nullptr, current_privilege, mountPoint->type, mountPoint->fs);
+    else
+        stream = new DirectoryStream(inode, current_privilege, mountPoint->type);
+    if (stream == nullptr) {
+        SetLastError(FileSystemError::ALLOCATION_FAILED);
+        return nullptr;
+    }
+    if (!stream->Open()) {
+        DirectoryStreamError error = stream->GetLastError();
+        if (error == DirectoryStreamError::INVALID_INODE)
+            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        else if (error == DirectoryStreamError::NO_PERMISSION)
+            SetLastError(FileSystemError::NO_PERMISSION);
+        else
+            SetLastError(FileSystemError::INTERNAL_ERROR);
+        return nullptr;
+    }
+    SetLastError(FileSystemError::SUCCESS);
+    m_directoryStreams.insert(stream);
+    return stream;
+}
+
+bool VFS::CloseDirectoryStream(DirectoryStream* stream) {
+    if (stream == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return false;
+    }
+    for (uint64_t i = 0; i < m_directoryStreams.getCount(); i++) {
+        DirectoryStream* i_stream = m_directoryStreams.get(i);
+        if (i_stream == nullptr) {
+            SetLastError(FileSystemError::INTERNAL_ERROR);
+            return false;
+        }
+        if (stream == i_stream) {
+            m_directoryStreams.remove(i);
+            (void)(stream->Close()); // ignore return value
+            delete stream;
+            SetLastError(FileSystemError::SUCCESS);
+            return true;
+        }
+    }
+    SetLastError(FileSystemError::INVALID_ARGUMENTS);
+    return true;
+}
+
 bool VFS::IsValidPath(const char* path) const {
     Inode* inode = nullptr;
     VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
-    if (mountPoint == nullptr || inode == nullptr) {
+    if (mountPoint == nullptr || (inode == nullptr && 0 != strcmp(path, "/"))) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return false;
     }
@@ -389,6 +447,8 @@ VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) const {
 }
 
 bool VFS::isMountpoint(const char* path, size_t len) {
-    dbgprintf("[%s(%lp, %lu)] ERROR: Unimplemented function.\n", __extension__ __PRETTY_FUNCTION__, path, len);
-    return false;
+    if (path == nullptr || len == 0)
+        return false;
+    // FIXME: once multiple mountpoints are fully supported, come back and fix this function. For now, this function only supports the root mountpoint
+    return strncmp(path, "/", len) == 0;
 }

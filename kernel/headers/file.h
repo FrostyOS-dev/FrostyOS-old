@@ -31,11 +31,25 @@ typedef long fd_t;
 #define SEEK_CUR 1
 #define SEEK_END 2
 
+#define DT_FILE 0
+#define DT_DIR 1
+#define DT_SYMLNK 2
+
 struct stat_buf {
     unsigned long st_size;
     unsigned int st_uid;
     unsigned int st_gid;
     unsigned short st_mode;
+    unsigned long st_type;
+};
+
+struct dirent {
+    unsigned long d_type;
+    unsigned int d_uid;
+    unsigned int d_gid;
+    unsigned short d_mode;
+    unsigned long d_size;
+    char d_name[256];
 };
 
 #ifdef __cplusplus
@@ -137,6 +151,12 @@ static inline int fchmod(fd_t file, unsigned short mode) {
     return (int)ret;
 }
 
+static inline int getdirents(fd_t file, struct dirent* buf, unsigned long count) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_GETDIRENTS), "D"(file), "S"(buf), "d"(count) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
 #else /* _IN_KERNEL */
 
 fd_t open(const char* path, unsigned long flags, unsigned short mode);
@@ -161,6 +181,8 @@ int fchown(fd_t file, unsigned int uid, unsigned int gid);
 
 int chmod(const char* path, unsigned short mode);
 int fchmod(fd_t file, unsigned short mode);
+
+int getdirents(fd_t file, struct dirent* buf, unsigned long count);
 
 
 #endif /* _IN_KERNEL */

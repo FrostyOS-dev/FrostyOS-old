@@ -86,6 +86,7 @@
         "dbgputs",
         "fgcolour",
         "framebuffer",
+        "getdirents",
         "HHDM",
         "kcalloc",
         "kfree",

@@ -18,8 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _FILE_DESCRIPTOR_HPP
 #define _FILE_DESCRIPTOR_HPP
 
-#include "FileStream.hpp"
-
 #include <tty/TTY.hpp>
 
 #include <stddef.h>
@@ -46,6 +44,7 @@ typedef long fd_t;
 enum class FileDescriptorType {
     UNKNOWN,
     FILE_STREAM,
+    DIRECTORY_STREAM,
     TTY,
     DEBUG
 };
@@ -97,7 +96,7 @@ protected:
 
 private:
     TTY* m_TTY;
-    FileStream* m_FileStream;
+    void* m_Stream; // works for both FileStream and DirectoryStream
     bool m_is_open;
     FileDescriptorType m_type;
     FileDescriptorMode m_mode;

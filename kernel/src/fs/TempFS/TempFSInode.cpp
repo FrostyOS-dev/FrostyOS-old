@@ -472,12 +472,12 @@ namespace TempFS {
         return true;
     }
 
-    TempFSInode* TempFSInode::GetChild(uint64_t ID) const {
+    TempFSInode* TempFSInode::GetTMPFSChild(uint64_t ID) const {
         const TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr)
                 return nullptr;
-            return target->GetChild(ID);
+            return target->GetTMPFSChild(ID);
         }
         if (p_type != InodeType::Folder) {
             SetLastError(InodeError::INVALID_TYPE);
@@ -526,6 +526,30 @@ namespace TempFS {
         }
         SetLastError(InodeError::INVALID_ARGUMENTS);
         return nullptr;
+    }
+
+    Inode* TempFSInode::GetChild(uint64_t index) const {
+        const TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return nullptr;
+            return target->GetChild(index);
+        }
+        if (p_type != InodeType::Folder) {
+            SetLastError(InodeError::INVALID_TYPE);
+            return nullptr;
+        }
+        if (index >= m_children.getCount()) {
+            SetLastError(InodeError::INVALID_ARGUMENTS);
+            return nullptr;
+        }
+        TempFSInode* inode = m_children.get(index);
+        if (inode == nullptr) {
+            SetLastError(InodeError::INTERNAL_ERROR);
+            return nullptr;
+        }
+        SetLastError(InodeError::SUCCESS);
+        return (Inode*)inode;
     }
 
     uint64_t TempFSInode::GetChildCount() const {

@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stddef.h>
 
+#include "DirectoryStream.hpp"
 #include "FileSystem.hpp"
 #include "Inode.hpp"
 
@@ -57,6 +58,9 @@ public:
     FileStream* OpenStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes);
     bool CloseStream(FileStream* stream);
 
+    DirectoryStream* OpenDirectoryStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes);
+    bool CloseDirectoryStream(DirectoryStream* stream);
+
     bool IsValidPath(const char* path) const;
 
     Inode* GetInode(const char* path, FileSystem** fs = nullptr) const;
@@ -71,6 +75,7 @@ private:
 
     LinkedList::SimpleLinkedList<VFS_MountPoint> m_mountPoints;
     LinkedList::SimpleLinkedList<FileStream> m_streams;
+    LinkedList::SimpleLinkedList<DirectoryStream> m_directoryStreams;
 };
 
 extern VFS* g_VFS;

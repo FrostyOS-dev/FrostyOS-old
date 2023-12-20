@@ -17,13 +17,22 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 19/12/2023 Afternoon
+## Latest Changes - 21/12/2023
 
-- Moved toolchain prefix to `toolchain/local` to avoid conflicts with other toolchains.
-- Updated GCC to 13.2.1
-- Added additional parameter to `seek` system call to allow seeking from a pre-defined position instead of always seeking from the start of the file. This pre-defined position can be either the start of the file, the current position or the end of the file.
-- Updated LibC `fseek` to utilise new `seek` support.
-- Updated LibC `stdio.h` header to only set the `SEEK_SET`, `SEEK_CUR` and `SEEK_END` macros if they aren't already defined.
+- Updated `Buffer::ClearUntil` function to return the number of blocks deleted.
+- Updated `Buffer::AddBlock` function to return a pointer to the block added.
+- Updated `Buffer::Write` function to keep track of the current block in a different way so simultaneous reads and writes can be done better.
+- Updated `KeyboardInput` class to use separate read and write offsets, so simultaneous reads and writes can be done better.
+- Add a directory stream class which enumerates through inodes in a directory. This support was added to file descriptors.
+- Added some global `Inode` functions which used to be only exclusive to `TempFSInode`s.
+- Added some global `FileSystem` functions which used to be only exclusive to `TempFileSystem`s.
+- Updated `stat` system call to return the type of the file.
+- Added `getdirents` system call to get a certain number of directory entries in the position in the stream.
+- Updated `open` system call to allow opening directories.
+- Added extra include to `kernel/lib/stdio.cpp` as it should already has exited.
+- Updated `buildsymboltable` util to use the new toolchain directory.
+- Implemented basic `ls` program.
+- Updated `stat` program to pre-initialise the `stat_buf` structure correctly.
 
 ## Resources used
 

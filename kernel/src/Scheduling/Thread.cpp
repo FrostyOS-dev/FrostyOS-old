@@ -28,6 +28,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <fs/TempFS/TempFSInode.hpp>
 
+#include <fs/FileStream.hpp>
+#include <fs/DirectoryStream.hpp>
+
 namespace Scheduling {
 
     Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, tid_t TID) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager(), m_TID(TID) {
@@ -177,27 +180,93 @@ namespace Scheduling {
         }
         else if (!valid_path)
             return -ENOENT;
-        
-        FileStream* stream = g_VFS->OpenStream(current_privilege, path, vfs_modes);
-        if (stream == nullptr) {
-            switch (g_VFS->GetLastError()) {
-            case FileSystemError::ALLOCATION_FAILED:
-                return -ENOMEM;
-            default:
-                assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
-            }
-        }
 
-        fd_t fd = m_FDManager.AllocateFileDescriptor(FileDescriptorType::FILE_STREAM, stream, new_mode);
-        if (fd < 0) {
-            (void)(g_VFS->CloseStream(stream)); // we are cleaning up, return value is irrelevant
-            return -ENOMEM;
+        fd_t fd;
+        FileStream* fstream = nullptr;
+        DirectoryStream* dstream = nullptr;
+
+        Inode* inode = g_VFS->GetInode(path);
+        if (inode == nullptr) {
+            if (0 == strcmp(path, "/")) { // there is no inode for the root directory, so things get complicated
+                dstream = g_VFS->OpenDirectoryStream(current_privilege, path, vfs_modes);
+                if (dstream == nullptr) {
+                    switch (g_VFS->GetLastError()) {
+                    case FileSystemError::ALLOCATION_FAILED:
+                        return -ENOMEM;
+                    case FileSystemError::INVALID_ARGUMENTS:
+                        return -ENOTDIR;
+                    case FileSystemError::NO_PERMISSION:
+                        return -EACCES;
+                    default:
+                        assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+                    }
+                }
+
+                fd = m_FDManager.AllocateFileDescriptor(FileDescriptorType::DIRECTORY_STREAM, dstream, new_mode);
+                if (fd < 0) {
+                    (void)(g_VFS->CloseDirectoryStream(dstream)); // we are cleaning up, return value is irrelevant
+                    return -ENOMEM;
+                }
+            }
+            else
+                return -ENOENT; // this case *should* already have been handled, but is checked here for safety.
+        }
+        else {
+            switch (g_VFS->GetInode(path)->GetType()) {
+            case InodeType::File: {
+                fstream = g_VFS->OpenStream(current_privilege, path, vfs_modes);
+                if (fstream == nullptr) {
+                    switch (g_VFS->GetLastError()) {
+                    case FileSystemError::ALLOCATION_FAILED:
+                        return -ENOMEM;
+                    case FileSystemError::INVALID_ARGUMENTS:
+                        return -EISDIR;
+                    default:
+                        assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+                    }
+                }
+
+                fd = m_FDManager.AllocateFileDescriptor(FileDescriptorType::FILE_STREAM, fstream, new_mode);
+                if (fd < 0) {
+                    (void)(g_VFS->CloseStream(fstream)); // we are cleaning up, return value is irrelevant
+                    return -ENOMEM;
+                }
+                break;
+            }
+            case InodeType::Folder: {
+                dstream = g_VFS->OpenDirectoryStream(current_privilege, path, vfs_modes);
+                if (dstream == nullptr) {
+                    switch (g_VFS->GetLastError()) {
+                    case FileSystemError::ALLOCATION_FAILED:
+                        return -ENOMEM;
+                    case FileSystemError::INVALID_ARGUMENTS:
+                        return -ENOTDIR;
+                    case FileSystemError::NO_PERMISSION:
+                        return -EACCES;
+                    default:
+                        assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+                    }
+                }
+
+                fd = m_FDManager.AllocateFileDescriptor(FileDescriptorType::DIRECTORY_STREAM, dstream, new_mode);
+                if (fd < 0) {
+                    (void)(g_VFS->CloseDirectoryStream(dstream)); // we are cleaning up, return value is irrelevant
+                    return -ENOMEM;
+                }
+                break;
+            }
+            default:
+                return -ENOSYS;
+            }
         }
 
         FileDescriptor* descriptor = m_FDManager.GetFileDescriptor(fd);
         if (descriptor == nullptr) {
             (void)(m_FDManager.FreeFileDescriptor(fd));
-            (void)(g_VFS->CloseStream(stream)); // we are cleaning up, return value is irrelevant
+            if (fstream != nullptr)
+                (void)(g_VFS->CloseStream(fstream)); // we are cleaning up, return value is irrelevant
+            else if (dstream != nullptr)
+                (void)(g_VFS->CloseDirectoryStream(dstream)); // we are cleaning up, return value is irrelevant
             assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
         }
 
@@ -374,6 +443,18 @@ namespace Scheduling {
         buffer.st_gid = privilege.GID;
         buffer.st_mode = privilege.ACL;
 
+        switch (inode->GetType()) {
+        case InodeType::File:
+            buffer.st_type = DT_FILE;
+            break;
+        case InodeType::Folder:
+            buffer.st_type = DT_DIR;
+            break;
+        case InodeType::SymLink:
+            buffer.st_type = DT_SYMLNK;
+            break;
+        }
+
         switch (fs->GetType()) {
         case FileSystemType::TMPFS: {
             TempFS::TempFSInode* tempfs_inode = (TempFS::TempFSInode*)inode;
@@ -415,6 +496,18 @@ namespace Scheduling {
         buffer.st_uid = privilege.UID;
         buffer.st_gid = privilege.GID;
         buffer.st_mode = privilege.ACL;
+
+        switch (inode->GetType()) {
+        case InodeType::File:
+            buffer.st_type = DT_FILE;
+            break;
+        case InodeType::Folder:
+            buffer.st_type = DT_DIR;
+            break;
+        case InodeType::SymLink:
+            buffer.st_type = DT_SYMLNK;
+            break;
+        }
 
         switch (fs->GetType()) {
         case FileSystemType::TMPFS: {
@@ -553,6 +646,101 @@ namespace Scheduling {
 
     void Thread::sys$msleep(unsigned long ms) {
         Scheduler::SleepThread(this, ms);
+    }
+
+    int Thread::sys$getdirents(fd_t file, struct dirent* buf, unsigned long count) {
+        if (m_Parent == nullptr || !m_Parent->ValidateWrite(buf, count * sizeof(struct dirent)))
+            return -EFAULT;
+
+        FileDescriptor* descriptor = m_FDManager.GetFileDescriptor(file);
+        if (descriptor == nullptr)
+            return -EBADF;
+
+        if (descriptor->GetType() != FileDescriptorType::DIRECTORY_STREAM)
+            return -ENOTDIR;
+
+        DirectoryStream* stream = (DirectoryStream*)descriptor->GetData();
+        if (stream == nullptr)
+            return -EBADF;
+
+        {
+            Inode* parent_inode = stream->GetInode();
+            if (parent_inode == nullptr) {
+                FileSystem* fs = stream->GetFileSystem();
+                if (fs == nullptr)
+                    return -EBADF;
+                if ((count + stream->GetOffset()) > fs->GetRootInodeCount())
+                    return -EINVAL;
+            }
+            else {
+                if ((count + stream->GetOffset()) > parent_inode->GetChildCount())
+                    return -EINVAL;
+            }
+        }
+
+        size_t inode_size = 0;
+        switch (stream->GetFileSystemType()) {
+        case FileSystemType::TMPFS:
+            inode_size = sizeof(TempFS::TempFSInode);
+            break;
+        default:
+            return -ENOSYS;
+        }
+
+        for (uint64_t i = 0; i < count; i++) {
+            Inode* inode = (Inode*)kcalloc(1, inode_size);
+            if (inode == nullptr)
+                return -ENOMEM;
+            if (!descriptor->Read((uint8_t*)inode, inode_size)) {
+                kfree(inode);
+                switch (descriptor->GetLastError()) {
+                case FileDescriptorError::STREAM_ERROR:
+                    return -EBADF;
+                case FileDescriptorError::NO_PERMISSION:
+                    return -EACCES;
+                default:
+                    dbgprintf("File descriptor internal error %d in getdirents syscall. fd = %ld, buf = %lp, count = %lu\n", (int)descriptor->GetLastError(), file, buf, count);
+                    assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
+                }
+            }
+            struct dirent i_dirent;
+            memset(&i_dirent, 0, sizeof(struct dirent));
+            switch (inode->GetRealType()) {
+            case InodeType::File:
+                i_dirent.d_type = DT_FILE;
+                break;
+            case InodeType::Folder:
+                i_dirent.d_type = DT_DIR;
+                break;
+            case InodeType::SymLink:
+                i_dirent.d_type = DT_SYMLNK;
+                break;
+            }
+
+            FilePrivilegeLevel privilege = inode->GetPrivilegeLevel();
+            
+            i_dirent.d_uid = privilege.UID;
+            i_dirent.d_gid = privilege.GID;
+            i_dirent.d_mode = privilege.ACL;
+
+            switch (stream->GetFileSystemType()) {
+            case FileSystemType::TMPFS: {
+                TempFS::TempFSInode* tmp_inode = (TempFS::TempFSInode*)inode;
+                i_dirent.d_size = tmp_inode->GetSize(); // will return 0 if type is not file
+                break;
+            }
+            default:
+                return -ENOSYS;
+            }
+
+            strncpy(i_dirent.d_name, inode->GetName(), 255);
+
+            memcpy(&(buf[i]), &i_dirent, sizeof(struct dirent));
+
+            kfree(inode);
+        }
+
+        return ESUCCESS;
     }
 
     void Thread::PrintInfo(fd_t file) const {

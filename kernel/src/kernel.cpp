@@ -138,7 +138,7 @@ extern "C" void StartKernel(KernelParams* params) {
     else
         g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size, true);
 
-    KBasicVGA.EnableDoubleBuffering(g_KPM);
+    //KBasicVGA.EnableDoubleBuffering(g_KPM);
 
     Kernel_Stage2Params = {
         .RSDP_addr = params->RSDP_table,

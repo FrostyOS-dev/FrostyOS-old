@@ -52,9 +52,10 @@ namespace TempFS {
         void SetType(InodeType type) override;
 
         bool AddChild(TempFSInode* child);
-        TempFSInode* GetChild(uint64_t ID) const;
+        TempFSInode* GetTMPFSChild(uint64_t ID) const;
+        Inode* GetChild(uint64_t index) const override;
         TempFSInode* GetChild(const char* name) const;
-        uint64_t GetChildCount() const;
+        uint64_t GetChildCount() const override;
         bool RemoveChild(TempFSInode* child);
 
         bool SetParent(TempFSInode* parent);

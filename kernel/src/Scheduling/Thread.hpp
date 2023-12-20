@@ -76,6 +76,8 @@ namespace Scheduling {
         void sys$sleep(unsigned long s);
         void sys$msleep(unsigned long ms);
 
+        int sys$getdirents(fd_t file, struct dirent* dirp, unsigned long count);
+
         void PrintInfo(fd_t file) const;
 
         void SetTID(tid_t TID);

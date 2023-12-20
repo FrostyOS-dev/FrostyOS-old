@@ -24,7 +24,7 @@ bool KeyboardEventHandler(void* data, KeyboardEvent event) {
     return input->HandleEvent(event);
 }
 
-KeyboardInput::KeyboardInput() : m_bufferOffset(0), m_keyboard(nullptr), m_keyboardState({false, false, false, false, false}), m_bufferSize(0), m_buffer(nullptr), m_keyCallback({nullptr, nullptr}) {
+KeyboardInput::KeyboardInput() : m_bufferOffset(0), m_bufferReadOffset(0), m_keyboard(nullptr), m_keyboardState({false, false, false, false, false}), m_bufferSize(0), m_buffer(nullptr), m_keyCallback({nullptr, nullptr}) {
 
 }
 
@@ -48,15 +48,18 @@ void KeyboardInput::Destroy() {
 int KeyboardInput::GetChar() {
     if (m_bufferSize == 0)
         return -1;
-    size_t initial_size = m_buffer->GetSize();
     char c = (char)-1;
-    m_buffer->Read(m_bufferOffset, (uint8_t*)&c, sizeof(char));
-    m_buffer->ClearUntil(m_bufferOffset + sizeof(char));
-    if (m_buffer->GetSize() < initial_size)
-        m_bufferOffset = 0;
-    m_bufferOffset += sizeof(char);
+    m_buffer->Read(m_bufferReadOffset, (uint8_t*)&c, sizeof(char));
+    uint64_t rc = m_buffer->ClearUntil(m_bufferReadOffset + sizeof(char));
+    if (rc > 0) {
+        if (m_bufferOffset >= m_bufferReadOffset)
+            m_bufferOffset = 0;
+        m_bufferReadOffset = 0;
+    }
+    else
+        m_bufferReadOffset++;
     m_bufferSize--;
-    return c == (char)-1 ? -1 : (int)c;
+    return c == (char)-1 ? -1 : ((int)c & 0xFF);
 }
 
 bool KeyboardInput::HandleEvent(KeyboardEvent event) {
@@ -258,7 +261,9 @@ void KeyboardInput::OnKey(void (*func)(void*, char), void* data) {
 }
 
 void KeyboardInput::AppendChar(char c) {
-    m_buffer->Write(m_bufferOffset, (const uint8_t*)&c, sizeof(char));
+    uint64_t oldOffset = m_bufferOffset;
+    m_bufferOffset++;
+    m_buffer->Write(oldOffset, (const uint8_t*)&c, sizeof(char));
     m_bufferSize++;
     if (m_keyCallback.func != nullptr)
         m_keyCallback.func(m_keyCallback.data, c);

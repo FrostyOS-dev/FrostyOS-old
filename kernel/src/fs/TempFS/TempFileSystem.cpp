@@ -384,6 +384,19 @@ namespace TempFS {
         m_rootInodes.remove(inode);
     }
 
+    Inode* TempFileSystem::GetRootInode(uint64_t index) const {
+        if (index >= m_rootInodes.getCount()) {
+            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+            return nullptr;
+        }
+        SetLastError(FileSystemError::SUCCESS);
+        return m_rootInodes.get(index);
+    }
+
+    uint64_t TempFileSystem::GetRootInodeCount() const {
+        return m_rootInodes.getCount();
+    }
+
 
     TempFSInode* TempFileSystem::GetInode(const char* path, TempFSInode** lastInode, int64_t* end_index) {
         if (path == nullptr) {
@@ -518,5 +531,9 @@ namespace TempFS {
 
     FileSystemType TempFileSystem::GetType() const {
         return FileSystemType::TMPFS;
+    }
+
+    FilePrivilegeLevel TempFileSystem::GetRootPrivilege() const {
+        return m_rootPrivilege;
     }
 }

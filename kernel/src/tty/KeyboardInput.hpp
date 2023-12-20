@@ -44,6 +44,7 @@ private:
 
 private:
     uint64_t m_bufferOffset;
+    uint64_t m_bufferReadOffset;
     Keyboard* m_keyboard;
     struct KeyboardState {
         bool control;

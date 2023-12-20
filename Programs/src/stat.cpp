@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    struct stat_buf buf = {0, 0, 0, 0};
+    struct stat_buf buf = {0, 0, 0, 0, 0};
     if (stat(argv[1], &buf) < 0) {
         perror("stat");
         return 1;

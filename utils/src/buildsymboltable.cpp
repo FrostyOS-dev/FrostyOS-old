@@ -15,20 +15,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    char* home = getenv("HOME");
-    if (home == nullptr) {
+    char* pwd = getenv("PWD");
+    if (pwd == nullptr) {
         fprintf(stderr, "Error: cannot find nm\n");
         return 1;
     }
 
     std::stringstream ss;
-    ss << home << "/opt/";
-#ifdef __x86_64__
-    ss << "x86_64";
-#else
-#error Unknown architecture
-#endif
-    ss << "-worldos-cross/bin/";
+    ss << pwd << "/toolchain/local/bin/";
 #ifdef __x86_64__
     ss << "x86_64";
 #else

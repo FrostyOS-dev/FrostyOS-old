@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stddef.h>
 
 #include "FilePrivilegeLevel.hpp"
+#include "Inode.hpp"
 
 enum class FileSystemError {
     SUCCESS = 0,
@@ -50,9 +51,14 @@ public:
 
     virtual bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false) = 0;
 
+    virtual Inode* GetRootInode(uint64_t index) const = 0;
+    virtual uint64_t GetRootInodeCount() const = 0;
+
     virtual FileSystemError GetLastError() const { return p_lastError; }
 
     virtual FileSystemType GetType() const = 0;
+
+    virtual FilePrivilegeLevel GetRootPrivilege() const = 0;
 
 protected:
     virtual void SetLastError(FileSystemError error) const { p_lastError = error; } // const so const functions can perform error reporting
