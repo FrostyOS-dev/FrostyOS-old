@@ -1,31 +1,8 @@
-/*
-Copyright (©) 2022-2023  Frosty515
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
-#include "kmalloc.hpp"
-#include "newdelete.hpp"
-
-#include <stdint.h>
-#include <stddef.h>
+#include <stdlib.h>
 
 #include <util.h>
 
-#include <Memory/PageManager.hpp>
-
-#include <HAL/hal.hpp>
+#include <kernel/memory.h>
 
 struct BlockHeader {
     size_t size : 62;
@@ -42,6 +19,7 @@ The allocator will keep a pointer to the first chunk in the free list.
 
 When a chunk is allocated, the allocator will search the free list for a chunk that is large enough.
 If it finds one, it will remove it from the free list and return it.
+If it doesn't find one, it will allocate a new chunk from the kernel and return that.
 
 When a chunk is freed, the allocator will add it to the free list.
 
@@ -53,7 +31,6 @@ Each chunk contains multiple blocks. Each block can vary in size, but it must be
 class HeapAllocator {
 public:
     HeapAllocator();
-    HeapAllocator(size_t size);
 
     void* allocate(size_t size);
     void free(void* ptr);
@@ -76,19 +53,6 @@ private:
 
 HeapAllocator::HeapAllocator() : m_freeList(nullptr), m_freeMem(0), m_usedMem(0), m_MetadataMem(0) {
     
-}
-
-HeapAllocator::HeapAllocator(size_t size) : m_freeList(nullptr), m_freeMem(0), m_usedMem(0), m_MetadataMem(0) {
-    size_t numPages = DIV_ROUNDUP((size + sizeof(BlockHeader)), PAGE_SIZE);
-    size_t numBytes = numPages * PAGE_SIZE;
-    void* ptr = g_KPM->AllocatePages(numPages);
-    BlockHeader* header = (BlockHeader*)ptr;
-    m_MetadataMem += sizeof(BlockHeader);
-    header->size = numBytes - sizeof(BlockHeader);
-    header->isFree = true;
-    header->isStartOfChunk = true;
-    m_freeMem += header->size;
-    m_freeList = header;
 }
 
 void* HeapAllocator::allocate(size_t size) {
@@ -123,9 +87,25 @@ void* HeapAllocator::allocate(size_t size) {
         curr = curr->next;
     }
 
-    // Didn't find a chunk that is large enough, and kernel heap expansion is not supported, so we just panic
-    PANIC("kmalloc: out of memory");
-    return nullptr;
+    size_t numBytes = ALIGN_UP((size + sizeof(BlockHeader)), PAGE_SIZE);
+    void* ptr = mmap(numBytes, PROT_READ_WRITE, nullptr);
+    BlockHeader* header = (BlockHeader*)ptr;
+    m_MetadataMem += sizeof(BlockHeader);
+    header->size = numBytes - sizeof(BlockHeader);
+    header->isFree = false;
+    header->isStartOfChunk = true;
+    if (header->size > size) {
+        // Split the chunk into two blocks
+        BlockHeader* next = (BlockHeader*)((uint64_t)header + sizeof(BlockHeader) + size);
+        next->size = header->size - size - sizeof(BlockHeader);
+        next->isFree = true;
+        header->size = size;
+        m_freeMem += next->size;
+        AddToFreeList(next);
+        m_MetadataMem += sizeof(BlockHeader);
+    }
+    m_usedMem += size;
+    return (void*)((uint64_t)header + sizeof(BlockHeader));
 }
 
 void HeapAllocator::free(void* ptr) {
@@ -134,6 +114,7 @@ void HeapAllocator::free(void* ptr) {
     m_usedMem -= header->size;
     m_freeMem += header->size;
     AddToFreeList(header);
+    CheckForDeletion();
 }
 
 size_t HeapAllocator::getFreeMem() const {
@@ -217,106 +198,41 @@ void HeapAllocator::AddToFreeList(BlockHeader* header) {
     }
 }
 
+void HeapAllocator::CheckForDeletion() {
+    if (m_freeList == nullptr)
+        return;
+    // search through the free list to find chunks that can be deleted
+    BlockHeader* prev = nullptr;
+    BlockHeader* curr = m_freeList;
+    BlockHeader* next;
+    while (curr != nullptr) {
+        next = curr->next;
+        if (next != nullptr && curr->isStartOfChunk && next->isStartOfChunk) {
+            // this means that curr is an entire chunk, so we can unmap it
+            m_MetadataMem -= sizeof(BlockHeader);
+            m_freeMem -= curr->size;
+            munmap(curr, ALIGN_UP(curr->size + sizeof(BlockHeader), PAGE_SIZE));
+            curr = next;
+            if (prev == nullptr) // this is the first chunk in the free list
+                m_freeList = curr;
+            else // this is not the first chunk in the free list
+                prev->next = curr;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+}
+
 HeapAllocator g_heapAllocator;
 
-bool g_kmalloc_initialised;
-
-void kmalloc_init() {
-    g_kmalloc_initialised = false;
-    
-    g_heapAllocator = HeapAllocator(MiB(4)); // initialise the heap with 4MiB of memory
-
-    g_kmalloc_initialised = true;
-    NewDeleteInit();
+void* malloc(size_t size) {
+    return g_heapAllocator.allocate(size);
 }
 
-extern "C" void* kcalloc(size_t num, size_t size) {
-    if (!g_kmalloc_initialised)
-        return nullptr;
-    size = ALIGN_UP((size * num), MIN_SIZE);
-    void* mem = g_heapAllocator.allocate(size);
-    if (mem == nullptr)
-        return nullptr;
-    fast_memset(mem, 0, size / 8);
-    return mem;
+void free(void* ptr) {
+    g_heapAllocator.free(ptr);
 }
 
-extern "C" void kfree(void* addr) {
-    return g_heapAllocator.free(addr);
-}
-
-extern "C" void* kmalloc(size_t size) {
-    if (size == 0 || !g_kmalloc_initialised)
-        return nullptr;
-    return g_heapAllocator.allocate(ALIGN_UP(size, MIN_SIZE));
-}
-
-extern "C" void* krealloc(void* ptr, size_t size) {
-    if (size == 0) {
-        kfree(ptr);
-        return nullptr;
-    }
-    if (ptr == nullptr)
-        return kmalloc(size);
-    /*if (ptr < g_mem_start || ptr > g_mem_end)
-        return nullptr;
-    size = ALIGN_UP(size, MIN_SIZE);*/
-    BlockHeader* header = (BlockHeader*)((uint64_t)ptr - sizeof(BlockHeader));
-    size_t old_size = header->size;
-    void* ptr2 = kmalloc(size);
-    if (ptr2 == nullptr)
-        return nullptr;
-    fast_memcpy(ptr2, ptr, old_size);
-    kfree(ptr);
-    return ptr2;
-}
-
-
-bool g_kmalloc_eternal_initialised = false;
-
-void* g_kmalloc_eternal_mem = nullptr;
-size_t g_kmalloc_eternal_free_mem = 0;
-size_t g_kmalloc_eternal_used_mem = 0;
-
-void kmalloc_eternal_init() {
-    g_kmalloc_eternal_initialised = false;
-
-    void* pages = g_KPM->AllocatePages(512); // ~2MiB
-    if (pages == nullptr)
-        return;
-    g_kmalloc_eternal_mem = pages;
-    g_kmalloc_eternal_free_mem = 512 * PAGE_SIZE;
-    g_kmalloc_eternal_used_mem = 0;
-
-    g_kmalloc_eternal_initialised = true;
-}
-
-extern "C" void* kmalloc_eternal(size_t size) {
-    size = ALIGN_UP(size, 8);
-
-    if (!g_kmalloc_eternal_initialised || size > g_kmalloc_eternal_free_mem)
-        return nullptr;
-
-    void* mem = g_kmalloc_eternal_mem;
-    g_kmalloc_eternal_used_mem += size;
-    g_kmalloc_eternal_free_mem -= size;
-    g_kmalloc_eternal_mem = (void*)((uint64_t)g_kmalloc_eternal_mem + size);
-
-    return mem;
-}
-
-extern "C" void* kcalloc_eternal(size_t num, size_t size) {
-    size = ALIGN_UP(size * num, 8);
-
-    if (!g_kmalloc_eternal_initialised || size > g_kmalloc_eternal_free_mem)
-        return nullptr;
-
-    void* mem = g_kmalloc_eternal_mem;
-    g_kmalloc_eternal_used_mem += size;
-    g_kmalloc_eternal_free_mem -= size;
-    g_kmalloc_eternal_mem = (void*)((uint64_t)g_kmalloc_eternal_mem + size);
-
-    fast_memset(mem, 0, size / 8);
-
-    return mem;
+uint64_t get_heap_size() {
+    return g_heapAllocator.getTotalMem();
 }

@@ -1,6 +1,16 @@
 # Changes
 
-## Latest Changes - 21/12/2023
+## Latest Changes - 22/12/2023
+
+- Update toolchain path in all the run-utils scripts.
+- Added git to toolchain build requirements.
+- Updated run command in README.md.
+- Updated `stat` program to print the file type.
+- Created a new custom kernel heap. Currently this does not support self expansion and shrinking due to circular dependencies.
+- Added a userspace heap allocator to LibC based off the kernel heap, except is supports self expansion and shrinking. Currently, it does not support `realloc` at all.
+- Implemented `_Exit` function in LibC.
+
+## 21/12/2023
 
 - Updated `Buffer::ClearUntil` function to return the number of blocks deleted.
 - Updated `Buffer::AddBlock` function to return a pointer to the block added.

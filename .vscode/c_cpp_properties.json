@@ -3,9 +3,9 @@
         {
             "name": "Kernel",
             "includePath": [
-                "/home/frosty515/dev/WorldOS/Public/kernel/src/*",
-                "/home/frosty515/dev/WorldOS/Public/kernel/headers/*",
-                "/home/frosty515/dev/WorldOS/Public/kernel/lib/include/*"
+                "/home/frosty515/dev/WorldOS/WorldOS/kernel/src/*",
+                "/home/frosty515/dev/WorldOS/WorldOS/kernel/headers/*",
+                "/home/frosty515/dev/WorldOS/WorldOS/kernel/lib/include/*"
             ],
             "defines": [
                 "_IN_KERNEL=1"
@@ -17,7 +17,7 @@
             "mergeConfigurations": false,
             "browse": {
                 "path": [
-                    "/home/frosty515/dev/WorldOS/Public/**"
+                    "/home/frosty515/dev/WorldOS/WorldOS/**"
                 ],
                 "limitSymbolsToIncludedHeaders": true
             },

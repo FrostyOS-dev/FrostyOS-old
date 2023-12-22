@@ -17,22 +17,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 21/12/2023
+## Latest Changes - 22/12/2023
 
-- Updated `Buffer::ClearUntil` function to return the number of blocks deleted.
-- Updated `Buffer::AddBlock` function to return a pointer to the block added.
-- Updated `Buffer::Write` function to keep track of the current block in a different way so simultaneous reads and writes can be done better.
-- Updated `KeyboardInput` class to use separate read and write offsets, so simultaneous reads and writes can be done better.
-- Add a directory stream class which enumerates through inodes in a directory. This support was added to file descriptors.
-- Added some global `Inode` functions which used to be only exclusive to `TempFSInode`s.
-- Added some global `FileSystem` functions which used to be only exclusive to `TempFileSystem`s.
-- Updated `stat` system call to return the type of the file.
-- Added `getdirents` system call to get a certain number of directory entries in the position in the stream.
-- Updated `open` system call to allow opening directories.
-- Added extra include to `kernel/lib/stdio.cpp` as it should already has exited.
-- Updated `buildsymboltable` util to use the new toolchain directory.
-- Implemented basic `ls` program.
-- Updated `stat` program to pre-initialise the `stat_buf` structure correctly.
+- Update toolchain path in all the run-utils scripts.
+- Added git to toolchain build requirements.
+- Updated run command in README.md.
+- Updated `stat` program to print the file type.
+- Created a new custom kernel heap. Currently this does not support self expansion and shrinking due to circular dependencies.
+- Added a userspace heap allocator to LibC based off the kernel heap, except is supports self expansion and shrinking. Currently, it does not support `realloc` at all.
+- Implemented `_Exit` function in LibC.
 
 ## Resources used
 
@@ -74,6 +67,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - binutils version 2 or higher (only for binutils builds)
 - libtool
 - patch
+- git
 
 #### mkgpt build
 
@@ -148,11 +142,11 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### Debug
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64`
+1. run `qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64`
 
 ### Release
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=ovmf/x86-64/OVMF.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64`
+1. run `qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64`
 
 ---
 

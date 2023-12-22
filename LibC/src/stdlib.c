@@ -185,6 +185,10 @@ void abort() {
     system_call(SC_EXIT, EXIT_FAILURE, 0, 0);
 }
 
+void _Exit(int status) {
+    system_call(SC_EXIT, (unsigned long)status, 0, 0);
+}
+
 
 int abs(int n) {
     return n < 0 ? -n : n;

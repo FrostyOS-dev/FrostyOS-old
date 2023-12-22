@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
     printf("Mode: %04ho\n", buf.st_mode);
     printf("UID: %u\n", buf.st_uid);
     printf("GID: %u\n", buf.st_gid);
+    printf("Type: %s\n", buf.st_type == DT_FILE ? "file" : (buf.st_type == DT_DIR ? "directory" : (buf.st_type == DT_SYMLNK ? "symlink" : "unknown")));
 
     return 0;
 }
