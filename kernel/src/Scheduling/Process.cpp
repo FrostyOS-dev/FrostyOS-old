@@ -22,11 +22,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Memory/VirtualPageManager.hpp>
 
 namespace Scheduling {
-    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_region(nullptr, nullptr), m_VPM(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_PID(-1), m_NextTID(0), m_UID(0), m_GID(0), m_EUID(0), m_EGID(0) {
+    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_region(nullptr, nullptr), m_VPM(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_PID(-1), m_NextTID(0), m_UID(0), m_GID(0), m_EUID(0), m_EGID(0), m_defaultWorkingDirectory(nullptr) {
 
     }
 
-    Process::Process(ProcessEntry_t entry, void* entry_data, uint32_t UID, uint32_t GID, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_UID(UID), m_GID(GID), m_EUID(UID), m_EGID(GID) {
+    Process::Process(ProcessEntry_t entry, void* entry_data, uint32_t UID, uint32_t GID, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_UID(UID), m_GID(GID), m_EUID(UID), m_EGID(GID), m_defaultWorkingDirectory(nullptr) {
 
     }
 
@@ -36,6 +36,8 @@ namespace Scheduling {
             delete m_pm;
             delete m_VPM;
         }
+        if (m_defaultWorkingDirectory != nullptr)
+            delete m_defaultWorkingDirectory;
     }
 
     void Process::SetEntry(ProcessEntry_t entry, void* entry_data) {
@@ -106,6 +108,8 @@ namespace Scheduling {
     void Process::CreateMainThread() {
         m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags, m_NextTID);
         m_NextTID++;
+        if (m_main_thread->GetWorkingDirectory() == nullptr && m_defaultWorkingDirectory != nullptr)
+            m_main_thread->SetWorkingDirectory(new VFS_WorkingDirectory(*m_defaultWorkingDirectory));
         m_threads.insert(m_main_thread);
         m_main_thread_initialised = true;
         m_main_thread_creation_requested = true;
@@ -125,7 +129,10 @@ namespace Scheduling {
         else
             m_region = m_pm->GetRegion(); // ensure the region is up to date
         if (!m_main_thread_initialised) {
-            m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags);
+            m_main_thread = new Thread(this, m_Entry, m_entry_data, m_flags, m_NextTID);
+            m_NextTID++;
+            if (m_main_thread->GetWorkingDirectory() == nullptr && m_defaultWorkingDirectory != nullptr)
+                m_main_thread->SetWorkingDirectory(new VFS_WorkingDirectory(*m_defaultWorkingDirectory));
             m_threads.insert(m_main_thread);
             m_main_thread_initialised = true;
         }
@@ -139,6 +146,8 @@ namespace Scheduling {
         thread->SetParent(this);
         thread->SetTID(m_NextTID);
         m_NextTID++;
+        if (thread->GetWorkingDirectory() == nullptr && m_defaultWorkingDirectory != nullptr)
+            thread->SetWorkingDirectory(new VFS_WorkingDirectory(*m_defaultWorkingDirectory));
         thread->Start();
     }
 
@@ -161,6 +170,12 @@ namespace Scheduling {
             return;
         m_threads.remove(index);
         thread->SetParent(nullptr);
+    }
+
+    bool Process::IsMainThread(Thread* thread) const {
+        if (thread == nullptr || !m_main_thread_initialised || m_main_thread == nullptr)
+            return false;
+        return thread == m_main_thread;
     }
 
     bool Process::ValidateRead(const void* buf, size_t size) const {
@@ -228,4 +243,13 @@ namespace Scheduling {
     uint32_t Process::GetEGID() const {
         return m_EGID;
     }
+
+    void Process::SetDefaultWorkingDirectory(VFS_WorkingDirectory* wd) {
+        m_defaultWorkingDirectory = wd;
+    }
+
+    VFS_WorkingDirectory* Process::GetDefaultWorkingDirectory() const {
+        return m_defaultWorkingDirectory;
+    }
+
 }

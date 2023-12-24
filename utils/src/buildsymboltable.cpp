@@ -9,82 +9,18 @@
 #include <string>
 #include <algorithm>
 
+// we read the output of nm from stdin and write the symbol table to <out-file>
 int main(int argc, char** argv) {
-    if (argc < 3) {
-        printf("Usage: %s <ELF-file> <out-file>", argv[0]);
+    if (argc < 2) {
+        printf("Usage: %s <out-file>", argv[0]);
         return 1;
     }
 
-    char* pwd = getenv("PWD");
-    if (pwd == nullptr) {
-        fprintf(stderr, "Error: cannot find nm\n");
-        return 1;
-    }
-
-    std::stringstream ss;
-    ss << pwd << "/toolchain/local/bin/";
-#ifdef __x86_64__
-    ss << "x86_64";
-#else
-#error Unknown architecture
-#endif
-    ss << "-worldos-nm";
-    
-    int link[2];
-    if (pipe(link) < 0) {
-        perror("pipe");
-        return 1;
-    }
-
-    char* buffer;
-    uint64_t nbytes;
-    std::string str;
-
-    std::string path = ss.str();
-    pid_t child_pid = fork();
-    if (child_pid < 0) {
-        perror("fork");
-        return 1;
-    }
-
-    if (child_pid) {
-        // parent
-        close(link[1]);
-        wait(NULL);
-        buffer = (char*)calloc(4096, 1);
-        memset(buffer, 0, 4096);
-        nbytes = 0;
-        uint64_t count = 0;
-        while (0 != (count = read(link[0], &(buffer[nbytes]), 4096))) {
-            nbytes += count;
-            if ((nbytes & 0xFFF) == 0) {
-                buffer = (char*)realloc(buffer, nbytes + 4096);
-                if (buffer == nullptr) {
-                    perror("realloc");
-                    return 1;
-                }
-            }
-        }
-        if ((nbytes & 0xFFF) == 0) {
-            buffer = (char*)realloc(buffer, nbytes + 4096);
-            if (buffer == nullptr) {
-                perror("realloc");
-                return 1;
-            }
-        }
-        buffer[nbytes] = 0;
-        str = std::string(buffer);
-    }
-    else {
-        // child
-        dup2(link[1], STDOUT_FILENO);
-        close(link[0]);
-        char* c_path = new char[path.length() + 1];
-        memcpy(c_path, path.c_str(), path.length() + 1);
-        char* const new_argv[] = { c_path, "-C", "--format=bsd", "-n", argv[1], nullptr };
-        execve(path.c_str(), new_argv, environ);
-        perror("execve");
-        return 1;
+    std::string str = "";
+    char c = getchar();
+    while (c != EOF) {
+        str += c;
+        c = getchar();
     }
 
     uint64_t address = 0;
@@ -93,7 +29,7 @@ int main(int argc, char** argv) {
     std::string::iterator line_start, line_end;
     line_start = str.begin();
 
-    FILE* out = fopen(argv[2], "wb");
+    FILE* out = fopen(argv[1], "wb");
     if (out == nullptr) {
         perror("fopen");
         return 1;

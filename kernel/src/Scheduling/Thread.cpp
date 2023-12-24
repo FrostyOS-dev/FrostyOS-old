@@ -33,13 +33,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace Scheduling {
 
-    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, tid_t TID) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager(), m_TID(TID) {
+    Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, tid_t TID) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager(), m_TID(TID), m_working_directory(nullptr) {
         fast_memset(&m_regs, 0, DIV_ROUNDUP(sizeof(m_regs), 8));
         m_frame.kernel_stack = (uint64_t)g_KPM->AllocatePages(KERNEL_STACK_SIZE >> 12, PagePermissions::READ_WRITE) + KERNEL_STACK_SIZE; // FIXME: use actual page size
     }
 
     Thread::~Thread() {
         g_KPM->FreePages((void*)(m_frame.kernel_stack - KERNEL_STACK_SIZE));
+        if (m_working_directory != nullptr)
+            delete m_working_directory;
     }
 
     void Thread::SetEntry(ThreadEntry_t entry, void* entry_data) {
@@ -144,7 +146,7 @@ namespace Scheduling {
 
         FilePrivilegeLevel current_privilege = {m_Parent->GetEUID(), m_Parent->GetEGID(), 0};
 
-        bool valid_path = g_VFS->IsValidPath(path);
+        bool valid_path = g_VFS->IsValidPath(path, m_working_directory);
         if (create) {
             if (!valid_path) {
                 char* end = strrchr(path, PATH_SEPARATOR);
@@ -155,7 +157,7 @@ namespace Scheduling {
                     char* i_parent = new char[parent_name_size + 1];
                     memcpy(i_parent, path, parent_name_size);
                     i_parent[parent_name_size] = '\0';
-                    if (!g_VFS->IsValidPath(path)) {
+                    if (!g_VFS->IsValidPath(path, m_working_directory)) {
                         delete[] i_parent;
                         return -ENOENT;
                     }
@@ -185,10 +187,10 @@ namespace Scheduling {
         FileStream* fstream = nullptr;
         DirectoryStream* dstream = nullptr;
 
-        Inode* inode = g_VFS->GetInode(path);
+        Inode* inode = g_VFS->GetInode(path, m_working_directory);
         if (inode == nullptr) {
-            if (0 == strcmp(path, "/")) { // there is no inode for the root directory, so things get complicated
-                dstream = g_VFS->OpenDirectoryStream(current_privilege, path, vfs_modes);
+            if (g_VFS->GetLastError() == FileSystemError::SUCCESS) { // there is no inode for the root of a mountpoint, so things get complicated
+                dstream = g_VFS->OpenDirectoryStream(current_privilege, path, vfs_modes, m_working_directory);
                 if (dstream == nullptr) {
                     switch (g_VFS->GetLastError()) {
                     case FileSystemError::ALLOCATION_FAILED:
@@ -212,9 +214,9 @@ namespace Scheduling {
                 return -ENOENT; // this case *should* already have been handled, but is checked here for safety.
         }
         else {
-            switch (g_VFS->GetInode(path)->GetType()) {
+            switch (g_VFS->GetInode(path, m_working_directory)->GetType()) {
             case InodeType::File: {
-                fstream = g_VFS->OpenStream(current_privilege, path, vfs_modes);
+                fstream = g_VFS->OpenStream(current_privilege, path, vfs_modes, m_working_directory);
                 if (fstream == nullptr) {
                     switch (g_VFS->GetLastError()) {
                     case FileSystemError::ALLOCATION_FAILED:
@@ -234,7 +236,7 @@ namespace Scheduling {
                 break;
             }
             case InodeType::Folder: {
-                dstream = g_VFS->OpenDirectoryStream(current_privilege, path, vfs_modes);
+                dstream = g_VFS->OpenDirectoryStream(current_privilege, path, vfs_modes, m_working_directory);
                 if (dstream == nullptr) {
                     switch (g_VFS->GetLastError()) {
                     case FileSystemError::ALLOCATION_FAILED:
@@ -341,7 +343,6 @@ namespace Scheduling {
             case FileDescriptorError::NO_PERMISSION:
                 return -EACCES;
             default: {
-                dbgprintf("File descriptor internal error %d in write syscall. fd = %ld, buf = %lp, count = %lu\n", (int)descriptor->GetLastError(), file, buf, count);
                 PANIC("File descriptor internal error in write syscall.");
             }
             }
@@ -427,13 +428,26 @@ namespace Scheduling {
             return -EFAULT;
 
         // Validate path
-        if (!g_VFS->IsValidPath(path))
+        if (!g_VFS->IsValidPath(path, m_working_directory))
             return -ENOENT;
 
         FileSystem* fs = nullptr;
-        Inode* inode = g_VFS->GetInode(path, &fs);
-        if (inode == nullptr || fs == nullptr)
+        Inode* inode = g_VFS->GetInode(path, m_working_directory, &fs);
+        if ((inode == nullptr && g_VFS->GetLastError() != FileSystemError::SUCCESS) || fs == nullptr)
             return -ENOENT;
+
+        if (inode == nullptr) {
+            struct stat_buf buffer;
+
+            buffer.st_uid = 0;
+            buffer.st_gid = 0;
+            buffer.st_mode = 0;
+            buffer.st_type = DT_DIR;
+            buffer.st_size = 0;
+
+            memcpy(buf, &buffer, sizeof(struct stat_buf));
+            return ESUCCESS;
+        }
 
         FilePrivilegeLevel privilege = inode->GetPrivilegeLevel();
         
@@ -538,10 +552,10 @@ namespace Scheduling {
             return -EPERM;
 
         // Validate path
-        if (!g_VFS->IsValidPath(path))
+        if (!g_VFS->IsValidPath(path, m_working_directory))
             return -ENOENT;
 
-        Inode* inode = g_VFS->GetInode(path);
+        Inode* inode = g_VFS->GetInode(path, m_working_directory);
         if (inode == nullptr)
             return -ENOENT;
 
@@ -591,10 +605,10 @@ namespace Scheduling {
             return -EFAULT;
 
         // Validate path
-        if (!g_VFS->IsValidPath(path))
+        if (!g_VFS->IsValidPath(path, m_working_directory))
             return -ENOENT;
 
-        Inode* inode = g_VFS->GetInode(path);
+        Inode* inode = g_VFS->GetInode(path, m_working_directory);
         if (inode == nullptr)
             return -ENOENT;
 
@@ -699,7 +713,6 @@ namespace Scheduling {
                 case FileDescriptorError::NO_PERMISSION:
                     return -EACCES;
                 default:
-                    dbgprintf("File descriptor internal error %d in getdirents syscall. fd = %ld, buf = %lp, count = %lu\n", (int)descriptor->GetLastError(), file, buf, count);
                     assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
                 }
             }
@@ -738,6 +751,66 @@ namespace Scheduling {
             memcpy(&(buf[i]), &i_dirent, sizeof(struct dirent));
 
             kfree(inode);
+        }
+
+        return ESUCCESS;
+    }
+
+    int Thread::sys$chdir(const char* path) {
+        if (m_Parent == nullptr || !m_Parent->ValidateStringRead(path))
+            return -EFAULT;
+
+        if (m_working_directory == nullptr)
+            return -ENOSYS;
+
+        // Validate path
+        if (!g_VFS->IsValidPath(path, m_working_directory))
+            return -ENOENT;
+
+        VFS_MountPoint* mountpoint = nullptr;
+        Inode* inode = g_VFS->GetInode(path, m_working_directory, nullptr, &mountpoint);
+        if (mountpoint == nullptr || (inode == nullptr && g_VFS->GetLastError() != FileSystemError::SUCCESS))
+            return -ENOENT;
+
+        m_working_directory->inode = inode;
+        m_working_directory->mountpoint = mountpoint;
+
+        if (m_Parent->IsMainThread(this)) {
+            VFS_WorkingDirectory* parent_wd = m_Parent->GetDefaultWorkingDirectory();
+            parent_wd->inode = inode;
+            parent_wd->mountpoint = mountpoint;
+        }
+
+        return ESUCCESS;
+    }
+
+    int Thread::sys$fchdir(fd_t file) {
+        if (m_working_directory == nullptr)
+            return -ENOSYS;
+
+        FileDescriptor* descriptor = m_FDManager.GetFileDescriptor(file);
+        if (descriptor == nullptr || descriptor->GetType() != FileDescriptorType::DIRECTORY_STREAM)
+            return -EBADF;
+
+        DirectoryStream* stream = (DirectoryStream*)descriptor->GetData();
+        if (stream == nullptr)
+            return -EBADF;
+
+        Inode* inode = stream->GetInode();
+        FileSystem* fs = stream->GetFileSystem();
+        if (inode == nullptr && fs == nullptr)
+            return -EBADF;
+        VFS_MountPoint* mountpoint = g_VFS->GetMountPoint(fs);
+        if (mountpoint == nullptr)
+            return -EBADF; // should not be null, but this check is here just in case.
+
+        m_working_directory->inode = inode;
+        m_working_directory->mountpoint = mountpoint;
+
+        if (m_Parent->IsMainThread(this)) {
+            VFS_WorkingDirectory* parent_wd = m_Parent->GetDefaultWorkingDirectory();
+            parent_wd->inode = inode;
+            parent_wd->mountpoint = mountpoint;
         }
 
         return ESUCCESS;
@@ -803,5 +876,13 @@ namespace Scheduling {
 
     void Thread::SetRemainingSleepTime(uint64_t remaining_sleep_time) {
         m_remaining_sleep_time = remaining_sleep_time;
+    }
+
+    VFS_WorkingDirectory* Thread::GetWorkingDirectory() const {
+        return m_working_directory;
+    }
+
+    void Thread::SetWorkingDirectory(VFS_WorkingDirectory* working_directory) {
+        m_working_directory = working_directory;
     }
 }

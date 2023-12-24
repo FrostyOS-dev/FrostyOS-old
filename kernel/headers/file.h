@@ -157,6 +157,18 @@ static inline int getdirents(fd_t file, struct dirent* buf, unsigned long count)
     return (int)ret;
 }
 
+static inline int chdir(const char* path) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_CHDIR), "D"(path) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+static inline int fchdir(fd_t file) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_FCHDIR), "D"(file) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
 #else /* _IN_KERNEL */
 
 fd_t open(const char* path, unsigned long flags, unsigned short mode);
@@ -183,6 +195,9 @@ int chmod(const char* path, unsigned short mode);
 int fchmod(fd_t file, unsigned short mode);
 
 int getdirents(fd_t file, struct dirent* buf, unsigned long count);
+
+int chdir(const char* path);
+int fchdir(fd_t file);
 
 
 #endif /* _IN_KERNEL */

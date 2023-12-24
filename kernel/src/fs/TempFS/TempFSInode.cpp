@@ -498,7 +498,37 @@ namespace TempFS {
         return nullptr;
     }
 
-    TempFSInode* TempFSInode::GetChild(const char* name) const {
+    TempFSInode* TempFSInode::GetTMPFSChild(const char* name) const {
+        const TempFSInode* target = GetTarget();
+        if (target != this) {
+            if (target == nullptr)
+                return nullptr;
+            return target->GetTMPFSChild(name);
+        }
+        if (p_type != InodeType::Folder) {
+            SetLastError(InodeError::INVALID_TYPE);
+            return nullptr;
+        }
+        if (name == nullptr) {
+            SetLastError(InodeError::INVALID_ARGUMENTS);
+            return nullptr;
+        }
+        for (uint64_t i = 0; i < m_children.getCount(); i++) {
+            TempFSInode* inode = m_children.get(i);
+            if (inode == nullptr) {
+                SetLastError(InodeError::INTERNAL_ERROR);
+                return nullptr;
+            }
+            if (strcmp(name, inode->p_name) == 0) {
+                SetLastError(InodeError::SUCCESS);
+                return inode;
+            }
+        }
+        SetLastError(InodeError::INVALID_ARGUMENTS);
+        return nullptr;
+    }
+
+    Inode* TempFSInode::GetChild(const char* name) const {
         const TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr)
@@ -521,7 +551,7 @@ namespace TempFS {
             }
             if (strcmp(name, inode->p_name) == 0) {
                 SetLastError(InodeError::SUCCESS);
-                return inode;
+                return (Inode*)inode;
             }
         }
         SetLastError(InodeError::INVALID_ARGUMENTS);

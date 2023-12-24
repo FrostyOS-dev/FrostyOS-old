@@ -222,7 +222,7 @@ bool ELF_Executable::Load(ELF_entry_data* entry_data) {
     return true;
 }
 
-bool ELF_Executable::Execute(Scheduling::Priority priority) {
+bool ELF_Executable::Execute(Scheduling::Priority priority, VFS_WorkingDirectory* wd) {
     if (m_VPM == nullptr || m_PM == nullptr) {
         SetLastError(ELFError::INTERNAL_ERROR);
         return false;
@@ -236,6 +236,7 @@ bool ELF_Executable::Execute(Scheduling::Priority priority) {
     m_process->SetPriority(priority);
     m_process->SetUID(0);
     m_process->SetGID(0);
+    m_process->SetDefaultWorkingDirectory(wd);
     m_process->CreateMainThread();
     m_process->GetMainThread()->SetCleanupFunction({(void (*)(void*))&ELF_Executable::End_Handler, (void*)this});
     m_process->Start();

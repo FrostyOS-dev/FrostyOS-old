@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
         struct stat_buf buf;
         int ret = stat(i_path, &buf);
         if (ret < 0) {
-            perror("stat");
+            fprintf(stderr, "stat: %s", strerror(-ret));
             return 1;
         }
 

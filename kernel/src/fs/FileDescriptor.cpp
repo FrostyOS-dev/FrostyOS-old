@@ -222,7 +222,6 @@ size_t FileDescriptor::Read(uint8_t* buffer, size_t count) {
         if (inode == nullptr) {
             switch (directoryStream->GetLastError()) {
             case DirectoryStreamError::INVALID_ARGUMENTS:
-                dbgprintf("Invalid arguments\n");
                 SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
                 break;
             case DirectoryStreamError::STREAM_CLOSED:

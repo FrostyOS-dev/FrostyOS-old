@@ -47,7 +47,8 @@ namespace TempFS {
         Inode* GetRootInode(uint64_t index) const override;
         uint64_t GetRootInodeCount() const override;
 
-        TempFSInode* GetInode(const char* path, TempFSInode** lastInode = nullptr, int64_t* end_index = nullptr); // last_inode and end_index are only filled if it is a non-null pointer
+        TempFSInode* GetSubInode(TempFSInode* parent, const char* path, TempFSInode** lastInode = nullptr, int64_t* end_index = nullptr);  // last_inode and end_index are only filled if they are non-null pointers
+        TempFSInode* GetInode(const char* path, TempFSInode** lastInode = nullptr, int64_t* end_index = nullptr); // last_inode and end_index are only filled if they are non-null pointers
 
         FileSystemType GetType() const override;
 

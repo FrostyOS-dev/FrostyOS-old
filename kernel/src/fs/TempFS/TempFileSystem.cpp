@@ -21,6 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Memory/kmalloc.hpp>
 
+#include <Data-structures/Buffer.hpp>
+
 namespace TempFS {
     TempFileSystem::TempFileSystem(size_t blockSize, FilePrivilegeLevel rootPrivilege) : m_rootPrivilege(rootPrivilege) {
         p_blockSize = blockSize;
@@ -397,8 +399,7 @@ namespace TempFS {
         return m_rootInodes.getCount();
     }
 
-
-    TempFSInode* TempFileSystem::GetInode(const char* path, TempFSInode** lastInode, int64_t* end_index) {
+    TempFSInode* TempFileSystem::GetSubInode(TempFSInode* parent, const char* path, TempFSInode** lastInode, int64_t* end_index) {
         if (path == nullptr) {
             SetLastError(FileSystemError::INVALID_ARGUMENTS);
             if (lastInode != nullptr)
@@ -412,7 +413,7 @@ namespace TempFS {
             i++;
         }
         char c = path[i];
-        TempFSInode* last_inode = nullptr;
+        TempFSInode* last_inode = parent;
         while (c) {
             if (c == PATH_SEPARATOR) {
                 if (last_separator < i && (i - last_separator) > 1) {
@@ -428,36 +429,56 @@ namespace TempFS {
                     strncpy(name, &(path[last_separator + 1]), i - (last_separator + 1));
                     name[i - (last_separator + 1)] = 0;
                     if (last_inode != nullptr) {
-                        TempFSInode* inode = last_inode->GetChild(name);
-                        if (inode == nullptr) {
-                            kfree(name);
-                            InodeError error = last_inode->GetLastError();
-                            if (error == InodeError::INVALID_ARGUMENTS || error == InodeError::INVALID_TYPE)
-                                SetLastError(FileSystemError::INVALID_ARGUMENTS);
-                            else
-                                SetLastError(FileSystemError::INTERNAL_ERROR);
-                            if (lastInode != nullptr)
-                                *lastInode = last_inode;
-                            if (end_index != nullptr)
-                                *end_index = i;
-                            return nullptr;
-                        }
-                        last_inode = inode;
-                    }
-                    else {
-                        for (uint64_t j = 0; j < m_rootInodes.getCount(); j++) {
-                            TempFSInode* inode = m_rootInodes.get(j);
+                        if (strcmp(name, "..") == 0)
+                            last_inode = last_inode->GetParent();
+                        else if (strcmp(name, ".") != 0) {
+                            TempFSInode* inode = last_inode->GetTMPFSChild(name);
                             if (inode == nullptr) {
-                                SetLastError(FileSystemError::INTERNAL_ERROR);
+                                kfree(name);
+                                InodeError error = last_inode->GetLastError();
+                                if (error == InodeError::INVALID_ARGUMENTS || error == InodeError::INVALID_TYPE)
+                                    SetLastError(FileSystemError::INVALID_ARGUMENTS);
+                                else
+                                    SetLastError(FileSystemError::INTERNAL_ERROR);
                                 if (lastInode != nullptr)
                                     *lastInode = last_inode;
                                 if (end_index != nullptr)
                                     *end_index = i;
                                 return nullptr;
                             }
-                            if (strcmp(name, inode->GetName()) == 0) {
-                                last_inode = inode;
-                                break;
+                            last_inode = inode;
+                        }
+                    }
+                    else {
+                        if (strcmp(name, ".") != 0) {
+                            if (strcmp(name, "..") == 0) {
+                                // The VFS needs to be notified that we are going up a directory outside the fs.
+                                // We do this by setting the last inode to nullptr and returning nullptr, while the error is success.
+                                // This is a hack, but it is faster than the VFS pre-scanning the path.
+                                kfree(name);
+                                SetLastError(FileSystemError::SUCCESS);
+                                if (lastInode != nullptr)
+                                    *lastInode = nullptr;
+                                if (end_index != nullptr)
+                                    *end_index = i;
+                                return nullptr;
+                            }
+                            else {
+                                for (uint64_t j = 0; j < m_rootInodes.getCount(); j++) {
+                                    TempFSInode* inode = m_rootInodes.get(j);
+                                    if (inode == nullptr) {
+                                        SetLastError(FileSystemError::INTERNAL_ERROR);
+                                        if (lastInode != nullptr)
+                                            *lastInode = last_inode;
+                                        if (end_index != nullptr)
+                                            *end_index = i;
+                                        return nullptr;
+                                    }
+                                    if (strcmp(name, inode->GetName()) == 0) {
+                                        last_inode = inode;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -481,7 +502,7 @@ namespace TempFS {
             strcpy(name, &(path[last_separator + 1]));
             name[i - (last_separator + 1)] = '\0';
             if (last_inode != nullptr) {
-                TempFSInode* inode = last_inode->GetChild(name);
+                TempFSInode* inode = last_inode->GetTMPFSChild(name);
                 if (inode == nullptr) {
                     kfree(name);
                     InodeError error = last_inode->GetLastError();
@@ -527,6 +548,10 @@ namespace TempFS {
         if (end_index != nullptr)
             *end_index = i;
         return last_inode;
+    }
+
+    TempFSInode* TempFileSystem::GetInode(const char* path, TempFSInode** lastInode, int64_t* end_index) {
+        return GetSubInode(nullptr, path, lastInode, end_index);
     }
 
     FileSystemType TempFileSystem::GetType() const {

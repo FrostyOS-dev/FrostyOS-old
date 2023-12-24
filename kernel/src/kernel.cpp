@@ -73,6 +73,8 @@ PS2Controller KPS2Controller;
 
 KeyboardInput KInput;
 
+VFS_WorkingDirectory* KWorkingDirectory;
+
 struct Stage2_Params {
     void* RSDP_addr;
     void* initramfs_addr;
@@ -140,6 +142,8 @@ extern "C" void StartKernel(KernelParams* params) {
 
     KBasicVGA.EnableDoubleBuffering(g_KPM);
 
+    KWorkingDirectory = nullptr;
+
     Kernel_Stage2Params = {
         .RSDP_addr = params->RSDP_table,
         .initramfs_addr = params->initramfs_addr,
@@ -147,6 +151,7 @@ extern "C" void StartKernel(KernelParams* params) {
     };
 
     KProcess = new Scheduling::Process(Kernel_Stage2, (void*)&Kernel_Stage2Params, 0, 0, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
+    KProcess->SetDefaultWorkingDirectory(KWorkingDirectory);
     KProcess->Start();
 
     Scheduling::Scheduler::Start();
@@ -169,6 +174,9 @@ void Kernel_Stage2(void* params_addr) {
     assert(KVFS->MountRoot(FileSystemType::TMPFS));
 
     dbgputs("VFS root mounted.\n");
+
+    KWorkingDirectory = KVFS->GetRootWorkingDirectory();
+    KProcess->SetDefaultWorkingDirectory(KWorkingDirectory);
 
     Initialise_InitRAMFS(params->initramfs_addr, params->initramfs_size);
 

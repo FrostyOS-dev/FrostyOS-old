@@ -123,7 +123,9 @@ int Execute(Scheduling::Process* parent, const char *path, int argc, char *const
 
     assert(size == stream->ReadStream(buffer, size)); // This should NEVER fail under these conditions.
 
-    assert(stream->Close());
+    stream->Close();
+
+    g_VFS->CloseStream(stream);
 
 
     ELF_Executable* exe = new ELF_Executable(buffer, size);
@@ -142,7 +144,14 @@ int Execute(Scheduling::Process* parent, const char *path, int argc, char *const
         }
     }
 
-    assert(exe->Execute(priority));
+    VFS_WorkingDirectory* wd;
+    VFS_WorkingDirectory* parent_wd = parent->GetDefaultWorkingDirectory();
+    if (parent_wd == nullptr)
+        wd = new VFS_WorkingDirectory();
+    else
+        wd = new VFS_WorkingDirectory(*parent_wd);
+
+    assert(exe->Execute(priority, wd));
 
     return ESUCCESS;
 }

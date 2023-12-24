@@ -29,6 +29,7 @@ CXX = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-g++
 LD = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld
 AR = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ar
 STRIP = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-strip
+NM = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-nm
 ASM = nasm
 
 all: boot-iso
@@ -143,7 +144,7 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@echo Building utils
 	@echo --------------
 	@$(MAKE) -C utils build
-	@utils/bin/buildsymboltable kernel/bin/kernel.elf root/kernel.map
+	@$(NM) -C --format=bsd -n kernel/bin/kernel.elf | utils/bin/buildsymboltable root/kernel.map
 	@echo ---------------
 	@echo Installing LibC
 	@echo ---------------

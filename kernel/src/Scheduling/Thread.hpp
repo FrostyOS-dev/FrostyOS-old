@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 
 #include <fs/FileDescriptorManager.hpp>
+#include <fs/VFS.hpp>
 
 #include <file.h>
 
@@ -78,6 +79,9 @@ namespace Scheduling {
 
         int sys$getdirents(fd_t file, struct dirent* dirp, unsigned long count);
 
+        int sys$chdir(const char* path);
+        int sys$fchdir(fd_t file);
+
         void PrintInfo(fd_t file) const;
 
         void SetTID(tid_t TID);
@@ -88,6 +92,9 @@ namespace Scheduling {
 
         uint64_t GetRemainingSleepTime() const;
         void SetRemainingSleepTime(uint64_t time);
+
+        VFS_WorkingDirectory* GetWorkingDirectory() const;
+        void SetWorkingDirectory(VFS_WorkingDirectory* working_directory);
 
     private:
         Process* m_Parent;
@@ -107,6 +114,8 @@ namespace Scheduling {
 
         bool m_sleeping;
         uint64_t m_remaining_sleep_time;
+
+        VFS_WorkingDirectory* m_working_directory;
     };
 }
 

@@ -53,8 +53,9 @@ namespace TempFS {
 
         bool AddChild(TempFSInode* child);
         TempFSInode* GetTMPFSChild(uint64_t ID) const;
+        TempFSInode* GetTMPFSChild(const char* name) const;
         Inode* GetChild(uint64_t index) const override;
-        TempFSInode* GetChild(const char* name) const;
+        Inode* GetChild(const char* name) const override;
         uint64_t GetChildCount() const override;
         bool RemoveChild(TempFSInode* child);
 

@@ -1,6 +1,18 @@
 # Changes
 
-## Latest Changes - 22/12/2023
+## Latest Changes - 24/12/2023
+
+- Updated `buildsymboltable` to just take the raw output from `nm` into stdin instead of trying to execute it and create pipes.
+- Updated `ls` to print the error message from `stat` over stderr instead of using perror since the errno value is not set on raw syscalls.
+- Implemented `GetSubInode` function in TempFS, which is almost the same as `GetInode` except the starting inode is already determined.
+- Created a global `GetChild` function in inodes.
+- Removed some unnecessary debug messages in `kernel/src/fs/FileDescriptor.cpp`.
+- Implemented public `GetMountpoint` in the VFS which gets the mountpoint for an FS.
+- Implemented `Process::IsMainThread` function.
+- Implemented working directory support. All threads have their own working directory, and all processes have a default working directory which is inherited from the parent process, and can be changed with by the main thread. This is currently unsupported on file, folder and symlink creation.
+- Implemented `chdir` and `fchdir` syscalls.
+
+## 22/12/2023
 
 - Update toolchain path in all the run-utils scripts.
 - Added git to toolchain build requirements.

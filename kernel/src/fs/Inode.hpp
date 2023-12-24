@@ -82,6 +82,7 @@ public:
 
     virtual uint64_t GetChildCount() const = 0;
     virtual Inode* GetChild(uint64_t index) const = 0;
+    virtual Inode* GetChild(const char* name) const = 0;
 
 protected:
     virtual void SetLastError(InodeError error) const { p_lastError = error; } // const so const functions can perform error reporting

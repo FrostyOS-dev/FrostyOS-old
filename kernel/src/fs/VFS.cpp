@@ -61,7 +61,7 @@ bool VFS::Mount(const char* path, FileSystemType type) {
 
 bool VFS::CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size, bool inherit_permissions, FilePrivilegeLevel privilege) {
     Inode* parent_inode = nullptr;
-    VFS_MountPoint* mountPoint = GetMountPoint(parent, &parent_inode);
+    VFS_MountPoint* mountPoint = GetMountPoint(parent, nullptr, &parent_inode);
     if (mountPoint == nullptr || (parent_inode == nullptr && GetLastError() != FileSystemError::SUCCESS) || name == nullptr || (parent_inode != nullptr && parent_inode->GetType() != InodeType::Folder)) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return false;
@@ -91,7 +91,7 @@ bool VFS::CreateFile(FilePrivilegeLevel current_privilege, const char* parent, c
 
 bool VFS::CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions, FilePrivilegeLevel privilege) {
     Inode* parent_inode = nullptr;
-    VFS_MountPoint* mountPoint = GetMountPoint(parent, &parent_inode);
+    VFS_MountPoint* mountPoint = GetMountPoint(parent, nullptr, &parent_inode);
     if (mountPoint == nullptr || (parent_inode == nullptr && GetLastError() != FileSystemError::SUCCESS) || name == nullptr || (parent_inode != nullptr && parent_inode->GetType() != InodeType::Folder)) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return false;
@@ -128,9 +128,9 @@ bool VFS::CreateFolder(FilePrivilegeLevel current_privilege, const char* parent,
 
 bool VFS::CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions, FilePrivilegeLevel privilege) {
     Inode* parent_inode = nullptr;
-    VFS_MountPoint* mountPoint = GetMountPoint(parent, &parent_inode);
+    VFS_MountPoint* mountPoint = GetMountPoint(parent, nullptr, &parent_inode);
     Inode* target_inode = nullptr;
-    VFS_MountPoint* target_mountPoint = GetMountPoint(target, &target_inode); // currently, parent and target must be on the same mount-point
+    VFS_MountPoint* target_mountPoint = GetMountPoint(target, nullptr, &target_inode); // currently, parent and target must be on the same mount-point
     if (mountPoint == nullptr || mountPoint != target_mountPoint || (parent_inode == nullptr && GetLastError() != FileSystemError::SUCCESS) || name == nullptr || (parent_inode != nullptr && parent_inode->GetType() != InodeType::Folder) || target_inode == nullptr) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return false;
@@ -168,7 +168,7 @@ bool VFS::CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent
 
 bool VFS::DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive) {
     Inode* parent_inode = nullptr;
-    VFS_MountPoint* mountPoint = GetMountPoint(path, &parent_inode);
+    VFS_MountPoint* mountPoint = GetMountPoint(path, nullptr, &parent_inode);
     if (mountPoint == nullptr || parent_inode == nullptr) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return false;
@@ -197,9 +197,9 @@ bool VFS::DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bo
 }
 
 
-FileStream* VFS::OpenStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes) {
+FileStream* VFS::OpenStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes, VFS_WorkingDirectory* working_directory) {
     Inode* inode = nullptr;
-    VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
+    VFS_MountPoint* mountPoint = GetMountPoint(path, working_directory, &inode);
     if (mountPoint == nullptr || inode == nullptr) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return nullptr;
@@ -264,22 +264,22 @@ bool VFS::CloseStream(FileStream* stream) {
     return false;
 }
 
-DirectoryStream* VFS::OpenDirectoryStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes) {
+DirectoryStream* VFS::OpenDirectoryStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes, VFS_WorkingDirectory* working_directory) {
     if (modes != VFS_READ) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS); // can only read from a directory stream
         return nullptr;
     }
     Inode* inode = nullptr;
-    VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
+    VFS_MountPoint* mountPoint = GetMountPoint(path, working_directory, &inode);
     if (mountPoint == nullptr) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return nullptr;
     }
     DirectoryStream* stream = nullptr;
-    if (isMountpoint(path, strlen(path)))
+    if (isMountpoint(path, strlen(path), working_directory))
         stream = new DirectoryStream(nullptr, current_privilege, mountPoint->type, mountPoint->fs);
     else
-        stream = new DirectoryStream(inode, current_privilege, mountPoint->type);
+        stream = new DirectoryStream(inode, current_privilege, mountPoint->type, mountPoint->fs);
     if (stream == nullptr) {
         SetLastError(FileSystemError::ALLOCATION_FAILED);
         return nullptr;
@@ -322,10 +322,10 @@ bool VFS::CloseDirectoryStream(DirectoryStream* stream) {
     return true;
 }
 
-bool VFS::IsValidPath(const char* path) const {
+bool VFS::IsValidPath(const char* path, VFS_WorkingDirectory* working_directory) const {
     Inode* inode = nullptr;
-    VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
-    if (mountPoint == nullptr || (inode == nullptr && 0 != strcmp(path, "/"))) {
+    VFS_MountPoint* mountPoint = GetMountPoint(path, working_directory, &inode);
+    if (mountPoint == nullptr || (inode == nullptr && GetLastError() != FileSystemError::SUCCESS)) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return false;
     }
@@ -333,23 +333,176 @@ bool VFS::IsValidPath(const char* path) const {
     return true;
 }
 
-Inode* VFS::GetInode(const char* path, FileSystem** fs) const {
+Inode* VFS::GetInode(const char* path, VFS_WorkingDirectory* working_directory, FileSystem** fs, VFS_MountPoint** mountpoint) const {
     Inode* inode = nullptr;
-    VFS_MountPoint* mountPoint = GetMountPoint(path, &inode);
-    if (mountPoint == nullptr || inode == nullptr) {
+    VFS_MountPoint* mountPoint = GetMountPoint(path, working_directory, &inode);
+    if (mountPoint == nullptr) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
         return nullptr;
     }
     if (fs != nullptr)
         *fs = mountPoint->fs;
+    if (mountpoint != nullptr)
+        *mountpoint = mountPoint;
+    SetLastError(FileSystemError::SUCCESS);
     return inode;
+}
+
+VFS_MountPoint* VFS::GetMountPoint(FileSystem* fs) const {
+    if (fs == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return nullptr;
+    }
+    for (uint64_t i = 0; i < m_mountPoints.getCount(); i++) {
+        VFS_MountPoint* mountPoint = m_mountPoints.get(i);
+        if (mountPoint == nullptr) {
+            SetLastError(FileSystemError::INTERNAL_ERROR);
+            return nullptr;
+        }
+        if (mountPoint->fs == fs) {
+            SetLastError(FileSystemError::SUCCESS);
+            return mountPoint;
+        }
+    }
+    SetLastError(FileSystemError::INVALID_ARGUMENTS);
+    return nullptr;
+}
+
+VFS_WorkingDirectory* VFS::GetRootWorkingDirectory() const {
+    VFS_WorkingDirectory* working_directory = new VFS_WorkingDirectory;
+    if (working_directory == nullptr) {
+        SetLastError(FileSystemError::ALLOCATION_FAILED);
+        return nullptr;
+    }
+    working_directory->mountpoint = m_root;
+    working_directory->inode = nullptr;
+    SetLastError(FileSystemError::SUCCESS);
+    return working_directory;
 }
 
 /* Private functions */
 
-VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) const {
+VFS_MountPoint* VFS::GetMountPoint(const char* path, VFS_WorkingDirectory* working_directory, Inode** inode) const {
     if (path == nullptr) {
         SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return nullptr;
+    }
+    if (path[0] != PATH_SEPARATOR) { // local file
+        if (working_directory == nullptr) { // no working directory specified, so we assume the root directory
+            switch (m_root->type) {
+            case FileSystemType::TMPFS: {
+                using namespace TempFS;
+                TempFSInode* sub_inode = ((TempFileSystem*)(m_root->fs))->GetInode(path);
+                if (sub_inode == nullptr) {
+                    SetLastError(FileSystemError::INVALID_ARGUMENTS);
+                    *inode = nullptr;
+                    return nullptr;
+                }
+                *inode = sub_inode;
+                break;
+            }
+            default:
+                SetLastError(FileSystemError::INVALID_FS);
+                if (inode != nullptr)
+                    *inode = nullptr;
+                return nullptr;
+            }
+            SetLastError(FileSystemError::SUCCESS);
+            return m_root;
+        }
+        if (working_directory->mountpoint == nullptr) {
+            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+            if (inode != nullptr)
+                *inode = nullptr;
+            return nullptr;
+        }
+        if (working_directory->inode == nullptr) { // must be at the root of the file system
+            if (strcmp(path, ".") == 0) {
+                if (inode != nullptr)
+                    *inode = working_directory->inode;
+                SetLastError(FileSystemError::SUCCESS);
+                return working_directory->mountpoint;
+            }
+            if (strcmp(path, "..") == 0) { // there is no parent
+                if (inode != nullptr)
+                    *inode = nullptr;
+                SetLastError(FileSystemError::INVALID_ARGUMENTS);
+                return nullptr;
+            }
+            switch (working_directory->mountpoint->type) {
+            case FileSystemType::TMPFS: {
+                using namespace TempFS;
+                TempFSInode* sub_inode = ((TempFileSystem*)(working_directory->mountpoint->fs))->GetInode(path);
+                if (sub_inode == nullptr) {
+                    SetLastError(FileSystemError::INVALID_ARGUMENTS);
+                    *inode = nullptr;
+                    return nullptr;
+                }
+                *inode = sub_inode;
+                break;
+            }
+            default:
+                SetLastError(FileSystemError::INVALID_FS);
+                if (inode != nullptr)
+                    *inode = nullptr;
+                return nullptr;
+            }
+            SetLastError(FileSystemError::SUCCESS);
+            return working_directory->mountpoint;
+        }
+        else {
+            if (strcmp(path, ".") == 0) {
+                if (inode != nullptr)
+                    *inode = working_directory->inode;
+                SetLastError(FileSystemError::SUCCESS);
+                return working_directory->mountpoint;
+            }
+            switch (working_directory->mountpoint->type) {
+            case FileSystemType::TMPFS: {
+                using namespace TempFS;
+                TempFileSystem* fs = (TempFileSystem*)(working_directory->mountpoint->fs);
+                if (fs == nullptr) {
+                    SetLastError(FileSystemError::INTERNAL_ERROR);
+                    if (inode != nullptr)
+                        *inode = nullptr;
+                    return nullptr;
+                }
+                TempFSInode* sub_inode = fs->GetSubInode((TempFSInode*)(working_directory->inode), path);
+                if (sub_inode == nullptr) {
+                    if (fs->GetLastError() == FileSystemError::SUCCESS) {
+                        // This is TempFS telling us that we need to go up a directory out of the mountpoint
+                        if (working_directory->mountpoint == m_root) {
+                            // There is no further up to go
+                            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+                            *inode = nullptr;
+                            return nullptr;
+                        }
+                        if (working_directory->mountpoint->RootInode == nullptr) { // the root inode should only be nullptr for the root mountpoint
+                            SetLastError(FileSystemError::INTERNAL_ERROR);
+                            *inode = nullptr;
+                            return nullptr;
+                        }
+                        *inode = working_directory->mountpoint->RootInode;
+                        SetLastError(FileSystemError::SUCCESS);
+                        return working_directory->mountpoint;
+                    }
+                    SetLastError(FileSystemError::INVALID_ARGUMENTS);
+                    *inode = nullptr;
+                    return nullptr;
+                }
+                *inode = sub_inode;
+                return working_directory->mountpoint;
+            }
+            default:
+                SetLastError(FileSystemError::INVALID_FS);
+                if (inode != nullptr)
+                    *inode = nullptr;
+                return nullptr;
+            }
+        }
+        SetLastError(FileSystemError::INTERNAL_ERROR); // should be unreachable
+        if (inode != nullptr)
+            *inode = nullptr;
         return nullptr;
     }
     if (strcmp(path, "/") == 0) { // TODO: handle the no parent case better with proper path resolution
@@ -428,6 +581,23 @@ VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) const {
                     split_index = 0;
                 TempFSInode* sub_inode = ((TempFileSystem*)(mount_point->fs))->GetInode(&(path[split_index]));
                 if (sub_inode == nullptr) {
+                    if (((TempFileSystem*)(mount_point->fs))->GetLastError() == FileSystemError::SUCCESS) {
+                        // This is TempFS telling us that we need to go up a directory out of the mountpoint
+                        if (mount_point == m_root) {
+                            // There is no further up to go
+                            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+                            *inode = nullptr;
+                            return nullptr;
+                        }
+                        if (mount_point->RootInode == nullptr) { // the root inode should only be nullptr for the root mountpoint
+                            SetLastError(FileSystemError::INTERNAL_ERROR);
+                            *inode = nullptr;
+                            return nullptr;
+                        }
+                        *inode = mount_point->RootInode;
+                        SetLastError(FileSystemError::SUCCESS);
+                        return mount_point;
+                    }
                     SetLastError(FileSystemError::INVALID_ARGUMENTS);
                     *inode = nullptr;
                     return nullptr;
@@ -446,9 +616,15 @@ VFS_MountPoint* VFS::GetMountPoint(const char* path, Inode** inode) const {
     return mount_point;
 }
 
-bool VFS::isMountpoint(const char* path, size_t len) {
+bool VFS::isMountpoint(const char* path, size_t len, VFS_WorkingDirectory* working_directory) {
     if (path == nullptr || len == 0)
         return false;
-    // FIXME: once multiple mountpoints are fully supported, come back and fix this function. For now, this function only supports the root mountpoint
-    return strncmp(path, "/", len) == 0;
+    Inode* inode = nullptr;
+    VFS_MountPoint* mountPoint = GetMountPoint(path, working_directory, &inode);
+    if (mountPoint == nullptr) {
+        SetLastError(FileSystemError::INVALID_ARGUMENTS);
+        return false;
+    }
+    SetLastError(FileSystemError::SUCCESS);
+    return inode == mountPoint->RootInode;
 }

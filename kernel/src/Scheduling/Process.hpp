@@ -30,6 +30,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Memory/VirtualRegion.hpp>
 #include <Memory/VirtualPageManager.hpp>
 
+#include <fs/VFS.hpp>
+
 namespace Scheduling {
     class Thread;
 
@@ -77,6 +79,8 @@ namespace Scheduling {
         void RemoveThread(Thread* thread);
         void RemoveThread(uint64_t index);
 
+        bool IsMainThread(Thread* thread) const;
+
         bool ValidateRead(const void* buf, size_t size) const;
         bool ValidateStringRead(const char* str) const;
         bool ValidateWrite(void* buf, size_t size) const;
@@ -96,6 +100,9 @@ namespace Scheduling {
         uint32_t GetGID() const;
         uint32_t GetEUID() const;
         uint32_t GetEGID() const;
+
+        void SetDefaultWorkingDirectory(VFS_WorkingDirectory* wd);
+        VFS_WorkingDirectory* GetDefaultWorkingDirectory() const;
 
     private:
         ProcessEntry_t m_Entry;
@@ -118,6 +125,8 @@ namespace Scheduling {
         uint32_t m_GID;
         uint32_t m_EUID; // effective UID
         uint32_t m_EGID; // effective GID
+
+        VFS_WorkingDirectory* m_defaultWorkingDirectory;
     };
 }
 
