@@ -32,6 +32,10 @@ STRIP = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-strip
 NM = $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-nm
 ASM = nasm
 
+SYSROOT = $(PWD)/root
+
+export CC CXX LD AR STRIP NM ASM SYSROOT config
+
 all: boot-iso
 	@echo --------------
 	@echo Build complete
@@ -74,7 +78,7 @@ ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld -v 2>/dev/null | grep 2
 	@echo -----------------
 	@mkdir -p toolchain/binutils/{src,build}
 	@cd toolchain/binutils/src && git clone https://github.com/WorldOS-dev/binutils-gdb.git --depth 1 --branch binutils-2_41-release-point binutils-2.41
-	@cd toolchain/binutils/build && $(HOME)/binutils-2.41/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --disable-werror --enable-shared --disable-gdb
+	@cd toolchain/binutils/build && $(HOME)/binutils-2.41/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(SYSROOT) --disable-nls --disable-werror --enable-shared --disable-gdb
 	@$(MAKE) -C toolchain/binutils/build -j4
 	@$(MAKE) -C toolchain/binutils/build install
 	@rm -fr toolchain/binutils
@@ -85,7 +89,7 @@ ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion 2>/dev/n
 	@echo ------------
 	@mkdir -p toolchain/gcc/{src,build}
 	@cd toolchain/gcc/src && git clone https://github.com/WorldOS-dev/gcc.git --depth 1 --branch releases/gcc-13 gcc-13.2.1
-	@cd toolchain/gcc/build && ../src/gcc-13.2.1/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(PWD)/root --disable-nls --enable-shared --enable-languages=c,c++
+	@cd toolchain/gcc/build && ../src/gcc-13.2.1/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(SYSROOT) --disable-nls --enable-shared --enable-languages=c,c++
 	@$(MAKE) -C toolchain/gcc/build -j4 all-gcc all-target-libgcc
 	@$(MAKE) -C toolchain/gcc/build install-gcc install-target-libgcc
 	@rm -fr toolchain/gcc
@@ -109,8 +113,8 @@ initramfs:
 	@echo ----------------------
 	@echo Creating initial RAMFS
 	@echo ----------------------
-	@mkdir -p dist/boot/WorldOS root
-	@cd root && tar -c --no-auto-compress --owner=0 --group=0 -f ../dist/boot/WorldOS/initramfs.tar *
+	@mkdir -p dist/boot/WorldOS $(SYSROOT)
+	@cd $(SYSROOT) && tar -c --no-auto-compress --owner=0 --group=0 -f ../dist/boot/WorldOS/initramfs.tar *
 
 clean-all:
 	@echo ------------
@@ -118,45 +122,27 @@ clean-all:
 	@echo ------------
 	@$(MAKE) -C kernel clean-kernel
 	@$(MAKE) -C utils clean-utils
-	@$(MAKE) -C LibC distclean-libc
-	@rm -fr iso dist depend root/kernel.map root/data/include root/data/lib ovmf
+	@$(MAKE) -C Userland distclean-userland
+	@rm -fr iso dist depend $(SYSROOT)/kernel.map $(SYSROOT)/data/include $(SYSROOT)/data/lib ovmf
 
 clean-os:
 	@$(MAKE) -C kernel clean-kernel
-	@$(MAKE) -C LibC clean-libc
-	@$(MAKE) -C Programs clean-programs
-	@rm -fr iso dist root/kernel.map
+	@$(MAKE) -C Userland clean-userland
+	@rm -fr iso dist $(SYSROOT)/kernel.map
 
 boot-iso: clean-os .WAIT dependencies toolchain
 	@echo ---------------
 	@echo Building Kernel
 	@echo ---------------
-	@$(MAKE) -C kernel kernel config=$(config)
+	@$(MAKE) -C kernel kernel
 	@echo -------------------------
 	@echo Installing Kernel Headers
 	@echo -------------------------
 	@$(MAKE) -C kernel install-kernel-headers
-	@echo -------------
-	@echo Building LibC
-	@echo -------------
-	@$(MAKE) -C LibC libc config=$(config)
-	@echo --------------
-	@echo Building utils
-	@echo --------------
+	@$(MAKE) -C Userland build-userland
+	@$(MAKE) -C Userland install-userland
 	@$(MAKE) -C utils build
-	@$(NM) -C --format=bsd -n kernel/bin/kernel.elf | utils/bin/buildsymboltable root/kernel.map
-	@echo ---------------
-	@echo Installing LibC
-	@echo ---------------
-	@$(MAKE) -C LibC install-libc config=$(config)
-	@echo --------------------------
-	@echo Building Userland programs
-	@echo --------------------------
-	@$(MAKE) -C Programs programs config=$(config)
-	@echo ----------------------------
-	@echo Installing Userland programs
-	@echo ----------------------------
-	@$(MAKE) -C Programs install-programs config=$(config)
+	@$(NM) -C --format=bsd -n kernel/bin/kernel.elf | utils/bin/buildsymboltable $(SYSROOT)/kernel.map
 	@$(MAKE) --no-print-directory initramfs
 	@echo -----------------
 	@echo Making disk image

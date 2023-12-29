@@ -1,6 +1,18 @@
 # Changes
 
-## Latest Changes - 24/12/2023
+## Latest Changes - 29/12/2023
+
+- Updated `pid_t` and `tid_t` types to be `long int` instead of `unsigned long int` to allow for better error reporting.
+- Updated `exec` system call to return the PID of the new process instead of 0.
+- Renamed `Programs` to `Utilities` as it is a more fitting name.
+- Added `SYSROOT` variable to the root Makefile to allow for easier changing of the sysroot. This is used by all sub-Makefiles.
+- Various variables are now exported in the root Makefile to allow for easier usage of them in sub-Makefiles. These variables include, but are not limited to: `CC`, `CXX`, `ASM` and `config`.
+- Updated sub-Makefiles to not include the parent Makefile as it is not needed.
+- Added a proper userland folder instead of some userland things scattered in the root directory of the project. LibC is now at `Userland/Libraries/LibC` and the Utilities folder is at `Userland/Programs/Utilities`. Each directory level has its own `Makefile` to make building easier.
+- Updated resources.
+- Removed `patches` folder as it is no longer needed.
+
+## 24/12/2023
 
 - Updated `buildsymboltable` to just take the raw output from `nm` into stdin instead of trying to execute it and create pipes.
 - Updated `ls` to print the error message from `stat` over stderr instead of using perror since the errno value is not set on raw syscalls.

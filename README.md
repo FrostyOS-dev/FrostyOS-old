@@ -17,26 +17,26 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 24/12/2023
+## Latest Changes - 29/12/2023
 
-- Updated `buildsymboltable` to just take the raw output from `nm` into stdin instead of trying to execute it and create pipes.
-- Updated `ls` to print the error message from `stat` over stderr instead of using perror since the errno value is not set on raw syscalls.
-- Implemented `GetSubInode` function in TempFS, which is almost the same as `GetInode` except the starting inode is already determined.
-- Created a global `GetChild` function in inodes.
-- Removed some unnecessary debug messages in `kernel/src/fs/FileDescriptor.cpp`.
-- Implemented public `GetMountpoint` in the VFS which gets the mountpoint for an FS.
-- Implemented `Process::IsMainThread` function.
-- Implemented working directory support. All threads have their own working directory, and all processes have a default working directory which is inherited from the parent process, and can be changed with by the main thread. This is currently unsupported on file, folder and symlink creation.
-- Implemented `chdir` and `fchdir` syscalls.
+- Updated `pid_t` and `tid_t` types to be `long int` instead of `unsigned long int` to allow for better error reporting.
+- Updated `exec` system call to return the PID of the new process instead of 0.
+- Renamed `Programs` to `Utilities` as it is a more fitting name.
+- Added `SYSROOT` variable to the root Makefile to allow for easier changing of the sysroot. This is used by all sub-Makefiles.
+- Various variables are now exported in the root Makefile to allow for easier usage of them in sub-Makefiles. These variables include, but are not limited to: `CC`, `CXX`, `ASM` and `config`.
+- Updated sub-Makefiles to not include the parent Makefile as it is not needed.
+- Added a proper userland folder instead of some userland things scattered in the root directory of the project. LibC is now at `Userland/Libraries/LibC` and the Utilities folder is at `Userland/Programs/Utilities`. Each directory level has its own `Makefile` to make building easier.
+- Updated resources.
+- Removed `patches` folder as it is no longer needed.
 
 ## Resources used
 
 - [OSDev Wiki](https://wiki.osdev.org/Main_Page) - used for documentation on almost everything
 - [Intel x86_64 Software development manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) - used for instruction references and Page Tables
 - [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
-- [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful. rand function from this
+- [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful. `rand` function from this project
 - [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
-- [SerenityOS](https://github.com/SerenityOS/serenity) - inspired system call entry and file descriptor management
+- [SerenityOS](https://github.com/SerenityOS/serenity) - inspired system call entry, file descriptor management and directory layout
 
 ## Prerequisites
 

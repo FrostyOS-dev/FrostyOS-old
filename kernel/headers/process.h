@@ -18,8 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _PROCESS_H
 #define _PROCESS_H
 
-typedef unsigned long pid_t;
-typedef unsigned long tid_t;
+typedef long int pid_t;
+typedef long int tid_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,8 +41,9 @@ tid_t gettid() {
     return ret;
 }
 
-int exec(const char *path, char *const argv[], char *const envv[]) {
-    int ret;
+// Execute a new process, return the pid of the new process on success.
+pid_t exec(const char *path, char *const argv[], char *const envv[]) {
+    pid_t ret;
     __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_EXEC), "D"(path), "S"(argv), "d"(envv) : "rcx", "r11", "memory");
     return ret;
 }
@@ -53,7 +54,8 @@ pid_t getpid();
 
 tid_t gettid();
 
-int exec(const char *path, char *const argv[], char *const envv[]);
+// Execute a new process, return the pid of the new process on success.
+pid_t exec(const char *path, char *const argv[], char *const envv[]);
 
 #endif /* _IN_KERNEL */
 

@@ -13,8 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-include ../Makefile
-
 kernel_cxx_source_files := $(shell find src -name *.cpp)
 kernel_cxx_object_files := $(patsubst src/%.cpp, bin-int/%.cpp.o, $(kernel_cxx_source_files))
 

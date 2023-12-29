@@ -151,7 +151,8 @@ int Execute(Scheduling::Process* parent, const char *path, int argc, char *const
     else
         wd = new VFS_WorkingDirectory(*parent_wd);
 
-    assert(exe->Execute(priority, wd));
+    pid_t child_pid = exe->Execute(priority, wd);
+    assert(exe->GetLastError() == ELFError::SUCCESS);
 
-    return ESUCCESS;
+    return child_pid;
 }

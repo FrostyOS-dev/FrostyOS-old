@@ -80,7 +80,7 @@ public:
     ~ELF_Executable();
 
     bool Load(ELF_entry_data* entry_data);
-    bool Execute(Scheduling::Priority priority = Scheduling::Priority::NORMAL, VFS_WorkingDirectory* wd = nullptr);
+    pid_t Execute(Scheduling::Priority priority = Scheduling::Priority::NORMAL, VFS_WorkingDirectory* wd = nullptr);
 
     ELFError GetLastError() const;
 
