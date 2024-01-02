@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -61,6 +61,9 @@ public:
     bool isWritable(void* addr, size_t size) const;
 
     bool isValidAllocation(void* addr, size_t size) const;
+
+    // Get the permissions for a single page
+    PagePermissions GetPermissions(void* addr) const;
 
     const VirtualRegion& GetRegion() const;
 

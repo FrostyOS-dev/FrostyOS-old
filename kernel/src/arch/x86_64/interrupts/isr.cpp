@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,13 +16,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "isr.hpp"
-#include <HAL/hal.hpp>
 
-#define MODULE "ISR"
-
-x86_64_ISRHandler_t g_ISRHandlers[256];
+#include "../Scheduling/taskutil.hpp"
 
 #include <stdio.h>
+
+#include <HAL/hal.hpp>
+
+#include <Memory/PageFault.hpp>
+
+#include <Scheduling/Thread.hpp>
+#include <Scheduling/Process.hpp>
+#include <Scheduling/Scheduler.hpp>
+
+x86_64_ISRHandler_t g_ISRHandlers[256];
 
 static const char* const g_Exceptions[] = {
     "Divide by 0",
@@ -68,6 +75,52 @@ extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
     /* Check if there is a designated handler */
     if (g_ISRHandlers[regs->interrupt] != nullptr)
         return g_ISRHandlers[regs->interrupt](regs);
+
+    if (regs->interrupt == 0x0E) { // Page fault
+        PageFaultErrorCode error_code;
+        error_code.readable = regs->error & 0x1;
+        error_code.writable = regs->error & 0x2;
+        error_code.user = regs->error & 0x4;
+        error_code.reserved_write = regs->error & 0x8;
+        error_code.instruction_fetch = regs->error & 0x10;
+        x86_64_Registers real_regs;
+        x86_64_ConvertToStandardRegisters(&real_regs, regs);
+        PageFaultHandler(error_code, (void*)regs->CR2, (void*)regs->rip, &real_regs);
+    }
+    else if (regs->interrupt == 0x00 || regs->interrupt == 0x06 || regs->interrupt == 0x0D || regs->interrupt == 0x13) { // Divide by zero, Invalid opcode, General protection fault, SIMD Floating-Point Exception
+        Scheduling::Thread* thread = Scheduling::Scheduler::GetCurrent();
+        Scheduling::Process* process = nullptr;
+        Scheduling::Priority priority = Scheduling::Priority::KERNEL;
+        if (thread != nullptr) {
+            x86_64_Registers real_regs;
+            x86_64_ConvertToStandardRegisters(&real_regs, regs);
+            fast_memcpy(thread->GetCPURegisters(), &real_regs, sizeof(x86_64_Registers)); // save the registers
+            process = thread->GetParent();
+            if (process != nullptr)
+                priority = process->GetPriority();
+        }
+        if (Scheduling::Scheduler::isRunning() && process != nullptr && priority != Scheduling::Priority::KERNEL) {
+            int signum;
+            switch (regs->interrupt) {
+            case 0x00:
+                signum = SIGFPE;
+                break;
+            case 0x06:
+                signum = SIGILL;
+                break;
+            case 0x0D:
+                signum = SIGSEGV;
+                break;
+            case 0x13:
+                signum = SIGFPE;
+                break;
+            default:
+                signum = SIGILL;
+                break;
+            }
+            process->ReceiveSignal(signum);
+        }
+    }
 
     dbgprintf("Interrupt occurred. RIP: %016lx Interrupt number: %02hhx\n", regs->rip, regs->interrupt);
 

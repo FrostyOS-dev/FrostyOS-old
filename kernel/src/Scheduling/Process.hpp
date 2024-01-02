@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -48,6 +48,11 @@ namespace Scheduling {
         NORMAL = 2,
         LOW = 3
     };
+
+    bool PriorityLessThan(const Priority& lhs, const Priority& rhs);
+    bool PriorityGreaterThan(const Priority& lhs, const Priority& rhs);
+    bool PriorityLessOrEqual(const Priority& lhs, const Priority& rhs);
+    bool PriorityGreaterOrEqual(const Priority& lhs, const Priority& rhs);
 
     class Process {
     public:
@@ -104,7 +109,25 @@ namespace Scheduling {
         void SetDefaultWorkingDirectory(VFS_WorkingDirectory* wd);
         VFS_WorkingDirectory* GetDefaultWorkingDirectory() const;
 
+        int sys$onsignal(int signum, const struct signal_action* new_action, struct signal_action* old_action);
+        int sys$sendsig(pid_t pid, int signum);
+
+        void sys$sigreturn(int signum);
+
+        void ReceiveSignal(int signum);
+
+        bool IsInSignalHandler(int signum) const;
+
     private:
+        struct SignalMetadata {
+            bool in_signal_handler;
+            void* ret_ins;
+            size_t ret_ins_size;
+            void* old_ins;
+            CPU_Registers* old_regs;
+            uint64_t extra_data;
+        };
+
         ProcessEntry_t m_Entry;
         void* m_entry_data;
         uint8_t m_flags;
@@ -127,6 +150,9 @@ namespace Scheduling {
         uint32_t m_EGID; // effective GID
 
         VFS_WorkingDirectory* m_defaultWorkingDirectory;
+
+        signal_action m_sigActions[SIG_COUNT];
+        SignalMetadata m_sigMetadata[SIG_COUNT];
     };
 }
 

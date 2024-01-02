@@ -50,6 +50,8 @@ extern "C" {
 
 #define PAGE_SIZE 4096
 
+#define IN_BOUNDS(VALUE, LOW, HIGH) (LOW <= VALUE && VALUE <= HIGH)
+
 void* memset(void* dst, const uint8_t value, const size_t n);
 void* memcpy(void* dst, const void* src, const size_t n);
 void* memmove(void* dst, const void* src, const size_t n);

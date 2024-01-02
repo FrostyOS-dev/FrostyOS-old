@@ -103,7 +103,7 @@
         {
             "name": "Programs",
             "includePath": [
-                "/home/frosty515/dev/WorldOS/Public/root/data/include/*"
+                "/home/frosty515/dev/WorldOS/WorldOS/root/data/include/*"
             ],
             "defines": [],
             "compilerPath": "/home/frosty515/dev/WorldOS/WorldOS/toolchain/local/bin/x86_64-worldos-gcc",
@@ -125,7 +125,7 @@
             "mergeConfigurations": false,
             "browse": {
                 "path": [
-                    "/home/frosty515/dev/WorldOS/Public/root/data/include/*",
+                    "/home/frosty515/dev/WorldOS/WorldOS/root/data/include/*",
                     "${workspaceFolder}"
                 ],
                 "limitSymbolsToIncludedHeaders": true

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -49,7 +49,10 @@ enum SystemCalls {
     SC_MSLEEP = 23,
     SC_GETDIRENTS = 24,
     SC_CHDIR = 25,
-    SC_FCHDIR = 26
+    SC_FCHDIR = 26,
+    SC_ONSIGNAL = 27,
+    SC_SENDSIG = 28,
+    SC_SIGRETURN = 29
 };
 
 #ifndef _IN_KERNEL

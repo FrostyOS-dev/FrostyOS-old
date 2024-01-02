@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <assert.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include <process.h>
 
@@ -252,6 +253,8 @@ namespace Scheduling {
         }
 
         Thread* GetCurrent() {
+            if (!g_running)
+                return nullptr;
             return g_current;
         }
 
@@ -437,6 +440,26 @@ namespace Scheduling {
             default:
                 return;
             }
+        }
+
+        int SendSignal(Process* sender, pid_t PID, int signum) {
+            if (sender == nullptr)
+                return -EFAULT;
+            Process* receiver = nullptr;
+            for (uint64_t i = 0; i < g_processes.getCount(); i++) {
+                if (g_processes.get(i)->GetPID() == PID) {
+                    receiver = g_processes.get(i);
+                    break;
+                }
+            }
+            if (receiver == nullptr)
+                return -EINVAL;
+            if (PriorityGreaterThan(receiver->GetPriority(), sender->GetPriority()))
+                return -EPERM;
+            if (receiver->IsInSignalHandler(signum))
+                return -EAGAIN;
+            receiver->ReceiveSignal(signum);
+            return ESUCCESS;
         }
 
         void PrintThreads(fd_t file) {

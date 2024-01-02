@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <util.h>
 #include <assert.h>
+#include <stdlib.h>
 
 void x86_64_PrepareNewRegisters(x86_64_Interrupt_Registers* out, const x86_64_Registers* in) {
     out->RAX = in->RAX;
@@ -103,4 +104,34 @@ void x86_64_SaveIRegistersToThread(const Scheduling::Thread* thread, const x86_6
     out->CR3 = in->CR3;
     out->CS = in->cs;
     out->DS = in->ds;
+}
+
+void* x86_64_GetSignalReturnInstructions(size_t* size, int signum) {
+    /* 
+    These are the instructions that get generated:
+    ```
+    mov rax, SC_SIGRETURN(29) (MOV r/m64, imm32) (REX.W + C7 /0 id)
+    mov edi, signum (MOV r32, imm32) (B8 + rd id)
+    syscall
+    ```
+    We need to allocate a buffer big enough to hold these instructions.
+    */
+    uint8_t* buf = (uint8_t*)kmalloc(14);
+    assert(buf != nullptr);
+    buf[0] = 0x48;
+    buf[1] = 0xC7;
+    buf[2] = 0xC0;
+    buf[3] = 0x1D;
+    buf[4] = 0x00;
+    buf[5] = 0x00;
+    buf[6] = 0x00;
+    buf[7] = 0xBF;
+    buf[8] = signum & 0xFF;
+    buf[9] = (signum >> 8) & 0xFF;
+    buf[10] = (signum >> 16) & 0xFF;
+    buf[11] = (signum >> 24) & 0xFF;
+    buf[12] = 0x0F;
+    buf[13] = 0x05;
+    *size = 14;
+    return buf;
 }

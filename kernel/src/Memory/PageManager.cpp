@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -576,6 +576,16 @@ bool PageManager::isValidAllocation(void* addr, size_t size) const {
         po = po->next;
     }
     return false;
+}
+
+PagePermissions PageManager::GetPermissions(void* addr) const {
+    PageObject* po = m_allocated_objects;
+    while (po != nullptr) {
+        if (addr >= po->virtual_address && (uint64_t)addr <= ((uint64_t)(po->virtual_address) + po->page_count * PAGE_SIZE))
+            return po->perms;
+        po = po->next;
+    }
+    return PagePermissions::READ;
 }
 
 const VirtualRegion& PageManager::GetRegion() const {

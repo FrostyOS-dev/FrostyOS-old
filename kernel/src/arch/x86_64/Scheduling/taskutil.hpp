@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,5 +36,8 @@ void x86_64_GetNewStack(PageManager* pm, x86_64_Registers* regs, size_t size);
 void x86_64_SaveIRegistersToThread(const Scheduling::Thread* thread, const x86_64_Interrupt_Registers* regs);
 
 extern "C" void x86_64_PrepareThreadExit(Scheduling::Thread* thread, int status, bool was_running, void (*func)(Scheduling::Thread*, int, bool));
+
+// We generate the signal return instructions and copy them into a HEAP allocated buffer. The buffer MUST be freed after use. The size is outputted into the size parameter.
+void* x86_64_GetSignalReturnInstructions(size_t* size, int signum);
 
 #endif /* _X86_64_TASK_UTIL_HPP */

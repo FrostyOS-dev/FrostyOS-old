@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <signal.h>
 #include <stdlib.h>
 
 #include <kernel/syscall.h>
@@ -182,7 +183,8 @@ void exit(int status) {
 }
 
 void abort() {
-    system_call(SC_EXIT, EXIT_FAILURE, 0, 0);
+    raise(SIGABRT);
+    _Exit(EXIT_FAILURE); // we should never get to this point, but it is here as a safe guard
 }
 
 void _Exit(int status) {

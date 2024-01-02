@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -119,6 +119,27 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
         return (uint64_t)(current_thread->sys$chdir((const char*)arg1));
     case SC_FCHDIR:
         return (uint64_t)(current_thread->sys$fchdir((fd_t)arg1));
+    case SC_ONSIGNAL: {
+        Scheduling::Process* parent = current_thread->GetParent();
+        if (parent == nullptr)
+            return (uint64_t)-EFAULT;
+        return (uint64_t)(parent->sys$onsignal((int)arg1, (const signal_action*)arg2, (signal_action*)arg3));
+    }
+    case SC_SENDSIG: {
+        Scheduling::Process* parent = current_thread->GetParent();
+        if (parent == nullptr)
+            return (uint64_t)-EFAULT;
+        return (uint64_t)(parent->sys$sendsig((pid_t)arg1, (int)arg2));
+    }
+    case SC_SIGRETURN: {
+        Scheduling::Process* parent = current_thread->GetParent();
+        if (parent == nullptr) {
+            // there is nothing we can do here. We got a noreturn syscall with a parent-less thread.
+            PANIC("sigreturn from thread with no parent");
+        }
+        parent->sys$sigreturn((int)arg1);
+        PANIC("sys$sigreturn returned.");
+    }
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

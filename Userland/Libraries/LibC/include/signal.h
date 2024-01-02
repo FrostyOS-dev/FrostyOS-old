@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,16 +23,42 @@ extern "C" {
 #endif
 
 
+#ifndef SIGABRT
 #define SIGABRT 1
-#define SIGFPE 2
-#define SIGILL 3
-#define SIGINT 4
-#define SIGSEGV 5
-#define SIGTERM 6
+#endif
 
-#define SIG_DFL 0
-#define SIG_IGN 1
+#ifndef SIGFPE
+#define SIGFPE 2
+#endif
+
+#ifndef SIGILL
+#define SIGILL 3
+#endif
+
+#ifndef SIGINT
+#define SIGINT 4
+#endif
+
+#ifndef SIGSEGV
+#define SIGSEGV 5
+#endif
+
+#ifndef SIGTERM
+#define SIGTERM 6
+#endif
+
+
+#ifndef SIG_DFL
+#define SIG_DFL 1
+#endif
+
+#ifndef SIG_IGN
+#define SIG_IGN 2
+#endif
+
+#ifndef SIG_ERR
 #define SIG_ERR -1
+#endif
 
 typedef int sig_atomic_t;
 
