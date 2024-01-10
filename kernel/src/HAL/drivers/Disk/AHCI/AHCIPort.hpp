@@ -182,27 +182,27 @@ namespace AHCI {
         uint8_t VendorSpecific[0x80 - 0x70]; // Vendor Specific
     } __attribute__((packed));
 
-    struct AHCICommandHeader {
-        struct DW0 {
-            uint8_t CFL : 5; // Command FIS Length
-            uint8_t A : 1; // ATAPI
-            uint8_t W : 1; // Write
-            uint8_t P : 1; // Prefetchable
-            uint8_t R : 1; // Reset
-            uint8_t B : 1; // BIST
-            uint8_t C : 1; // Clear Busy upon R_OK
-            uint8_t Rsvd0 : 1; // reserved
-            uint8_t PMP : 4; // Port Multiplier Port
-            uint16_t PRDTL : 16; // Physical Region Descriptor Table Length
-        } __attribute__((packed)) DescriptorInformation;
-        uint32_t CommandStatus; // bytes transferred so far
-        struct DW2 {
-            uint8_t Reserved : 7; // reserved
-            uint32_t CTBA : 25; // Command Table Base Address
-        } __attribute__((packed)) CommandTableBaseAddress;
-        uint32_t CommandTableBaseAddressUpper;
-        uint32_t Reserved[4]; // reserved
-    } __attribute__((packed));
+struct AHCICommandHeader {
+    struct DW0 {
+        uint8_t CFL : 5; // Command FIS Length
+        uint8_t A : 1; // ATAPI
+        uint8_t W : 1; // Write
+        uint8_t P : 1; // Prefetchable
+        uint8_t R : 1; // Reset
+        uint8_t B : 1; // BIST
+        uint8_t C : 1; // Clear Busy upon R_OK
+        uint8_t Rsvd0 : 1; // reserved
+        uint8_t PMP : 4; // Port Multiplier Port
+        uint16_t PRDTL : 16; // Physical Region Descriptor Table Length
+    } __attribute__((packed)) DescriptorInformation;
+    uint32_t CommandStatus; // bytes transferred so far
+    struct DW2 {
+        uint8_t Reserved : 7; // reserved
+        uint32_t CTBA : 25; // Command Table Base Address
+    } __attribute__((packed)) CommandTableBaseAddress;
+    uint32_t CommandTableBaseAddressUpper;
+    uint32_t Reserved[4]; // reserved
+} __attribute__((packed));
 
     struct AHCICommandList {
         AHCICommandHeader Header[32];
@@ -411,7 +411,7 @@ namespace AHCI {
         AHCIController* getController() const;
         AHCIPortRegisters* getRegisters() const;
 
-        uint8_t GetCommandSlot();
+        AHCICommandHeader* GetCommandSlot();
         
     private:
 

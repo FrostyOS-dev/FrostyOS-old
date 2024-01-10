@@ -64,6 +64,23 @@ namespace AHCI {
         memset(m_command_list, 0, sizeof(AHCICommandList));
         m_command_list_phys = g_KPM->GetPageTable().GetPhysicalAddress(m_command_list);
 
+        // Reset the port
+        m_regs->SCTL.DET = 1;
+        sleep(1);
+        m_regs->SCTL.DET = 0;
+        __asm__ volatile("" ::: "memory");
+        while (m_regs->SSTS.DET != 3 && m_regs->SSTS.IPM != 1)
+            __asm__ volatile("" ::: "memory");
+
+        memset(&(m_regs->SERR), 0xFF, sizeof(AHCIPortSerialATAError));
+
+        // Spin up device if supported
+        if (m_controller->GetCapabilities()->SSS == 1) {
+            dbgprintf("AHCI: Spinning up device on port %d\n", m_port_number);
+            m_regs->CMD.SUD = 1;
+            __asm__ volatile("" ::: "memory");
+        }
+
         // Set the command list address
         m_regs->CLB.CLB = ((uint64_t)m_command_list_phys & 0xFFFFFFFF) >> 10;
         m_regs->CLBU = ((uint64_t)m_command_list_phys >> 32) & 0xFFFFFFFF;
@@ -76,26 +93,12 @@ namespace AHCI {
         m_regs->FB.FB = ((uint64_t)m_received_fis_phys & 0xFFFFFFFF) >> 10;
         m_regs->FBU = ((uint64_t)m_received_fis_phys >> 32) & 0xFFFFFFFF;
         
-        // Reset the port
-        m_regs->SCTL.DET = 1;
-        sleep(1);
-        m_regs->SCTL.DET = 0;
-        __asm__ volatile("" ::: "memory");
-        while (m_regs->SSTS.DET != 3 && m_regs->SSTS.IPM != 1)
-            __asm__ volatile("" ::: "memory");
-
-        memset(&(m_regs->SERR), 0xFF, sizeof(AHCIPortSerialATAError));
 
         // Start the port
         __asm__ volatile("" ::: "memory");
         while (m_regs->CMD.CR != 0)
             __asm__ volatile("" ::: "memory");
 
-        // Spin up device if supported
-        if (m_controller->GetCapabilities()->SSS == 1) {
-            m_regs->CMD.SUD = 1;
-            __asm__ volatile("" ::: "memory");
-        }
 
         m_regs->CMD.FRE = 1;
         m_regs->CMD.ST = 1;
@@ -142,8 +145,8 @@ namespace AHCI {
     }
 
     void AHCIPort::IssueCommand(AHCICommandHeader* command, uint8_t command_table_offset, bool wait_for_completion) {
-        assert(command_table_offset < 32);
-        memcpy(&(m_command_list->Header[command_table_offset]), command, sizeof(AHCICommandHeader));
+        //assert(command_table_offset < 32);
+        //memcpy(&(m_command_list->Header[command_table_offset]), command, sizeof(AHCICommandHeader));
         // Wait for the port to be ready
         __asm__ volatile("" ::: "memory");
         while (m_regs->TFD.STS_BSY == 1 || m_regs->TFD.STS_DRQ == 1)
@@ -202,11 +205,11 @@ namespace AHCI {
         return m_regs;
     }
 
-    uint8_t AHCIPort::GetCommandSlot() {
+    AHCICommandHeader* AHCIPort::GetCommandSlot() {
         for (uint8_t i = 0; i < 32; i++) {
             if ((m_command_list_usage & (1UL << i)) == 0) {
                 m_command_list_usage |= (1UL << i);
-                return i;
+                return &(m_command_list->Header[i]);
             }
         }
     }
