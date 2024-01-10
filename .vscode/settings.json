@@ -82,6 +82,7 @@
     "C_Cpp.errorSquiggles": "enabled",
     "cSpell.words": [
         "bgcolour",
+        "DBAB",
         "dbgprintf",
         "dbgputs",
         "fgcolour",
@@ -101,6 +102,7 @@
         "KVPM",
         "libgcc",
         "PPFA",
+        "prdt",
         "putc",
         "RAMFS",
         "RSDP",

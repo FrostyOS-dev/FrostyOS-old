@@ -35,6 +35,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "drivers/PCI.hpp"
 
+#include "drivers/Disk/AHCI/AHCIController.hpp"
+
 #include "time.h"
 #include "hal.hpp"
 
@@ -84,7 +86,14 @@ void HAL_Stage2(void* RSDP) {
     }
     PCI::Header0* device = PCI::PCIDeviceList::GetPCIDevice(0);
     for (uint64_t i = 1; device != nullptr; i++) {
-        dbgprintf("PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
+        if (device->ch.ClassCode == 0x1 && device->ch.SubClass == 0x6 && device->ch.ProgIF == 0x1) { // AHCI
+            AHCI::AHCIController* controller = new AHCI::AHCIController;
+            dbgprintf("PCI Device: VendorID=%hx DeviceID=%hx Class=\"%s\" SubClass=\"%s\" Program Interface=\"%s\"\n", device->ch.VendorID, device->ch.DeviceID, controller->getDeviceClass(), controller->getDeviceSubClass(), controller->getDeviceProgramInterface());
+            controller->InitPCIDevice(device);
+            dbgprintf("Detected %s %s\n", controller->getVendorName(), controller->getDeviceName());
+        }
+        else
+            dbgprintf("PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
         device = PCI::PCIDeviceList::GetPCIDevice(i);
     }
 

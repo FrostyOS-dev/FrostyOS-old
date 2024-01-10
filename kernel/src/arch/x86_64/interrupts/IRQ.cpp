@@ -22,13 +22,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #define PIC_REMAP_OFFSET 0x20
 
-x86_64_IRQHandler_t g_IRQHandlers[16];
+x86_64_IRQHandler_t g_x86_64_IRQHandlers[16];
 
 void x86_64_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
     uint8_t irq = regs->interrupt - PIC_REMAP_OFFSET;
 
-    if (g_IRQHandlers[irq] != nullptr) {
-        g_IRQHandlers[irq](regs);
+    if (g_x86_64_IRQHandlers[irq] != nullptr) {
+        g_x86_64_IRQHandlers[irq](regs);
     }
     else {
         dbgprintf("Unhandled IRQ %d...\n", irq);
@@ -47,5 +47,6 @@ void x86_64_IRQ_Initialize() {
 }
 
 void x86_64_IRQ_RegisterHandler(const uint8_t irq, x86_64_IRQHandler_t handler) {
-    g_IRQHandlers[irq] = handler;
+    dbgprintf("Registering IRQ %hhu handler %lp...\n", irq, handler);
+    g_x86_64_IRQHandlers[irq] = handler;
 }

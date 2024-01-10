@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,24 +15,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _HAL_PCI_DEVICE_HPP
-#define _HAL_PCI_DEVICE_HPP
+#ifndef _HAL_DISK_HPP
+#define _HAL_DISK_HPP
 
-#include "Device.hpp"
-#include "PCI.hpp"
+#include <stdint.h>
+#include <stddef.h>
 
-class PCIDevice : public Device {
+class Disk {
 public:
-    virtual ~PCIDevice() override {}
+    virtual ~Disk() {};
 
-    virtual void InitPCIDevice(PCI::Header0* device) = 0;
+    virtual void Init() = 0;
 
-    virtual const char* getDeviceClass() const = 0;
-    virtual const char* getDeviceSubClass() const = 0;
-    virtual const char* getDeviceProgramInterface() const = 0;
+    virtual bool Read(uint8_t* buffer, uint64_t lba, uint64_t count = 1) = 0;
+    virtual bool Write(const uint8_t* buffer, uint64_t lba, uint64_t count = 1) = 0;
 
-protected:
-    PCI::Header0* p_device = nullptr;
+    virtual size_t GetSectorSize() = 0;
+    virtual size_t GetSectorCount() = 0;
 };
 
-#endif /* _HAL_PCI_DEVICE_HPP */
+#endif /* _HAL_DISK_HPP */

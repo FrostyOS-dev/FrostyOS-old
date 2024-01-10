@@ -45,7 +45,7 @@ public:
     void InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false); // Extra function for later initialisation. mode is false for supervisor and true for user
     
     void* AllocatePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
-    void* AllocatePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
+    void* AllocatePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr, bool physically_contiguous = false);
 
     /* Allocate virtual memory, but don't map it yet*/
     void* ReservePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);

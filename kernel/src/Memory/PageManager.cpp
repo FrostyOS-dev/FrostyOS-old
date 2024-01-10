@@ -198,7 +198,7 @@ void* PageManager::AllocatePage(PagePermissions perms, void* addr) {
     return virt_addr;
 }
 
-void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* addr) {
+void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* addr, bool physically_contiguous) {
     if (count == 1)
         return AllocatePage(perms, addr);
     if (addr != nullptr) {
@@ -259,9 +259,22 @@ void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* ad
 
                 PageObject_UnsetFlag(object, PO_STANDBY);
                 PageObject_SetFlag(object, PO_INUSE);
-                
-                for (uint64_t j = 0; j < count; j++)
-                    m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + j * 0x1000), perms);
+                if (physically_contiguous) {
+                    void* phys_addr = g_PPFA->AllocatePages(count);
+                    if (phys_addr == nullptr) {
+                        if (PageObjectPool_IsInPool(object))
+                            PageObjectPool_Free(object);
+                        else if (NewDeleteInitialised())
+                            delete object;
+                        return nullptr;
+                    }
+                    for (uint64_t j = 0; j < count; j++)
+                        m_PT.MapPage((void*)((uint64_t)phys_addr + j * 0x1000), (void*)((uint64_t)addr + j * 0x1000), perms);
+                }
+                else {
+                    for (uint64_t j = 0; j < count; j++)
+                        m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + j * 0x1000), perms);
+                }
                 return addr;
             }
             object = object->next;
@@ -334,8 +347,23 @@ void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* ad
         m_allocated_objects = po;
     m_allocated_object_count++;
     po->perms = perms;
-    for (uint64_t i = 0; i < count; i++)
-        m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * 0x1000), perms);
+    if (physically_contiguous) {
+        void* phys_addr = g_PPFA->AllocatePages(count);
+        if (phys_addr == nullptr) {
+            if (PageObjectPool_IsInPool(po))
+                PageObjectPool_Free(po);
+            else if (NewDeleteInitialised())
+                delete po;
+            m_VPM->UnallocatePages(virt_addr, count);
+            return nullptr;
+        }
+        for (uint64_t i = 0; i < count; i++)
+            m_PT.MapPage((void*)((uint64_t)phys_addr + i * 0x1000), (void*)((uint64_t)virt_addr + i * 0x1000), perms);
+    }
+    else {
+        for (uint64_t i = 0; i < count; i++)
+            m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * 0x1000), perms);
+    }
     return virt_addr;
 }
 
