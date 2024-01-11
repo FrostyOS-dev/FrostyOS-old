@@ -67,7 +67,7 @@ clean-kernel:
 	@rm -f src/limine.h
 
 kernel-dependencies:
-	@curl -o src/limine.h https://raw.githubusercontent.com/limine-bootloader/limine/v4.x-branch-binary/limine.h &> /dev/null
+	@curl -o src/limine.h https://raw.githubusercontent.com/limine-bootloader/limine/v6.x-branch-binary/limine.h &> /dev/null
 
 install-kernel-headers:
 	@mkdir -p ../root/data/include/kernel

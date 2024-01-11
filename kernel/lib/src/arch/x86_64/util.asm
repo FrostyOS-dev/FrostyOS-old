@@ -24,13 +24,22 @@ memset:
 
     xor rcx, rcx
     and rdx, ~7
-    jz .l2
+    jnz .prep
+    mov al, sil
+    jmp .l2
 
+.prep:
     mov r9, rdx ; save rdx in r9 as it might be overridden by imul
+
+    movzx rsi, sil
     
     ; check if there is a point in creating a 64-bit wide version of sil
-    test rsi, rsi
-    jz .l
+    test sil, sil
+    jnz .do_mul
+    mov rax, rsi
+    jmp .l
+
+.do_mul:
     mov rax, 0x0101010101010101
     imul rsi
 
