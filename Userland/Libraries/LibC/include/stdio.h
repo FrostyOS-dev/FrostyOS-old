@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -112,7 +112,7 @@ int fputc(int character, FILE* stream);
 int fputs(const char* str, FILE* stream);
 int getc(FILE* stream);
 int getchar(void);
-char* gets(char* str);
+char* gets(char* str); // NOTE: removed in C11
 int putc(int character, FILE* stream);
 int putchar(int character);
 int puts(const char* str);

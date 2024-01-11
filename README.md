@@ -17,18 +17,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 02/01/2024
+## Latest Changes - 12/01/2024
 
-- Implemented `IN_BOUNDS` macro which just determines if a value is inside of an inclusive range.
-- Added a check to `Scheduler::GetCurrent` to ensure we only return the current thread if the scheduler is running.
-- Added proper page fault handling support. This comes with a special message to say exactly what happened.
-- Added `PageManager::GetPermissions` functions to get the exact permissions of a mapped page.
-- Added less than, greater than, less or equal and greater or equal functions to the Priority enum, to allow for better determining if a process has a higher or low priority than another.
-- Implemented basic signalling support. This means a process can send a signal to another process with a priority less than or equal to it's priority. These signals can be caught by the process and handled. Signals are **always** handled on the main thread of a process.
-- Implemented `onsignal`, `sendsig` and `sigreturn` syscalls. When a signal handler registered by `onsignal` is called, some code injection occurs so that the `sigreturn` syscall is called to perform clean-up after the signal handler and restore the thread state.
-- Implemented thread-specific exception handling. When an exception occurs in a process, the main thread is sent an appropriate signal. On x86_64, divide by zero and floating point exceptions send a `SIGFPE` signal, Invalid Opcode sends a `SIGILL` signal, and page faults and general protection faults send a `SIGSEGV` signal.
-- Implemented `signal` and `raise` LibC functions. These are just wrappers around the `sendsig` and `onsignal` syscalls.
-- Updated `abort` in LibC to `raise` a `SIGABRT` signal, instead of just exiting with status `EXIT_FAILURE`.
+- Updated to limine 6.x.
+- Updated to limine protocol revision 1.
+- Fixed optimised memset function so it actually works.
+- Implemented LibC `ctype.h` functions.
+- Added ISO C compliance note to LibC's `stdio.h` about `gets`.
 
 ## Resources used
 

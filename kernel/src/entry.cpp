@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern "C" {
 
+LIMINE_BASE_REVISION(1)
+
 volatile struct limine_framebuffer_request framebuffer_request {
     .id = LIMINE_FRAMEBUFFER_REQUEST,
     .revision = 0,

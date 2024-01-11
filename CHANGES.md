@@ -1,6 +1,14 @@
 # Changes
 
-## Latest Changes - 02/01/2024
+## Latest Changes - 12/01/2024
+
+- Updated to limine 6.x.
+- Updated to limine protocol revision 1.
+- Fixed optimised memset function so it actually works.
+- Implemented LibC `ctype.h` functions.
+- Added ISO C compliance note to LibC's `stdio.h` about `gets`.
+
+## 02/01/2024
 
 - Implemented `IN_BOUNDS` macro which just determines if a value is inside of an inclusive range.
 - Added a check to `Scheduler::GetCurrent` to ensure we only return the current thread if the scheduler is running.
