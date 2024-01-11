@@ -77,8 +77,6 @@ volatile struct limine_module_request initramfs_request {
     .internal_modules = nullptr
 };
 
-LIMINE_BASE_REVISION(1)
-
 }
  
 static void done(void) {

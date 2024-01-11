@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "util.h"
 
 // Faster assembly alternatives for memset and memcpy are used on x86_64
-//#ifndef __x86_64__
+#ifndef __x86_64__
 
 void* memset(void* dst, const uint8_t value, const size_t n) {
     uint8_t* d = (uint8_t*) dst;
@@ -41,7 +41,7 @@ void* memcpy(void* dst, const void* src, const size_t n) {
     return dst;
 }
 
-//#endif /* __x86_64__ */
+#endif /* __x86_64__ */
 
 void* memmove(void* dst, const void* src, const size_t n) {
     // OK, since we know that memcpy copies forwards

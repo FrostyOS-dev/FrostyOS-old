@@ -15,8 +15,8 @@
 
 [bits 64]
 
-;global memset
-e_memset:
+global memset
+memset:
     push rbp
     mov rbp, rsp
 
@@ -72,8 +72,8 @@ e_memset:
     pop rbp
     ret
 
-;global memcpy
-e_memcpy:
+global memcpy
+memcpy:
     push rbp
     mov rbp, rsp
 
