@@ -35,14 +35,9 @@ void AHCIDisk::Init() {
     h2d.CountLow = 0;
     h2d.CountHigh = 0;
     h2d.Control = 0;
-    AHCICommandTableHeader* cmd_header = (AHCICommandTableHeader*)g_KPM->AllocatePages(DIV_ROUNDUP((sizeof(AHCICommandTableHeader) + sizeof(AHCIPRDTEntry)), PAGE_SIZE), PagePermissions::READ_WRITE, nullptr, true);
-    memset(cmd_header, 0, sizeof(AHCICommandTableHeader) + sizeof(AHCIPRDTEntry));
-    memcpy(&(cmd_header->CFIS), &h2d, sizeof(FIS_RegH2D));
-    void* cmd_header_phys = g_KPM->GetPageTable().GetPhysicalAddress(cmd_header);
+    
     AHCICommandHeader* header = m_port->GetCommandSlot();
     memset(header, 0, sizeof(AHCICommandHeader));
-    header->CommandTableBaseAddress.CTBA = ((uint64_t)cmd_header_phys & 0xFFFFFFFF) >> 7;
-    header->CommandTableBaseAddressUpper = ((uint64_t)cmd_header_phys >> 32) & 0xFFFFFFFF;
     header->DescriptorInformation.CFL = sizeof(FIS_RegH2D) / 4;
     header->DescriptorInformation.A = 0;
     header->DescriptorInformation.W = 0;
@@ -54,7 +49,9 @@ void AHCIDisk::Init() {
     header->DescriptorInformation.PRDTL = 1;
     //header->CommandStatus = 512;
 
-    AHCIPRDTEntry* prdt = (AHCIPRDTEntry*)((uint64_t)cmd_header + sizeof(AHCICommandTableHeader));
+    AHCICommandTable* cmd_header = m_port->getCommandTable(header);
+
+    AHCIPRDTEntry* prdt = cmd_header->PRDTEntries;
     AHCI_ATAIdentify* data = (AHCI_ATAIdentify*)g_KPM->AllocatePages(DIV_ROUNDUP(512, PAGE_SIZE), PagePermissions::READ_WRITE, nullptr, true);
     memset(data, 0, 512);
     void* data_phys = g_KPM->GetPageTable().GetPhysicalAddress(data);

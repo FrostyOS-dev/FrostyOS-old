@@ -67,7 +67,7 @@ void* PageTable::GetPhysicalAddress(void* virtual_addr) const {
 }
 
 uint32_t PageTable::DecodePageFlags(PagePermissions perms) const {
-    uint32_t page_perms = 1;
+    uint32_t page_perms = 0x11; // just temporary. This just disables caching for everything
     if (m_mode)
         page_perms |= 4;
     switch (perms) {

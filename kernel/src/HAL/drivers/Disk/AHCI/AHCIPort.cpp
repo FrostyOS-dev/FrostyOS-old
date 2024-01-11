@@ -64,6 +64,14 @@ namespace AHCI {
         memset(m_command_list, 0, sizeof(AHCICommandList));
         m_command_list_phys = g_KPM->GetPageTable().GetPhysicalAddress(m_command_list);
 
+        for (uint8_t i = 0; i < 32; i++) {
+            m_command_tables[i] = (AHCICommandTable*)g_KPM->AllocatePages(DIV_ROUNDUP(sizeof(AHCICommandTable), PAGE_SIZE), PagePermissions::READ_WRITE, nullptr, true);
+            memset(m_command_tables[i], 0, sizeof(AHCICommandTable));
+            void* command_table_phys = g_KPM->GetPageTable().GetPhysicalAddress(m_command_tables[i]);
+            m_command_list->Header[i].CommandTableBaseAddress.CTBA = ((uint64_t)command_table_phys & 0xFFFFFFFF) >> 7;
+            m_command_list->Header[i].CommandTableBaseAddressUpper = ((uint64_t)command_table_phys >> 32) & 0xFFFFFFFF;
+        }
+
         // Reset the port
         m_regs->SCTL.DET = 1;
         sleep(1);
@@ -72,7 +80,7 @@ namespace AHCI {
         while (m_regs->SSTS.DET != 3 && m_regs->SSTS.IPM != 1)
             __asm__ volatile("" ::: "memory");
 
-        memset(&(m_regs->SERR), 0xFF, sizeof(AHCIPortSerialATAError));
+        *((uint32_t*)&(m_regs->SERR)) = 0xFFFFFFFF;
 
         // Spin up device if supported
         if (m_controller->GetCapabilities()->SSS == 1) {
@@ -144,21 +152,29 @@ namespace AHCI {
         m_regs->CI |= ((1UL << command_table_entries) - 1) << command_table_offset;
     }
 
-    void AHCIPort::IssueCommand(AHCICommandHeader* command, uint8_t command_table_offset, bool wait_for_completion) {
+    void AHCIPort::IssueCommand(AHCICommandHeader* command, uint8_t, bool wait_for_completion) {
         //assert(command_table_offset < 32);
         //memcpy(&(m_command_list->Header[command_table_offset]), command, sizeof(AHCICommandHeader));
         // Wait for the port to be ready
         __asm__ volatile("" ::: "memory");
         while (m_regs->TFD.STS_BSY == 1 || m_regs->TFD.STS_DRQ == 1)
             __asm__ volatile("" ::: "memory");
+
+        uint8_t command_table_offset = 0;
+        for (uint8_t i = 0; i < 32; i++) {
+            if (&(m_command_list->Header[i]) == command) {
+                command_table_offset = i;
+                break;
+            }
+        }
         
         // Send the command
-        m_regs->SACT |= 1UL << command_table_offset;
+        //m_regs->SACT |= 1UL << command_table_offset;
         m_regs->CI |= 1UL << command_table_offset;
 
         if (wait_for_completion) {
             __asm__ volatile("" ::: "memory");
-            while ((m_regs->CI & (1UL << command_table_offset)) != 0 && (m_regs->SACT & (1UL << command_table_offset)) != 0)
+            while ((m_regs->CI & (1UL << command_table_offset)) != 0)
                 __asm__ volatile("" ::: "memory");
         }
         // Print interrupt status
@@ -169,7 +185,7 @@ namespace AHCI {
         dbgprintf("AHCI: Port %d interrupt status: %x\n", m_port_number, *is);
 
         // print command completion status from m_received_fis.RFIS
-        dbgprintf("AHCI: Port %d command completion status: %hx\n", m_port_number, *(uint16_t*)(&(m_regs->TFD)));
+        dbgprintf("AHCI: Port %d command completion status: %hx, serr = %x\n", m_port_number, *(uint16_t*)(&(m_regs->TFD)), *(uint32_t*)(&(m_regs->SERR)));
     }
 
     bool AHCIPort::HandleInterrupt() {
@@ -211,6 +227,13 @@ namespace AHCI {
                 m_command_list_usage |= (1UL << i);
                 return &(m_command_list->Header[i]);
             }
+        }
+    }
+
+    AHCICommandTable* AHCIPort::getCommandTable(AHCICommandHeader* header) {
+        for (uint8_t i = 0; i < 32; i++) {
+            if (&(m_command_list->Header[i]) == header)
+                return m_command_tables[i];
         }
     }
 

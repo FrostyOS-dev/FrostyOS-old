@@ -367,12 +367,6 @@ struct AHCICommandHeader {
         uint8_t Reserved3[96];
     } __attribute__((packed));
 
-    struct AHCICommandTableHeader {
-        FIS_Unknown CFIS;
-        uint8_t ACMD[16];
-        uint8_t Reserved[48];
-    } __attribute__((packed));
-
     struct AHCIPRDTEntry {
         uint8_t Reserved0 : 1;
         uint32_t DataBaseAddress : 31;
@@ -382,6 +376,14 @@ struct AHCICommandHeader {
         uint32_t Reserved2 : 9; // reserved
         uint32_t InterruptOnCompletion : 1; // Interrupt On Completion
     } __attribute__((packed));
+
+    struct AHCICommandTable {
+        FIS_Unknown CFIS;
+        uint8_t ACMD[16];
+        uint8_t Reserved[48];
+        AHCIPRDTEntry PRDTEntries[65536];
+    } __attribute__((packed));
+
 
     enum AHCICommands {
         ATA_IDENTIFY_DEVICE = 0xEC
@@ -412,6 +414,8 @@ struct AHCICommandHeader {
         AHCIPortRegisters* getRegisters() const;
 
         AHCICommandHeader* GetCommandSlot();
+
+        AHCICommandTable* getCommandTable(AHCICommandHeader* header);
         
     private:
 
@@ -423,6 +427,7 @@ struct AHCICommandHeader {
         AHCIReceivedFIS* m_received_fis;
         void* m_command_list_phys;
         void* m_received_fis_phys;
+        AHCICommandTable* m_command_tables[32];
 
         void* m_device;
     };
