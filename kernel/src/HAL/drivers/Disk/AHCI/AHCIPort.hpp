@@ -28,7 +28,7 @@ namespace AHCI {
     } __attribute__((packed));
 
     struct AHCIPortFISBaseAddress {
-        uint8_t Reserved0; // reserved
+        uint8_t Reserved0 : 8; // reserved
         uint32_t FB : 24; // FIS Base Address
     } __attribute__((packed));
 
@@ -83,7 +83,7 @@ namespace AHCI {
         uint8_t CLO : 1; // Command List Override
         uint8_t FRE : 1; // FIS Receive Enable
         uint8_t Reserved0 : 3; // reserved
-        uint8_t CCS : 1; // Command and Status
+        uint8_t CCS : 5; // Current command slot
         uint8_t MPSS : 1; // Mechanical Presence Switch State
         uint8_t FR : 1; // FIS Receive Running
         uint8_t CR : 1; // Command List Running
@@ -145,7 +145,7 @@ namespace AHCI {
         uint8_t Reserved0 : 5; // reserved
         uint8_t DEV : 4; // Device To Issue
         uint8_t ADO : 4; // Active Device Optimization
-        uint8_t DWE : 1; // Device With Error
+        uint8_t DWE : 4; // Device With Error
         uint16_t Reserved1 : 12; // reserved
     } __attribute__((packed));
 
@@ -312,7 +312,6 @@ struct AHCICommandHeader {
             uint8_t S : 1; // Bypass Scrambling
             uint8_t A : 1; // ALIGNp Bypass
             uint8_t T : 1; // Far end transmit only mode
-
         } __attribute__((packed)) PatternDefinition; // Pattern Definition
         uint8_t Reserved1; // reserved
         uint8_t Data1[4];
@@ -381,7 +380,7 @@ struct AHCICommandHeader {
         FIS_Unknown CFIS;
         uint8_t ACMD[16];
         uint8_t Reserved[48];
-        AHCIPRDTEntry PRDTEntries[65536];
+        AHCIPRDTEntry PRDTEntries[65535];
     } __attribute__((packed));
 
 

@@ -98,7 +98,7 @@ namespace AHCI {
         m_received_fis_phys = g_KPM->GetPageTable().GetPhysicalAddress(m_received_fis);
 
         // Set the received FIS address
-        m_regs->FB.FB = ((uint64_t)m_received_fis_phys & 0xFFFFFFFF) >> 10;
+        m_regs->FB.FB = ((uint64_t)m_received_fis_phys & 0xFFFFFFFF) >> 8;
         m_regs->FBU = ((uint64_t)m_received_fis_phys >> 32) & 0xFFFFFFFF;
         
 
