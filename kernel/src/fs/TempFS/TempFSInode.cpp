@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ namespace TempFS {
         return true;
     }
 
-    bool TempFSInode::Delete(bool delete_target) {
+    bool TempFSInode::Delete(bool delete_target, bool delete_name) {
         TempFSInode* target = GetTarget();
         if (target != this && delete_target) {
             if (target == nullptr)
@@ -73,7 +73,7 @@ namespace TempFS {
                 SetLastError(InodeError::INTERNAL_ERROR);
                 return false;
             }
-            child->Delete();
+            child->Delete(delete_name);
             delete child;
         }
         if (m_parent != nullptr) {
@@ -101,6 +101,8 @@ namespace TempFS {
                 delete block; 
             }
         }
+        if (delete_name)
+            delete[] p_name;
         p_ID = 0; // invalidate this inode
         SetLastError(InodeError::SUCCESS);
         return true;
@@ -656,6 +658,24 @@ namespace TempFS {
         if (seed != 0)
             srand(seed);
         p_ID = ((uint64_t)rand() << 32) | rand();
+    }
+
+    void TempFSInode::SetCurrentHead(Head head) {
+        p_CurrentOffset = head.CurrentOffset;
+        p_isOpen = head.isOpen;
+        m_currentBlock = (MemBlock*)head.currentBlock;
+        m_currentBlockIndex = head.currentBlockIndex;
+        m_currentBlockOffset = head.currentBlockOffset;
+    }
+
+    TempFSInode::Head TempFSInode::GetCurrentHead() const {
+        return {
+            .CurrentOffset = p_CurrentOffset,
+            .isOpen = p_isOpen,
+            .currentBlock = m_currentBlock,
+            .currentBlockIndex = m_currentBlockIndex,
+            .currentBlockOffset = m_currentBlockOffset
+        };
     }
 
 

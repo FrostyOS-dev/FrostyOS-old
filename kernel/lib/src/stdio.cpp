@@ -133,7 +133,7 @@ fd_t internal_open(const char* path, unsigned long mode) {
                 char* i_parent = new char[parent_name_size + 1];
                 memcpy(i_parent, path, parent_name_size);
                 i_parent[parent_name_size] = '\0';
-                if (!g_VFS->IsValidPath(path)) {
+                if (!g_VFS->IsValidPath(i_parent)) {
                     delete[] i_parent;
                     return -ENOENT;
                 }
@@ -651,8 +651,8 @@ extern "C" size_t fwrite(const void* ptr, const size_t size, const size_t count,
     uint8_t* out = (uint8_t*)ptr;
 
     size_t blocks_written = 0;
-    for (uint64_t i = 0; i < count; i+=size) {
-        if (internal_write(file, (void*)((uint64_t)out + i), size) > 0)
+    for (uint64_t i = 0; i < count; i++) {
+        if (internal_write(file, (void*)((uint64_t)out + (i * size)), size) > 0)
             blocks_written++;
         else
             break;
@@ -665,8 +665,8 @@ extern "C" size_t fwrite(const void* ptr, const size_t size, const size_t count,
 
 extern "C" size_t fread(void* ptr, const size_t size, const size_t count, const fd_t file) {
     size_t blocks_read = 0;
-    for (uint64_t i = 0; i < count; i+=size) {
-        if (internal_read(file, (void*)((uint64_t)ptr + i), size) > 0)
+    for (uint64_t i = 0; i < count; i++) {
+        if (internal_read(file, (void*)((uint64_t)ptr + (i * size)), size) > 0)
             blocks_read++;
         else
             break;

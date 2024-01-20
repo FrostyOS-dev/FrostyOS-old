@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "TempFS/TempFSInode.hpp"
 
-FileStream::FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes, FilePrivilegeLevel privilege) : m_inode(inode), m_mountPoint(mountPoint), m_modes(modes), m_privilege(privilege) {
+FileStream::FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes, FilePrivilegeLevel privilege) : m_open(false), m_inode(inode), m_inode_state(nullptr), m_mountPoint(mountPoint), m_modes(modes), m_privilege(privilege) {
 
 }
 
@@ -28,6 +28,10 @@ FileStream::~FileStream() {
 }
 
 bool FileStream::Open() {
+    if (m_open) {
+        SetLastError(FileStreamError::SUCCESS);
+        return true;
+    }
     if (m_mountPoint == nullptr) {
         SetLastError(FileStreamError::INVALID_MOUNTPOINT);
         return false;
@@ -41,10 +45,17 @@ bool FileStream::Open() {
                     SetLastError(FileStreamError::INVALID_INODE);
                     return false;
                 }
+                inode->SetCurrentHead({0, false, nullptr, 0, 0});
                 if (!inode->Open()) {
                     SetLastError(FileStreamError::INTERNAL_ERROR);
                     return false;
                 }
+                TempFSInode::Head* head = new TempFSInode::Head(inode->GetCurrentHead());
+                if (head == nullptr) {
+                    SetLastError(FileStreamError::ALLOCATION_FAILED);
+                    return false;
+                }
+                m_inode_state = head;
             }
             break;
         default:
@@ -52,11 +63,16 @@ bool FileStream::Open() {
             return false;
             break;
     }
+    m_open = true;
     SetLastError(FileStreamError::SUCCESS);
     return true;
 }
 
 bool FileStream::Close() {
+    if (!m_open) {
+        SetLastError(FileStreamError::SUCCESS);
+        return true;
+    }
     if (m_mountPoint == nullptr) {
         SetLastError(FileStreamError::INVALID_MOUNTPOINT);
         return false;
@@ -70,10 +86,14 @@ bool FileStream::Close() {
                     SetLastError(FileStreamError::INVALID_INODE);
                     return false;
                 }
+                inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
+                m_open = false;
                 if (!inode->Close()) {
+                    delete (TempFSInode::Head*)m_inode_state;
                     SetLastError(FileStreamError::INTERNAL_ERROR);
                     return false;
                 }
+                delete (TempFSInode::Head*)m_inode_state;
             }
             break;
         default:
@@ -104,6 +124,7 @@ uint64_t FileStream::ReadStream(uint8_t* bytes, uint64_t count) {
                     SetLastError(FileStreamError::INVALID_INODE);
                     return 0;
                 }
+                inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
                 uint64_t status = inode->ReadStream(m_privilege, bytes, count);
                 if (status != count) {
                     InodeError error = inode->GetLastError();
@@ -118,6 +139,7 @@ uint64_t FileStream::ReadStream(uint8_t* bytes, uint64_t count) {
                 }
                 else
                     SetLastError(FileStreamError::SUCCESS);
+                *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
                 return status;
             }
             break;
@@ -148,6 +170,7 @@ uint64_t FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
                     SetLastError(FileStreamError::INVALID_INODE);
                     return 0;
                 }
+                inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
                 uint64_t status = inode->WriteStream(m_privilege, bytes, count);
                 if (status != count) {
                     InodeError error = inode->GetLastError();
@@ -164,6 +187,7 @@ uint64_t FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
                 }
                 else
                     SetLastError(FileStreamError::SUCCESS);
+                *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
                 return status;
             }
             break;
@@ -190,6 +214,7 @@ bool FileStream::Seek(uint64_t offset) {
                     SetLastError(FileStreamError::INVALID_INODE);
                     return false;
                 }
+                inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
                 if (!inode->Seek(offset)) {
                     InodeError error = inode->GetLastError();
                     if (error == InodeError::INVALID_ARGUMENTS)
@@ -198,8 +223,10 @@ bool FileStream::Seek(uint64_t offset) {
                         SetLastError(FileStreamError::STREAM_CLOSED);
                     else
                         SetLastError(FileStreamError::INTERNAL_ERROR);
+                    *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
                     return false;
                 }
+                *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
             }
             break;
         default:
@@ -225,13 +252,16 @@ bool FileStream::Rewind() {
                     SetLastError(FileStreamError::INVALID_INODE);
                     return false;
                 }
+                inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
                 if (!inode->Rewind()) {
                     if (inode->GetLastError() == InodeError::STREAM_CLOSED)
                         SetLastError(FileStreamError::STREAM_CLOSED);
                     else
                         SetLastError(FileStreamError::INTERNAL_ERROR);
+                    *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
                     return false;
                 }
+                *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
             }
             break;
         default:
@@ -252,6 +282,18 @@ uint64_t FileStream::GetOffset() const {
         SetLastError(FileStreamError::INVALID_INODE);
         return 0;
     }
+    switch (m_mountPoint->type) {
+        case FileSystemType::TMPFS: {
+            using namespace TempFS;
+            TempFSInode* inode = (TempFSInode*)m_inode;
+            inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
+            break;
+        }
+        default:
+            SetLastError(FileStreamError::INVALID_FS_TYPE);
+            return 0;
+            break;
+    }
     SetLastError(FileStreamError::SUCCESS);
     return m_inode->GetOffset();
 }
@@ -264,6 +306,18 @@ bool FileStream::isOpen() const {
     if (m_inode == nullptr || m_inode->GetType() != InodeType::File) {
         SetLastError(FileStreamError::INVALID_INODE);
         return false;
+    }
+    switch (m_mountPoint->type) {
+        case FileSystemType::TMPFS: {
+            using namespace TempFS;
+            TempFSInode* inode = (TempFSInode*)m_inode;
+            inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
+            break;
+        }
+        default:
+            SetLastError(FileStreamError::INVALID_FS_TYPE);
+            return 0;
+            break;
     }
     SetLastError(FileStreamError::SUCCESS);
     return m_inode->isOpen();
@@ -297,6 +351,11 @@ FileSystem* FileStream::GetFileSystem() const {
     }
     SetLastError(FileStreamError::SUCCESS);
     return m_mountPoint->fs;
+}
+
+VFS_MountPoint* FileStream::GetMountPoint() const {
+    SetLastError(FileStreamError::SUCCESS);
+    return m_mountPoint;
 }
 
 FileStreamError FileStream::GetLastError() const {

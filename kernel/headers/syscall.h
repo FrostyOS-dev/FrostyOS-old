@@ -52,7 +52,9 @@ enum SystemCalls {
     SC_FCHDIR = 26,
     SC_ONSIGNAL = 27,
     SC_SENDSIG = 28,
-    SC_SIGRETURN = 29
+    SC_SIGRETURN = 29,
+    SC_MOUNT = 30,
+    SC_UNMOUNT = 31
 };
 
 #ifndef _IN_KERNEL

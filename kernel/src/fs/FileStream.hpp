@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -53,6 +53,8 @@ public:
     Inode* GetInode() const;
     FileSystem* GetFileSystem() const;
 
+    VFS_MountPoint* GetMountPoint() const;
+
     FileStreamError GetLastError() const;
 
 private:
@@ -60,7 +62,9 @@ private:
     void SetLastError(FileStreamError) const;
 
 private:
+    bool m_open;
     Inode* m_inode;
+    void* m_inode_state;
     VFS_MountPoint* m_mountPoint;
     uint8_t m_modes;
     FilePrivilegeLevel m_privilege;

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -523,7 +523,7 @@ extern "C" int dbgvprintf(const char* format, va_list args) {
 }
 
 extern "C" size_t fwrite(const void* ptr, const size_t size, const size_t count, FILE* file) {
-    for (uint64_t i = 0, current_count = 0; i < count; i += size, current_count++) {
+    for (uint64_t i = 0, current_count = 0; current_count < count; i += size, current_count++) {
         long status = internal_write(file, (void*)((uint64_t)ptr + i), size);
         if (status < 0) {
             __SET_ERRNO(status);
@@ -535,7 +535,7 @@ extern "C" size_t fwrite(const void* ptr, const size_t size, const size_t count,
 }
 
 extern "C" size_t fread(void* ptr, const size_t size, const size_t count, FILE* file) {
-    for (uint64_t i = 0, current_count = 0; i < count; i += size, current_count++) {
+    for (uint64_t i = 0, current_count = 0; current_count < count; i += size, current_count++) {
         long status = internal_read(file, (void*)((uint64_t)ptr + i), size);
         if (status < 0) {
             __SET_ERRNO(status);

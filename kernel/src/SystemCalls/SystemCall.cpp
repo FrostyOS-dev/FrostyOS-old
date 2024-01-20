@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "exit.hpp"
 #include "memory.hpp"
 #include "exec.hpp"
+#include "mount.hpp"
 
 #include <stdio.h>
 #include <errno.h>
@@ -140,6 +141,10 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
         parent->sys$sigreturn((int)arg1);
         PANIC("sys$sigreturn returned.");
     }
+    case SC_MOUNT:
+        return (uint64_t)(sys$mount(current_thread, (const char*)arg1, (const char*)arg2, (const char*)arg3));
+    case SC_UNMOUNT:
+        return (uint64_t)(sys$unmount(current_thread, (const char*)arg1));
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

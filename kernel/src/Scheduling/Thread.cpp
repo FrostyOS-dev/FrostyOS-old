@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -157,7 +157,7 @@ namespace Scheduling {
                     char* i_parent = new char[parent_name_size + 1];
                     memcpy(i_parent, path, parent_name_size);
                     i_parent[parent_name_size] = '\0';
-                    if (!g_VFS->IsValidPath(path, m_working_directory)) {
+                    if (!g_VFS->IsValidPath(i_parent, m_working_directory)) {
                         delete[] i_parent;
                         return -ENOENT;
                     }
@@ -214,7 +214,7 @@ namespace Scheduling {
                 return -ENOENT; // this case *should* already have been handled, but is checked here for safety.
         }
         else {
-            switch (g_VFS->GetInode(path, m_working_directory)->GetType()) {
+            switch (inode->GetType()) {
             case InodeType::File: {
                 fstream = g_VFS->OpenStream(current_privilege, path, vfs_modes, m_working_directory);
                 if (fstream == nullptr) {

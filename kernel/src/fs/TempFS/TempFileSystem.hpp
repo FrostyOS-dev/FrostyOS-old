@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,8 +38,10 @@ namespace TempFS {
         bool CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
         bool CreateSymLink(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, TempFSInode* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
 
-        bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false) override;
-        bool DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive = false);
+        bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false, bool delete_name = false) override;
+        bool DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive = false, bool delete_name = false);
+
+        void DestroyFileSystem() override;
 
         void CreateNewRootInode(TempFSInode* inode);
         void DeleteRootInode(TempFSInode* inode);

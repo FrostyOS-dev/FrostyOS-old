@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -309,7 +309,7 @@ namespace TempFS {
         return true;
     }
 
-    bool TempFileSystem::DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive) {
+    bool TempFileSystem::DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive, bool delete_name) {
         if (path == nullptr) {
             SetLastError(FileSystemError::INVALID_ARGUMENTS);
             return false;
@@ -336,7 +336,7 @@ namespace TempFS {
             SetLastError(FileSystemError::RECURSION_ERROR);
             return false;
         }
-        if (!inode->Delete()) {
+        if (!inode->Delete(false, delete_name)) {
             SetLastError(FileSystemError::INTERNAL_ERROR);
             return false;
         }
@@ -345,7 +345,7 @@ namespace TempFS {
         return true;
     }
 
-    bool TempFileSystem::DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive) {
+    bool TempFileSystem::DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive, bool delete_name) {
         if (inode == nullptr) {
             SetLastError(FileSystemError::INVALID_ARGUMENTS);
             return false;
@@ -369,13 +369,23 @@ namespace TempFS {
             SetLastError(FileSystemError::RECURSION_ERROR);
             return false;
         }
-        if (!inode->Delete()) {
+        if (!inode->Delete(false, delete_name)) {
             SetLastError(FileSystemError::INTERNAL_ERROR);
             return false;
         }
         delete inode;
         SetLastError(FileSystemError::SUCCESS);
         return true;
+    }
+
+    void TempFileSystem::DestroyFileSystem() {
+        for (uint64_t i = 0; i < m_rootInodes.getCount(); i++) {
+            TempFSInode* inode = m_rootInodes.get(0);
+            if (inode != nullptr) {
+                inode->Delete();
+                delete inode;
+            }
+        }
     }
 
     void TempFileSystem::CreateNewRootInode(TempFSInode* inode) {
@@ -443,7 +453,7 @@ namespace TempFS {
                                 if (lastInode != nullptr)
                                     *lastInode = last_inode;
                                 if (end_index != nullptr)
-                                    *end_index = i;
+                                    *end_index = last_separator;
                                 return nullptr;
                             }
                             last_inode = inode;
@@ -471,7 +481,7 @@ namespace TempFS {
                                         if (lastInode != nullptr)
                                             *lastInode = last_inode;
                                         if (end_index != nullptr)
-                                            *end_index = i;
+                                            *end_index = last_separator;
                                         return nullptr;
                                     }
                                     if (strcmp(name, inode->GetName()) == 0) {
@@ -496,7 +506,7 @@ namespace TempFS {
                 if (lastInode != nullptr)
                     *lastInode = last_inode;
                 if (end_index != nullptr)
-                    *end_index = i;
+                    *end_index = last_separator;
                 return nullptr;
             }
             strcpy(name, &(path[last_separator + 1]));
@@ -513,7 +523,7 @@ namespace TempFS {
                     if (lastInode != nullptr)
                         *lastInode = last_inode;
                     if (end_index != nullptr)
-                        *end_index = i;
+                        *end_index = last_separator;
                     return nullptr;
                 }
                 last_inode = inode;
@@ -527,7 +537,7 @@ namespace TempFS {
                         if (lastInode != nullptr)
                             *lastInode = last_inode;
                         if (end_index != nullptr)
-                            *end_index = i;
+                            *end_index = last_separator;
                         return nullptr;
                     }
                     if (strcmp(name, inode->GetName()) == 0) {
