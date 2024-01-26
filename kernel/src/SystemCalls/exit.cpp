@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/Memory/PagingUtil.hpp>
 #include <arch/x86_64/Memory/PageMapIndexer.hpp>
 #include <arch/x86_64/Scheduling/taskutil.hpp>
+
+#include <arch/x86_64/Stack.hpp>
 #endif
 
 void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running) {
@@ -38,10 +40,10 @@ void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running)
             cleanup.function(cleanup.data);
         return;
     }
+    Scheduling::Scheduler::RemoveThread(thread);
     if (thread->GetFlags() & CREATE_STACK)
         parent->GetPageManager()->FreePages((void*)(thread->GetStack() - KiB(64)));
     ThreadCleanup_t cleanup = thread->GetCleanupFunction();
-    Scheduling::Scheduler::RemoveThread(thread);
     bool is_main_thread = parent->GetMainThread() == thread;
     parent->RemoveThread(thread);
     if (is_main_thread) {
@@ -49,12 +51,12 @@ void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running)
             Thread* i_thread = parent->GetThread(0);
             if (i_thread == nullptr)
                 break; // should never happen
+            Scheduler::RemoveThread(i_thread);
             if (i_thread->GetFlags() & CREATE_STACK)
                 parent->GetPageManager()->FreePages((void*)(i_thread->GetStack() - KiB(64)));
             cleanup = i_thread->GetCleanupFunction();
             if (cleanup.function != nullptr)
                 cleanup.function(cleanup.data);
-            Scheduler::RemoveThread(i_thread);
             parent->RemoveThread(i_thread);
             delete i_thread;
         }
@@ -69,10 +71,19 @@ void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running)
 
 void sys$exit(Scheduling::Thread* thread, int status) {
     using namespace Scheduling;
+    Thread* current_thread = Scheduler::GetCurrent();
     bool was_running = Scheduler::isRunning();
     if (was_running)
         Scheduler::Stop();
+    if (thread != current_thread) // unhandled signal received from different thread most likely.
+        do_exit(thread, status, was_running);
 #ifdef __x86_64__
+    {
+        uint64_t stack;
+        __asm__ volatile("mov %%rsp, %0" : "=r"(stack));
+        if (IN_BOUNDS(stack, (uint64_t)kernel_stack, ((uint64_t)kernel_stack + KiB(64) - 1))) // most likely in a interrupt handler
+            do_exit(thread, status, was_running);
+    }
     x86_64_PrepareThreadExit(thread, status, was_running, do_exit);
 #endif
 }

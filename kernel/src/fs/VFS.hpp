@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ struct VFS_MountPoint {
     FileSystemType type;
     FileSystem* fs;
     Inode* RootInode;
+    VFS_MountPoint* parent;
 };
 
 struct VFS_WorkingDirectory {
@@ -52,13 +53,14 @@ public:
     ~VFS();
 
     bool MountRoot(FileSystemType type);
-    bool Mount(const char* path, FileSystemType type);
+    bool Mount(FilePrivilegeLevel current_privilege, const char* path, FileSystemType type);
+    bool Unmount(FilePrivilegeLevel current_privilege, const char* path, VFS_WorkingDirectory* working_directory = nullptr);
 
     bool CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
     bool CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
     bool CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
 
-    bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false) override;
+    bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false, bool delete_name = false) override; // delete_name is not used by the VFS as it **always** deletes the name
 
     FileStream* OpenStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes, VFS_WorkingDirectory* working_directory = nullptr);
     bool CloseStream(FileStream* stream);
@@ -76,6 +78,9 @@ public:
 
 private:
     VFS_MountPoint* GetMountPoint(const char* path, VFS_WorkingDirectory* working_directory = nullptr, Inode** inode = nullptr) const;
+
+    // Get the mountpoint for a child of the given path.
+    VFS_MountPoint* GetChildMountPoint(const char* path, VFS_WorkingDirectory* working_directory = nullptr, Inode** inode = nullptr) const;
 
     bool isMountpoint(const char* path, size_t len, VFS_WorkingDirectory* working_directory = nullptr); // When false is returned, the caller **MUST** check for any errors.
 

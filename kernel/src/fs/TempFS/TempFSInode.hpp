@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,11 +30,20 @@ namespace TempFS {
 
     class TempFSInode : public Inode {
     public:
+        struct Head {
+            uint64_t CurrentOffset;
+            bool isOpen;
+            
+            void* currentBlock;
+            uint64_t currentBlockIndex;
+            size_t currentBlockOffset;
+        };
+
         TempFSInode();
         ~TempFSInode() override;
 
         bool Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, FilePrivilegeLevel privilege, size_t blockSize = PAGE_SIZE, void* extra = nullptr, uint32_t seed = 0);
-        bool Delete(bool delete_target = false); // normally just deletes this and not the target
+        bool Delete(bool delete_target = false, bool delete_name = false); // normally just deletes this and not the target
 
         bool Open() override;
         bool Close() override;
@@ -68,6 +77,9 @@ namespace TempFS {
         void SetPrivilegeLevel(FilePrivilegeLevel privilege) override;
 
         size_t GetSize() const;
+
+        void SetCurrentHead(Head head);
+        Head GetCurrentHead() const;
 
     protected:
 

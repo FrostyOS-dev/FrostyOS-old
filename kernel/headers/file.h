@@ -169,6 +169,18 @@ static inline int fchdir(fd_t file) {
     return (int)ret;
 }
 
+static inline int mount(const char* path, const char* type, const char* device) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_MOUNT), "D"(path), "S"(type), "d"(device) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
+static inline int unmount(const char* path) {
+    unsigned long ret;
+    __asm__ volatile("syscall" : "=a"(ret) : "a"(SC_UNMOUNT), "D"(path) : "rcx", "r11", "memory");
+    return (int)ret;
+}
+
 #else /* _IN_KERNEL */
 
 fd_t open(const char* path, unsigned long flags, unsigned short mode);
@@ -199,6 +211,8 @@ int getdirents(fd_t file, struct dirent* buf, unsigned long count);
 int chdir(const char* path);
 int fchdir(fd_t file);
 
+int mount(const char* path, const char* type, const char* device);
+int unmount(const char* path);
 
 #endif /* _IN_KERNEL */
 

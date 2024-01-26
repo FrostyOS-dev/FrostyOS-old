@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -105,7 +105,7 @@ void* HeapAllocator::allocate(size_t size) {
             else // This is not the first chunk in the free list
                 prev->next = curr->next;
             curr->isFree = false;
-            if (curr->size > size) {
+            if (curr->size > (size + sizeof(BlockHeader))) {
                 // Split the chunk into two blocks
                 BlockHeader* next = (BlockHeader*)((uint64_t)curr + sizeof(BlockHeader) + size);
                 next->size = curr->size - size - sizeof(BlockHeader);
@@ -153,8 +153,11 @@ size_t HeapAllocator::getTotalMem() const {
 }
 
 void HeapAllocator::AddToFreeList(BlockHeader* header) {
-    if (m_freeList == nullptr)
+    if (m_freeList == nullptr) {
         m_freeList = header;
+        header->next = nullptr;
+        return;
+    }
     // search through the list to find the correct place to insert the chunk
     BlockHeader* prev = nullptr;
     BlockHeader* curr = m_freeList;

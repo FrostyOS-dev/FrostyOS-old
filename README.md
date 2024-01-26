@@ -2,7 +2,7 @@
 
 ## COPYING
 
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,13 +17,18 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 12/01/2024
+## Latest Changes - 20/01/2024
 
-- Updated to limine 6.x.
-- Updated to limine protocol revision 1.
-- Fixed optimised memset function so it actually works.
-- Implemented LibC `ctype.h` functions.
-- Added ISO C compliance note to LibC's `stdio.h` about `gets`.
+- kmalloc improvements.
+- Userland thread exit improvements to prevent scheduling issues.
+- Fixed `open` syscall and kernel lib function `internal_open` when creating a file.
+- Added a separate *head* system for TempFSInodes. This means that an Inode's stream state can be different for each file stream that might have it open.
+- Updated VFS to create the name for an Inode instead of just using the name provided to it as the name for the inode. This was a massive security flaw.
+- Moved `util.c` and `util.h` into kernel lib.
+- Implemented proper file system destruction.
+- Implemented multiple mount point support. This required a complete rewrite of the path resolution and file/folder/symlink creation code. Symlinks can still only point to something in the same mount point.
+- Implemented `mount` and `unmount` syscalls.
+- Various other minor code clean-up across the VFS.
 
 ## Resources used
 

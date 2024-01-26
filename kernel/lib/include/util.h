@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -51,6 +51,8 @@ extern "C" {
 #define PAGE_SIZE 4096
 
 #define IN_BOUNDS(VALUE, LOW, HIGH) (LOW <= VALUE && VALUE <= HIGH)
+
+#define TODO() __assert_fail("TODO", __FILE__, __LINE__, __ASSERT_FUNCTION)
 
 void* memset(void* dst, const uint8_t value, const size_t n);
 void* memcpy(void* dst, const void* src, const size_t n);

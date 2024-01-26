@@ -70,8 +70,8 @@
         {
             "name": "LibC",
             "includePath": [
-                "${workspaceFolder}/LibC/include/*",
-                "${workspaceFolder}/LibC/src/*"
+                "${workspaceFolder}/Userland/Libraries/LibC/include/*",
+                "${workspaceFolder}/Userland/Libraries/LibC/src/*"
             ],
             "defines": [],
             "compilerPath": "/home/frosty515/dev/WorldOS/WorldOS/toolchain/local/bin/x86_64-worldos-g++",
