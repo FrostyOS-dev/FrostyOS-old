@@ -73,21 +73,21 @@ namespace AHCI {
         }
 
         // Reset the port
-        m_regs->SCTL.DET = 1;
+        /*m_regs->SCTL.DET = 1;
         sleep(1);
         m_regs->SCTL.DET = 0;
         __asm__ volatile("" ::: "memory");
         while (m_regs->SSTS.DET != 3 && m_regs->SSTS.IPM != 1)
-            __asm__ volatile("" ::: "memory");
+            __asm__ volatile("" ::: "memory");*/
 
         *((uint32_t*)&(m_regs->SERR)) = 0xFFFFFFFF;
 
         // Spin up device if supported
-        if (m_controller->GetCapabilities()->SSS == 1) {
+        /*if (m_controller->GetCapabilities()->SSS == 1) {
             dbgprintf("AHCI: Spinning up device on port %d\n", m_port_number);
             m_regs->CMD.SUD = 1;
             __asm__ volatile("" ::: "memory");
-        }
+        }*/
 
         // Set the command list address
         m_regs->CLB.CLB = ((uint64_t)m_command_list_phys & 0xFFFFFFFF) >> 10;

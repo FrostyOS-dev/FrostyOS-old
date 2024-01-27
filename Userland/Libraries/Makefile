@@ -23,6 +23,7 @@ build-libraries:
 	@echo Building LibC
 	@echo -------------
 	@$(MAKE) -C LibC build-libc
+	@$(MAKE) -C LibC install-libc
 
 distclean-libraries:
 	@$(MAKE) -C LibC distclean-libc

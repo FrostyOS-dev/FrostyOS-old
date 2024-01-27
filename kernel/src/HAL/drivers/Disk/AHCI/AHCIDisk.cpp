@@ -37,7 +37,7 @@ void AHCIDisk::Init() {
     h2d.Control = 0;
     
     AHCICommandHeader* header = m_port->GetCommandSlot();
-    memset(header, 0, sizeof(AHCICommandHeader));
+    //memset(header, 0, sizeof(AHCICommandHeader));
     header->DescriptorInformation.CFL = sizeof(FIS_RegH2D) / 4;
     header->DescriptorInformation.A = 0;
     header->DescriptorInformation.W = 0;
@@ -47,17 +47,19 @@ void AHCIDisk::Init() {
     header->DescriptorInformation.C = 1;
     header->DescriptorInformation.PMP = 0;
     header->DescriptorInformation.PRDTL = 1;
-    //header->CommandStatus = 512;
+    header->CommandStatus = 512;
 
     AHCICommandTable* cmd_header = m_port->getCommandTable(header);
+    memset(cmd_header, 0, sizeof(AHCICommandTable) - sizeof(AHCIPRDTEntry) * 65535); // table and 1 PRDT entry
+    memcpy(&(cmd_header->CFIS), &h2d, sizeof(FIS_RegH2D));
 
     AHCIPRDTEntry* prdt = cmd_header->PRDTEntries;
-    AHCI_ATAIdentify* data = (AHCI_ATAIdentify*)g_KPM->AllocatePages(DIV_ROUNDUP(512, PAGE_SIZE), PagePermissions::READ_WRITE, nullptr, true);
-    memset(data, 0, 512);
+    AHCI_ATAIdentify* data = (AHCI_ATAIdentify*)g_KPM->AllocatePage(PagePermissions::READ_WRITE);
+    memset(data, 0, 4096);
     void* data_phys = g_KPM->GetPageTable().GetPhysicalAddress(data);
     prdt->DataBaseAddress = ((uint64_t)data_phys & 0xFFFFFFFF) >> 1;
     prdt->DataBaseAddressUpper = ((uint64_t)data_phys >> 32) & 0xFFFFFFFF;
-    prdt->ByteCount = 511;
+    prdt->ByteCount = 4095;
     prdt->InterruptOnCompletion = 1;
 
     m_port->IssueCommand(header, 255, true); // fixme
@@ -85,6 +87,8 @@ void AHCIDisk::Init() {
     // Print all the sector information and largest accessible LBA
     dbgprintf("Sector size: %x\n", data->LogicalSectorSize);
     dbgprintf("Sector count: %x\n", data->TotalSectors);
+
+    while (true) {}
 }
 
 bool AHCIDisk::Read(uint8_t* buffer, uint64_t lba, uint64_t count) {

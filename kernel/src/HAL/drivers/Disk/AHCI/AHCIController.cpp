@@ -59,11 +59,11 @@ namespace AHCI {
         }
 
         // Now we reset the controller
-        m_regs->GHC.GHC.HR = 1;
+        /*m_regs->GHC.GHC.HR = 1;
         __asm__ volatile ("" ::: "memory");
         while (m_regs->GHC.GHC.HR != 0) {
             __asm__ volatile ("" ::: "memory");
-        }
+        }*/
 
         // Now we enable AHCI mode
         m_regs->GHC.GHC.AE = 1;

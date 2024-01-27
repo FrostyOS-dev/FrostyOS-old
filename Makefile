@@ -50,7 +50,7 @@ ifeq ($(config), debug)
 else ifeq ($(config), release)
 	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64
 else
-	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -M q35 -cpu qemu64 -s -d trace:ahci* -D ahci_log.txt
+	@qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -M q35 -cpu qemu64 -s -d trace:*ahci*,trace:dma*,trace:handle_cmd_*,trace:handle_reg_h2d_fis_* -D ahci_log.txt
 endif
 
 mkgpt:
@@ -62,7 +62,7 @@ mkgpt:
 	@curl -OL https://github.com/WorldOS-dev/various-scripts/raw/master/mkgpt/mkgpt.tar.gz
 	@tar -xf mkgpt.tar.gz -C depend/tools/build/mkgpt
 	@rm -fr mkgpt.tar.gz
-	@cd depend/tools/build/mkgpt && ./configure
+	@cd depend/tools/build/mkgpt && env CC=gcc LD=ld CXX=g++ ./configure
 	@$(MAKE) -C depend/tools/build/mkgpt
 	@mkdir -p depend/tools/bin depend/tools/licenses/mkgpt
 	@curl -o depend/tools/licenses/mkgpt/LICENSE https://raw.githubusercontent.com/WorldOS-dev/various-scripts/master/mkgpt/LICENSE
@@ -139,6 +139,7 @@ boot-iso: clean-os .WAIT dependencies toolchain
 	@echo Installing Kernel Headers
 	@echo -------------------------
 	@$(MAKE) -C kernel install-kernel-headers
+	@$(MAKE) -C Userland install-userland-headers
 	@$(MAKE) -C Userland build-userland
 	@$(MAKE) -C Userland install-userland
 	@$(MAKE) -C utils build
