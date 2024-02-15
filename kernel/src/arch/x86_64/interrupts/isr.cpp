@@ -71,6 +71,9 @@ void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler) 
 
 bool in_interrupt = false;
 
+extern BasicVGA* g_VGADevice;
+extern Colour g_panic_background;
+
 extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
     /* Check if there is a designated handler */
     if (g_ISRHandlers[regs->interrupt] != nullptr)
@@ -85,7 +88,7 @@ extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
         error_code.instruction_fetch = regs->error & 0x10;
         x86_64_Registers real_regs;
         x86_64_ConvertToStandardRegisters(&real_regs, regs);
-        PageFaultHandler(error_code, (void*)regs->CR2, (void*)regs->rip, &real_regs);
+        PageFaultHandler(error_code, (void*)regs->CR2, (void*)regs->rip, &real_regs, g_VGADevice, g_panic_background);
     }
     else if (regs->interrupt == 0x00 || regs->interrupt == 0x06 || regs->interrupt == 0x0D || regs->interrupt == 0x13) { // Divide by zero, Invalid opcode, General protection fault, SIMD Floating-Point Exception
         Scheduling::Thread* thread = Scheduling::Scheduler::GetCurrent();

@@ -87,6 +87,7 @@ HeapAllocator::HeapAllocator(size_t size) : m_freeList(nullptr), m_freeMem(0), m
     header->size = numBytes - sizeof(BlockHeader);
     header->isFree = true;
     header->isStartOfChunk = true;
+    header->next = nullptr;
     m_freeMem += header->size;
     m_freeList = header;
 }

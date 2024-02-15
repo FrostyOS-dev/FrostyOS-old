@@ -17,18 +17,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 20/01/2024
+## Latest Changes - 15/02/2024
 
-- kmalloc improvements.
-- Userland thread exit improvements to prevent scheduling issues.
-- Fixed `open` syscall and kernel lib function `internal_open` when creating a file.
-- Added a separate *head* system for TempFSInodes. This means that an Inode's stream state can be different for each file stream that might have it open.
-- Updated VFS to create the name for an Inode instead of just using the name provided to it as the name for the inode. This was a massive security flaw.
-- Moved `util.c` and `util.h` into kernel lib.
-- Implemented proper file system destruction.
-- Implemented multiple mount point support. This required a complete rewrite of the path resolution and file/folder/symlink creation code. Symlinks can still only point to something in the same mount point.
-- Implemented `mount` and `unmount` syscalls.
-- Various other minor code clean-up across the VFS.
+- Updated `PageFaultHandler` to actually display panic output instead of a simple page fault description.
+- Updated paging initialisation code to use 2MiB pages where possible when mapping memory map entries after 4GiB and actually check if it needs to be mapped or not properly.
+- Updated `UpdateMemorySize` function to include entry type `KERNEL_AND_MODULES` as a valid entry to actually map and include in the memory size.
+- Updated kernel heap to set the `next` parameter of the first block to `nullptr` when initialising the heap.
 
 ## Resources used
 

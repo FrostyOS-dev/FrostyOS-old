@@ -1,6 +1,13 @@
 # Changes
 
-## Latest Changes - 20/01/2024
+## Latest Changes - 15/02/2024
+
+- Updated `PageFaultHandler` to actually display panic output instead of a simple page fault description.
+- Updated paging initialisation code to use 2MiB pages where possible when mapping memory map entries after 4GiB and actually check if it needs to be mapped or not properly.
+- Updated `UpdateMemorySize` function to include entry type `KERNEL_AND_MODULES` as a valid entry to actually map and include in the memory size.
+- Updated kernel heap to set the `next` parameter of the first block to `nullptr` when initialising the heap.
+
+## 20/01/2024
 
 - kmalloc improvements.
 - Userland thread exit improvements to prevent scheduling issues.
