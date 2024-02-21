@@ -17,12 +17,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 15/02/2024
+## Latest Changes - 21/02/2024
 
-- Updated `PageFaultHandler` to actually display panic output instead of a simple page fault description.
-- Updated paging initialisation code to use 2MiB pages where possible when mapping memory map entries after 4GiB and actually check if it needs to be mapped or not properly.
-- Updated `UpdateMemorySize` function to include entry type `KERNEL_AND_MODULES` as a valid entry to actually map and include in the memory size.
-- Updated kernel heap to set the `next` parameter of the first block to `nullptr` when initialising the heap.
+- Fixed the toolchain build steps so it actually builds the toolchain.
+- Updated the `printf` family of functions to now support all flags and precision specifiers in the kernel and LibC. Still no floating point support yet.
+- Implemented the `sprintf` family of functions in the kernel and LibC. They have the same functionality as the `printf` family of functions.
+- Fixed `PageFaultHandler` to use the `snprintf` function to format the error message instead of an inlined weird kernel panic.
+- Implemented basic spinlock support. They currently aren't used anywhere.
 
 ## Resources used
 

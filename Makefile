@@ -1,4 +1,4 @@
-# Copyright (©) 2022-2023  Frosty515
+# Copyright (©) 2022-2024  Frosty515
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,7 +78,7 @@ ifeq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-ld -v 2>/dev/null | grep 2
 	@echo -----------------
 	@mkdir -p toolchain/binutils/{src,build}
 	@cd toolchain/binutils/src && git clone https://github.com/WorldOS-dev/binutils-gdb.git --depth 1 --branch binutils-2_41-release-point binutils-2.41
-	@cd toolchain/binutils/build && $(HOME)/binutils-2.41/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(SYSROOT) --disable-nls --disable-werror --enable-shared --disable-gdb
+	@cd toolchain/binutils/build && CC=gcc CXX=g++ LD=ld AR=ar NM=nm STRIP=strip ASM=as ../src/binutils-2.41/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(SYSROOT) --disable-nls --disable-werror --enable-shared --disable-gdb
 	@$(MAKE) -C toolchain/binutils/build -j4
 	@$(MAKE) -C toolchain/binutils/build install
 	@rm -fr toolchain/binutils
@@ -89,7 +89,7 @@ ifneq ("$(shell $(TOOLCHAIN_PREFIX)/bin/x86_64-worldos-gcc -dumpversion 2>/dev/n
 	@echo ------------
 	@mkdir -p toolchain/gcc/{src,build}
 	@cd toolchain/gcc/src && git clone https://github.com/WorldOS-dev/gcc.git --depth 1 --branch releases/gcc-13 gcc-13.2.1
-	@cd toolchain/gcc/build && ../src/gcc-13.2.1/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(SYSROOT) --disable-nls --enable-shared --enable-languages=c,c++
+	@cd toolchain/gcc/build && CC=gcc CXX=g++ LD=ld AR=ar NM=nm STRIP=strip ASM=as ../src/gcc-13.2.1/configure --target=x86_64-worldos --prefix="$(TOOLCHAIN_PREFIX)" --with-sysroot=$(SYSROOT) --disable-nls --enable-shared --enable-languages=c,c++
 	@$(MAKE) -C toolchain/gcc/build -j4 all-gcc all-target-libgcc
 	@$(MAKE) -C toolchain/gcc/build install-gcc install-target-libgcc
 	@rm -fr toolchain/gcc

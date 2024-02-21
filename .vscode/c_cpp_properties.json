@@ -32,7 +32,6 @@
                 "-Wno-unused-parameter",
                 "-Wno-switch",
                 "-nostdlib",
-                "-nostdinc",
                 "-ffreestanding",
                 "-fno-pie",
                 "-fstack-protector",

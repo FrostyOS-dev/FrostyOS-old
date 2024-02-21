@@ -21,6 +21,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <sys/types.h>
 #include <stdint.h>
 
+#include <kernel/file.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 pid_t fork(void);
 
 int execv(const char* pathname, char* const argv[]);
@@ -29,5 +35,9 @@ int execvp(const char* file, char* const argv[]);
 int execvpe(const char* file, char* const argv[], char* const envp[]);
 
 pid_t getpid(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _UNISTD_H */

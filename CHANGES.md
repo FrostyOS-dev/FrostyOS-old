@@ -1,6 +1,14 @@
 # Changes
 
-## Latest Changes - 15/02/2024
+## Latest Changes - 21/02/2024
+
+- Fixed the toolchain build steps so it actually builds the toolchain.
+- Updated the `printf` family of functions to now support all flags and precision specifiers in the kernel and LibC. Still no floating point support yet.
+- Implemented the `sprintf` family of functions in the kernel and LibC. They have the same functionality as the `printf` family of functions.
+- Fixed `PageFaultHandler` to use the `snprintf` function to format the error message instead of an inlined weird kernel panic.
+- Implemented basic spinlock support. They currently aren't used anywhere.
+
+## 15/02/2024
 
 - Updated `PageFaultHandler` to actually display panic output instead of a simple page fault description.
 - Updated paging initialisation code to use 2MiB pages where possible when mapping memory map entries after 4GiB and actually check if it needs to be mapped or not properly.

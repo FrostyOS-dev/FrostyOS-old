@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -55,6 +55,12 @@ int dbgvprintf(const char* format, va_list args);
 
 int fprintf(const fd_t file, const char* format, ...);
 int vfprintf(const fd_t file, const char* format, va_list args);
+
+int sprintf(char* buffer, const char* format, ...);
+int vsprintf(char* buffer, const char* format, va_list args);
+
+int snprintf(char* buffer, size_t size, const char* format, ...);
+int vsnprintf(char* buffer, size_t size, const char* format, va_list args);
 
 size_t fwrite(const void* ptr, const size_t size, const size_t count, const fd_t file);
 size_t fread(void* ptr, size_t size, size_t count, const fd_t file);
