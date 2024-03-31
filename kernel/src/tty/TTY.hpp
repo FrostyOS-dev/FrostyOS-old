@@ -25,6 +25,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "KeyboardInput.hpp"
 
+#include <spinlock.h>
+
 class TTY {
 public:
     TTY();
@@ -51,12 +53,18 @@ public:
 
     bool isInputMirroringEnabled() const;
 
+    void Lock() const;
+    void Unlock() const;
+
 private:
     BasicVGA* m_VGADevice;
     KeyboardInput* m_keyboardInput;
     Colour m_foreground;
     Colour m_background;
     bool m_inputMirroring;
+
+    mutable spinlock_t m_lock;
+    mutable bool m_locked;
 };
 
 extern TTY* g_CurrentTTY;

@@ -86,4 +86,6 @@ extern Level3Group PML3_KernelGroup; // only highest 2 entries are used
 extern Level2Group PML2_KernelLower;
 extern Level1Group PML1_KernelLowest;
 
+extern void* g_KPML4_physical;
+
 #endif /* _KERNEL_X86_64_PAGE_MAP_INDEXER_HPP */

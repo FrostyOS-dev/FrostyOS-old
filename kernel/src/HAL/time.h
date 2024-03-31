@@ -32,6 +32,8 @@ void HAL_TimeInit();
 
 void sleep(uint64_t ms);
 
+uint64_t GetTimer();
+
 time_t getTime();
 
 #ifdef __cplusplus

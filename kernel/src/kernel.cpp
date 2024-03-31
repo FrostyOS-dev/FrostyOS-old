@@ -48,6 +48,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <SystemCalls/SystemCall.hpp>
 #include <SystemCalls/exec.hpp>
 
+#include <arch/x86_64/cpuid.hpp>
+
 FrameBuffer m_InitialFrameBuffer;
 Colour g_fgcolour;
 Colour g_bgcolour;
@@ -124,6 +126,11 @@ extern "C" void StartKernel(KernelParams* params) {
 
     // Do any early initialisation
 
+    Scheduling::Scheduler::ClearGlobalData();
+    Scheduling::Scheduler::InitBSPInfo();
+
+    HAL_Stage2(params->RSDP_table);
+
     KPS2Controller = PS2Controller();
     KPS2Controller.Init();
     dbgprintf("Detected %s %s\n", KPS2Controller.getVendorName(), KPS2Controller.getDeviceName());
@@ -140,7 +147,7 @@ extern "C" void StartKernel(KernelParams* params) {
     else
         g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size, true);
 
-    KBasicVGA.EnableDoubleBuffering(g_KPM);
+    //KBasicVGA.EnableDoubleBuffering(g_KPM);
 
     KWorkingDirectory = nullptr;
 
@@ -167,7 +174,7 @@ void Kernel_Stage2(void* params_addr) {
 
     Stage2_Params* params = (Stage2_Params*)params_addr;
 
-    HAL_Stage2(params->RSDP_addr);
+    HAL_FullInit();
 
     VFS* KVFS = (VFS*)kcalloc_eternal(1, sizeof(VFS));
     g_VFS = KVFS;

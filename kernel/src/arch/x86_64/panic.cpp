@@ -32,7 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 BasicVGA* g_VGADevice;
 
-Colour g_panic_background;
+static Colour g_panic_background;
 
 void x86_64_SetPanicVGADevice(BasicVGA* device) {
     g_VGADevice = device;

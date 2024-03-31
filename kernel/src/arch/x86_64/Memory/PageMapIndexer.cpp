@@ -27,6 +27,7 @@ Level1Group __attribute__((aligned(0x1000))) PML1_KernelLowest;
 //Level3Group __attribute__((aligned(0x1000))) PML3_HHDMLowest;
 //Level2Group __attribute__((aligned(0x1000))) PML2_HHDMLowest;
 
+void* g_KPML4_physical = nullptr;
 
 void* g_kernel_physical = nullptr;
 void* g_kernel_virtual  = nullptr;

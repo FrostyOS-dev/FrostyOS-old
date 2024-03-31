@@ -81,6 +81,7 @@
     "makefile.phonyOnlyTargets": true,
     "C_Cpp.errorSquiggles": "enabled",
     "cSpell.words": [
+        "APIC",
         "bgcolour",
         "dbgprintf",
         "dbgputs",

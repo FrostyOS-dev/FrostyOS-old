@@ -6,6 +6,7 @@ dist/
 depend/
 .idea/
 toolchain/
+toolchain-old/
 root/data/lib/
 root/data/include/
 ovmf/

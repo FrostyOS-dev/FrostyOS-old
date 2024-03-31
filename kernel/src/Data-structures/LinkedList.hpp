@@ -22,6 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <assert.h>
 
+#include <spinlock.h>
+
 namespace LinkedList {
 
 	static constexpr uint64_t POOL_SIZE = 128;
@@ -174,6 +176,57 @@ namespace LinkedList {
 		uint64_t m_count;
 		Node* m_start;
 		bool m_eternal; // for a linked list that will never have nodes deleted
+	};
+
+	template <typename T> class LockableLinkedList { // has a internal simplelinkedlist and a spinlock. we do not lock automatically, so the user must lock the list before using it.
+	public:
+		LockableLinkedList(bool eternal = false) : m_list(eternal), m_lock() {}
+		~LockableLinkedList() {
+			spinlock_acquire(&m_lock);
+			m_list.~SimpleLinkedList();
+			spinlock_release(&m_lock);
+		}
+
+		void insert(const T* obj) {
+			m_list.insert(obj);
+		}
+		T* get(uint64_t index) const {
+			return m_list.get(index);
+		}
+		uint64_t getIndex(const T* obj) const {
+			return m_list.getIndex(obj);
+		}
+		void remove(uint64_t index) {
+			m_list.remove(index);
+		}
+		void remove(const T* obj) {
+			m_list.remove(obj);
+		}
+		void rotateLeft() {
+			m_list.rotateLeft();
+		}
+		void rotateRight() {
+			m_list.rotateRight();
+		}
+		T* getHead() {
+			return m_list.getHead();
+		}
+		void fprint(const fd_t file) {
+			m_list.fprint(file);
+		}
+		uint64_t getCount() const {
+			return m_list.getCount();
+		}
+
+		void lock() {
+			spinlock_acquire(&m_lock);
+		}
+		void unlock() {
+			spinlock_release(&m_lock);
+		}
+	private:
+		SimpleLinkedList<T> m_list;
+		spinlock_t m_lock;
 	};
 
 }

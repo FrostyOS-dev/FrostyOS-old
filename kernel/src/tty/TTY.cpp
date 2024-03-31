@@ -29,11 +29,11 @@ void HandleKeyboardEvent(void* data, char c) {
 
 TTY* g_CurrentTTY = nullptr;
 
-TTY::TTY() : m_VGADevice(nullptr), m_foreground(), m_background() {
+TTY::TTY() : m_VGADevice(nullptr), m_foreground(), m_background(), m_lock(0), m_locked(false) {
 
 }
 
-TTY::TTY(BasicVGA* VGADevice, KeyboardInput* input, const Colour& fg_colour, const Colour& bg_colour) : m_VGADevice(VGADevice), m_keyboardInput(input), m_foreground(fg_colour), m_background(bg_colour) {
+TTY::TTY(BasicVGA* VGADevice, KeyboardInput* input, const Colour& fg_colour, const Colour& bg_colour) : m_VGADevice(VGADevice), m_keyboardInput(input), m_foreground(fg_colour), m_background(bg_colour), m_lock(0), m_locked(false) {
     if (m_keyboardInput != nullptr)
         m_keyboardInput->OnKey(HandleKeyboardEvent, this);
 }
@@ -138,4 +138,14 @@ void TTY::DisableInputMirroring() {
 
 bool TTY::isInputMirroringEnabled() const {
     return m_inputMirroring;
+}
+
+void TTY::Lock() const {
+    spinlock_acquire(&m_lock);
+    m_locked = true;
+}
+
+void TTY::Unlock() const {
+    m_locked = false;
+    spinlock_release(&m_lock);
 }

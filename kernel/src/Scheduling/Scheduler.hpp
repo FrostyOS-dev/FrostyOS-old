@@ -28,6 +28,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Data-structures/LinkedList.hpp>
 
+#ifdef __x86_64__
+#include <arch/x86_64/Processor.hpp>
+#endif
+
 // The scheduler needs to switch task every 40ms and the timer runs at 200Hz (or a tick every 5ms), so we need to switch every 8 ticks.
 
 #define MS_PER_SCHEDULER_CYCLE 40
@@ -37,10 +41,32 @@ namespace Scheduling {
 
     namespace Scheduler {
 
+        struct ProcessorInfo {
+            Processor* processor;
+            uint64_t id;
+            uint8_t kernel_run_count; // the amount of times a kernel thread has been run in a row
+            uint8_t high_run_count;   // the amount of times a high thread has been run in a row
+            uint8_t normal_run_count; // the amount of times a normal thread has been run in a row
+            Thread* current_thread;
+            bool running;
+            size_t ticks;
+            uint32_t start_allowed; // when this is locked, the processor is not allowed to run anything
+        };
+
+        void ClearGlobalData();
+
+        void InitBSPInfo();
+
         void AddProcess(Process* process);
         void RemoveProcess(Process* process);
         void ScheduleThread(Thread* thread);
         void RemoveThread(Thread* thread);
+
+        void AddProcessor(Processor* processor);
+        Processor* GetProcessor(uint8_t ID);
+        ProcessorInfo* GetProcessorInfo(Processor* processor);
+
+        void InitProcessorTimers();
 
         void __attribute__((noreturn)) Start();
 
@@ -51,7 +77,7 @@ namespace Scheduling {
         // Called when a thread ends. Responsible for cleanup
         void End();
 
-        void PickNext();
+        void PickNext(ProcessorInfo* info = nullptr); // info points to the CPU which we want to pick the next thread for. If nullptr, the current CPU is used.
 
         Thread* GetCurrent();
 
