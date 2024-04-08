@@ -9,6 +9,7 @@ toolchain/
 root/data/lib/
 root/data/include/
 ovmf/
+build/
 
 # Files
 kernel/src/limine.h

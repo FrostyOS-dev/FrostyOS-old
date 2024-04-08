@@ -62,6 +62,8 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
         case 0: // File
             {
             assert(g_VFS->CreateFile({0, 0, 07777}, parent, name, size, false, privilege));
+            if (size == 0)
+                break;
             FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, header->filepath, VFS_READ | VFS_WRITE);
             assert(stream != nullptr);
             assert(stream->Open());
