@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-# Copyright (©) 2022-2024  Frosty515
+# Copyright (©) 2024  Frosty515
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,4 +15,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-toolchain/local/bin/x86_64-worldos-nm -C --format=bsd $1
+# Exit on error
+set -e
+
+# Update OVMF firmware variables
+
+# Check if ovmf/x86-64/OVMF_VARS.fd exists
+if [ -f "ovmf/x86-64/OVMF_VARS.fd" ]; then
+    exit 0
+fi
+
+# Copy OVMF firmware variables from /usr/share/edk2/ovmf/OVMF_VARS.fd
+
+mkdir -p ovmf/x86-64
+cp /usr/share/edk2/x64/OVMF_VARS.fd ovmf/x86-64

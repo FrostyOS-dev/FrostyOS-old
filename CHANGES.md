@@ -1,5 +1,15 @@
 # Changes
 
+## Latest Changes - 08/04/2024
+
+- Update the initramfs initialisation to check if the file siz of and item is zero.
+- Convert build system over to CMake. The old Makefile-based system will remain for now, but it is deprecated.
+- The toolchain and mkgpt are now built with shell scripts called from CMake.
+- OVMF_VARS is now updated using a shell script called from CMake.
+- Updated resources that are used.
+- Updated build/run instructions.
+- Updated various requirements to be less strict as it is unnecessary.
+
 ## Latest Changes - 21/02/2024
 
 - Fixed the toolchain build steps so it actually builds the toolchain.

@@ -1,6 +1,4 @@
-#!/bin/bash
-
-# Copyright (©) 2022-2024  Frosty515
+# Copyright (©) 2024  Frosty515
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,4 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-toolchain/local/bin/x86_64-worldos-nm -C --format=bsd $1
+add_custom_target(Userland)
+
+add_dependencies(Userland Libraries Programs)
+
+add_subdirectory(Libraries)
+add_subdirectory(Programs)

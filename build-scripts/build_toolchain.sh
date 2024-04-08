@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-# Copyright (©) 2022-2024  Frosty515
+# Copyright (©) 2024  Frosty515
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,4 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-toolchain/local/bin/x86_64-worldos-nm -C --format=bsd $1
+# Exit on error
+set -e
+
+mkdir -p $TOOLCHAIN_PREFIX
+
+# Check if architecture isn't x86_64
+if [ "$(uname -m | grep -v 'x86_64')" ]; then
+    echo "This script is for x86_64 only."
+    exit 1
+fi
+
+build-scripts/Toolchain/x86_64/build_binutils.sh
+build-scripts/Toolchain/x86_64/build_gcc.sh

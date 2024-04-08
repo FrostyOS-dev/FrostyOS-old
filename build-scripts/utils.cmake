@@ -1,6 +1,4 @@
-#!/bin/bash
-
-# Copyright (©) 2022-2024  Frosty515
+# Copyright (©) 2024  Frosty515
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,4 +13,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-toolchain/local/bin/x86_64-worldos-nm -C --format=bsd $1
+function(download_file url path)
+    if (NOT EXISTS ${path})
+        get_filename_component(file ${path} NAME)
+
+        message(STATUS "Downloading ${file} from ${url}")
+
+        file(DOWNLOAD "${url}" "${path}" INACTIVITY_TIMEOUT 10 STATUS download_result)
+        list(GET download_result 0 status_code)
+        list(GET download_result 1 error_message)
+
+        if (NOT status_code EQUAL 0)
+            message(FATAL_ERROR "Failed to download ${file}: ${error_message}")
+        endif()
+    endif()
+endfunction()

@@ -1,0 +1,50 @@
+#!/bin/sh
+
+# Copyright (©) 2024  Frosty515
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# Exit on error
+set -e
+
+mkdir -p $TOOLCHAIN_PREFIX
+
+# Now check that x86_64-worldos-gcc is version 13.2.1
+
+if [ -f "$TOOLCHAIN_PREFIX/bin/x86_64-worldos-gcc" ]; then
+    if [ "$($TOOLCHAIN_PREFIX/bin/x86_64-worldos-gcc -dumpversion | grep '13.2.1')" ]; then
+        echo "x86_64-worldos GCC is up to date."
+        exit 0
+    fi
+fi
+
+# Install kernel and LibC headers
+mkdir -p $SYSROOT/data/include/kernel
+cp -r kernel/headers/* $SYSROOT/data/include/kernel/
+cp -r Userland/Libraries/LibC/include/* $SYSROOT/data/include/
+
+# Install x86_64-worldos-gcc
+
+echo ------------
+echo Building GCC
+echo ------------
+mkdir -p toolchain/gcc/{src,build}
+cd toolchain/gcc/src
+git clone https://github.com/WorldOS-dev/gcc.git --depth 1 --branch releases/gcc-13 gcc-13.2.1
+cd ../build
+../src/gcc-13.2.1/configure --target=x86_64-worldos --prefix="$TOOLCHAIN_PREFIX" --with-sysroot=$SYSROOT --disable-nls --enable-shared --enable-languages=c,c++
+make -j$(nproc) all-gcc all-target-libgcc
+make install-gcc install-target-libgcc
+cd ../../..
+rm -fr toolchain/gcc

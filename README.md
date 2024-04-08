@@ -21,13 +21,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 21/02/2024
+## Latest Changes - 08/04/2024
 
-- Fixed the toolchain build steps so it actually builds the toolchain.
-- Updated the `printf` family of functions to now support all flags and precision specifiers in the kernel and LibC. Still no floating point support yet.
-- Implemented the `sprintf` family of functions in the kernel and LibC. They have the same functionality as the `printf` family of functions.
-- Fixed `PageFaultHandler` to use the `snprintf` function to format the error message instead of an inlined weird kernel panic.
-- Implemented basic spinlock support. They currently aren't used anywhere.
+- Update the initramfs initialisation to check if the file siz of and item is zero.
+- Convert build system over to CMake. The old Makefile-based system will remain for now, but it is deprecated.
+- The toolchain and mkgpt are now built with shell scripts called from CMake.
+- OVMF_VARS is now updated using a shell script called from CMake.
+- Updated resources that are used.
+- Updated build/run instructions.
+- Updated various requirements to be less strict as it is unnecessary.
 
 ## Resources used
 
@@ -36,7 +38,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
 - [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful. `rand` function from this project
 - [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
-- [SerenityOS](https://github.com/SerenityOS/serenity) - inspired system call entry, file descriptor management and directory layout
+- [SerenityOS](https://github.com/SerenityOS/serenity) - inspired system call entry, file descriptor management, directory layout and build system.
 
 ## Prerequisites
 
@@ -49,46 +51,42 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #### OS build/run
 
 - mtools
-- qemu version 4 or higher
+- recent QEMU
 - curl
-- make
+- make (only for using legacy build system)
 - git
 - nasm
-- ovmf
-- GNU tar
+- ovmf (assumed to be installed to /usr/share/edk2/x64)
+- POSIX-compatible tar
+- CMake
+- Ninja
 
 #### Toolchain build
 
-- gcc/g++ version 9 or higher
+- recent gcc/g++
 - make
 - bison
 - flex
 - gmp
 - libmpc
 - mpfr
-- binutils version 2 or higher (only for binutils builds)
+- recent binutils
 - libtool
-- patch
 - git
 
 #### mkgpt build
 
-- gcc/g++ version 9 or higher
-- m4
-- autoconf
-- automake 1.15 or newer
-- binutils version 2 or higher
+- recent gcc/g++
+- recent binutils
+- make
 
 See notes if your system cannot meet these requirements
 
 ### System Requirements
 
-- At least 256MiB able to be allocated to QEMU.
+- The default is for 256MiB to be allocated to QEMU, but all this isn't really needed.
 - Host that is capable of running x86_64 virtual machines in QEMU.
-- Host must be capable of allocating 1 core to a x86_64 QEMU virtual machine.
-- Host must have KVM support
-
-If you cannot meet these requirements, see notes
+- Default is to use KVM acceleration, but it can be disabled.
 
 ### **Windows**
 
@@ -114,29 +112,33 @@ If you cannot meet these requirements, see notes
 
 #### Debian
 
-- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm libtool patch ovmf`
+- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git bash nasm libtool patch ovmf cmake ninja-build`
 
 #### Fedora/RHEL
 
-- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm libtool patch edk2-ovmf`
+- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu gitbinutils bash nasm libtool patch edk2-ovmf cmake ninja-build`
 
 #### Arch
 
-- run `sudo pacman -Syu base-devel gmp libmpc mpfr mtools curl qemu git bash nasm`
+- run `sudo pacman -Syu base-devel gmp libmpc mpfr mtools curl qemu git bash nasm cmake ninja`
 
 #### Gentoo
 
-- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch sys-firmware/edk2-ovmf`
+- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch sys-firmware/edk2-ovmf dev-build/cmake dev-build/ninja`
 
 ---
 
 ## Building
 
-1. run `make -j<jobs>` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<jobs>` should be the amount of parallel threads to run. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed
+1. run `cd utils && mkdir build && cd build && cmake -GNinja .. && ninja && ninja install && cd .. && rm -fr build && cd ..` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). This will automatically build with the number of jobs that `nproc` reports are possible. This will build and install the host system utilities to `utils/bin`. **This only needs to be run for the first build.**
+2. run `build-scripts/enter-environment.sh`. This will drop you into a new shell with your `$PATH` updated to include the toolchain. **This only needs to be run once per terminal session.**
+3. run `WORLDOS_BUILD_CONFIG=<config> build-scripts/build.sh` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<config>` should be either `Debug` or `Release`. This will automatically build with the number of jobs that `nproc` reports are possible. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
 
 ## Build and Run - Unix like, Windows 11 and Windows 10 method 2
 
-1. run `make -j<jobs> config=<config>` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<jobs>` should be the amount of parallel threads to run. `<config>` should be either `debug` or `release`. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
+1. run `cd utils && mkdir build && cd build && cmake -GNinja .. && ninja && ninja install && cd .. && rm -fr build && cd ..` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). This will automatically build with the number of jobs that `nproc` reports are possible. This will build and install the host system utilities to `utils/bin`. **This only needs to be run for the first build.**
+2. run `build-scripts/enter-environment.sh`. This will drop you into a new shell with your `$PATH` updated to include the toolchain. **This only needs to be run once per terminal session.**
+3. run `WORLDOS_BUILD_CONFIG=<config> build-scripts/run.sh` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<config>` should be either `Debug` or `Release`. This will automatically build with the number of jobs that `nproc` reports are possible. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
 
 ## Running - Other
 
@@ -156,14 +158,13 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### System Requirement info
 
-- You might be able to run WorldOS with less RAM (by changing the '256M' to the amount of RAM you want), but I cannot guarantee that it would run on any less than 256MiB.
-- You computer **must** be capable of virtualization to run WorldOS in a VM.
-- You can allocate more than 1 core, but only 1 will be used.
+- You should be able to run WorldOS with less RAM (by changing the '256M' to the amount of RAM you want), but I have not test it with less.
+- There is no point trying to allocate more than 1 core, as only the first core is used.
 - KVM can be disabled, you will just need to remove `-machine accel=kvm` from the QEMU command line. It doesn't make much of a performance boost by using it, so it doesn't *have* to be enabled.
 
 ### Program Requirement info
 
-- You can use alternatives to `curl` (such as `wget`), but you will have to modify the `Makefile`.
+- You can use alternatives to `curl` (such as `wget`), but you will have to modify the `build-scripts/utils.cmake`.
 
 ### Building and Running
 
