@@ -19,6 +19,9 @@ if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/isrs.asm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/isrs_gen.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/pic.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/APIC/IOAPIC.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/APIC/IPI.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/APIC/LocalAPIC.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/IRQ.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/isr.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Memory/PagingUtil.asm
@@ -30,6 +33,7 @@ if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Scheduling/taskutil.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Scheduling/taskutil.asm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/CMOS.asm
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/E9.c
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/GDT.asm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/RTC.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/TSS.asm
@@ -41,11 +45,11 @@ if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/ELFSymbols.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Stack.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/8042PS2Controller.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/APStartup.asm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/GDT.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/PIT.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/TSS.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Processor.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/panic.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/E9.c
     )
 
     set(kernel_lib_sources
@@ -73,10 +77,13 @@ set(kernel_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Graphics/Colour.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Graphics/VGA.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Graphics/VGAFont.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/HPET.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/MADT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/MCFG.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/RSDP.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/SDT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/XSDT.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/HPET.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/Keyboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/PCI.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/PS2/PS2Controller.cpp
