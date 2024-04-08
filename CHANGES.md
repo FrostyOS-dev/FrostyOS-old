@@ -10,7 +10,7 @@
 - Updated build/run instructions.
 - Updated various requirements to be less strict as it is unnecessary.
 
-## Latest Changes - 21/02/2024
+## 21/02/2024
 
 - Fixed the toolchain build steps so it actually builds the toolchain.
 - Updated the `printf` family of functions to now support all flags and precision specifiers in the kernel and LibC. Still no floating point support yet.
