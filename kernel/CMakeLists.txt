@@ -179,8 +179,8 @@ target_link_options(kernel
 target_compile_definitions(kernel PRIVATE _IS_IN_KERNEL=1)
 
 add_custom_target(install_kernel_headers ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/include/kernel
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/headers ${CMAKE_INSTALL_PREFIX}/include/kernel
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/include/kernel
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/headers ${WORLDOS_INSTALL_PREFIX}/include/kernel
 )
 
 add_custom_target(create_dist_dir ALL

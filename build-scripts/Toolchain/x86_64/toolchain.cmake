@@ -46,7 +46,7 @@ set(WORLDOS_ARCHITECTURE x86_64)
 
 set(SYSROOT ${CMAKE_SOURCE_DIR}/root)
 
-set(CMAKE_INSTALL_PREFIX ${SYSROOT}/data)
+set(WORLDOS_INSTALL_PREFIX ${SYSROOT}/data)
 
 set(CMAKE_CXX_FLAGS "-fno-exceptions -fno-rtti")
 set(CMAKE_C_FLAGS "")
