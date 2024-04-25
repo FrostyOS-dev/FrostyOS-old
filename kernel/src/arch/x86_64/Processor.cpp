@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "interrupts/IDT.hpp"
 #include "interrupts/isr.hpp"
 #include "interrupts/IRQ.hpp"
+#include "interrupts/NMI.hpp"
 #include "interrupts/pic.hpp"
 
 #include "Memory/PagingInit.hpp"
@@ -31,6 +32,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Scheduling/syscall.h"
 
 #include <Scheduling/Scheduler.hpp>
+
+void __attribute__((noreturn)) x86_64_StopRequestHandler() {
+    Processor* proc = GetCurrentProcessor();
+    proc->StopThis();
+}
 
 Processor::Processor(bool BSP) : m_BSP(BSP), m_kernel_stack(nullptr), m_kernel_stack_size(0), m_LocalAPIC(nullptr) {
 
@@ -56,6 +62,7 @@ void Processor::Init(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t
         m_kernel_stack = kernel_stack;
         m_kernel_stack_size = kernel_stack_size;
         x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ((fb.bpp >> 3) * fb.FrameBufferHeight * fb.FrameBufferWidth), HHDM_start);
+        x86_64_NMIInit();
     }
     else
         m_kernel_stack_size = KERNEL_STACK_SIZE; // m_kernel_stack is set in the APs early startup
@@ -79,7 +86,12 @@ x86_64_LocalAPIC* Processor::GetLocalAPIC() const {
 }
 
 Processor* GetCurrentProcessor() {
-    return Scheduling::Scheduler::GetProcessor(GetCurrentProcessorID());
+    Scheduling::Scheduler::ProcessorInfo* info = (Scheduling::Scheduler::ProcessorInfo*)x86_64_get_kernel_gs_base();
+    return info->processor;
+}
+
+Scheduling::Scheduler::ProcessorInfo* GetCurrentProcessorInfo() {
+    return (Scheduling::Scheduler::ProcessorInfo*)x86_64_get_kernel_gs_base();
 }
 
 uint8_t GetCurrentProcessorID() {
@@ -93,4 +105,10 @@ void Processor::InitialiseLocalAPIC() {
         if (!m_BSP)
             Scheduling::Scheduler::AddProcessor(this);
     }
+}
+
+void __attribute__((noreturn)) Processor::StopThis() {
+    __asm__ volatile("cli");
+    while (true)
+        __asm__ volatile("hlt");
 }

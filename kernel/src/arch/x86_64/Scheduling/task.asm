@@ -1,4 +1,4 @@
-; Copyright (©) 2022-2023  Frosty515
+; Copyright (©) 2022-2024  Frosty515
 ; 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -193,4 +193,14 @@ x86_64_set_kernel_gs_base:
     mov edx, edi
     mov rcx, 0xc0000102
     wrmsr
+    ret
+
+global x86_64_get_kernel_gs_base:
+x86_64_get_kernel_gs_base:
+    xor rdx, rdx
+    xor rax, rax
+    mov rcx, 0xc0000102
+    rdmsr
+    shl rdx, 32
+    or rax, rdx
     ret

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -83,6 +83,12 @@ struct Stage2_Params {
     size_t initramfs_size;
 } Kernel_Stage2Params;
 
+Scheduling::Thread* Thread2;
+
+void Thread2_Loop(void*) {
+    while (true) {}
+}
+
 extern "C" void StartKernel(KernelParams* params) {
     m_Stage = EARLY_STAGE;
     m_InitialFrameBuffer = params->frameBuffer;
@@ -160,6 +166,9 @@ extern "C" void StartKernel(KernelParams* params) {
     KProcess = new Scheduling::Process(Kernel_Stage2, (void*)&Kernel_Stage2Params, 0, 0, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
     KProcess->SetDefaultWorkingDirectory(KWorkingDirectory);
     KProcess->Start();
+
+    Thread2 = new Scheduling::Thread(KProcess, Thread2_Loop, nullptr, Scheduling::THREAD_KERNEL_DEFAULT);
+    Thread2->Start();
 
     Scheduling::Scheduler::Start();
 

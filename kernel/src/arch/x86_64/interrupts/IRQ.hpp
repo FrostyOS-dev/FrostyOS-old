@@ -24,6 +24,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 typedef void (*x86_64_IRQHandler_t)(x86_64_Interrupt_Registers* regs);
 
+/*
+0x00-0x1F - reserved for exceptions
+0x20-0x2F - reserved for the legacy 8259 PICs
+0x30-0xEF - available for I/O APICs
+0xF0      - LAPIC timer
+0xF1-0xFF - LAPIC/IPI reserved
+*/
+
 void x86_64_IRQ_EarlyInit(); // just configure and disable the PIC
 void x86_64_IRQ_FullInit(); // get the I/O APIC(s) ready
 void x86_64_IRQ_RegisterHandler(const uint8_t irq, x86_64_IRQHandler_t handler);

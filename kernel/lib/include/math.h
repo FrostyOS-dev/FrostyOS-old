@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -66,6 +66,8 @@ ldiv_t ldiv(long numer, long denom);
 uldiv_t uldiv(unsigned long numer, unsigned long denom);
 
 unsigned char log2(unsigned long int num);
+
+unsigned char get_lsb(unsigned long int num); // get the lowest set bit
 
 #ifdef __cplusplus
 }

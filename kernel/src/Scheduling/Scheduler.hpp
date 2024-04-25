@@ -32,10 +32,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/Processor.hpp>
 #endif
 
-// The scheduler needs to switch task every 40ms and the timer runs at 200Hz (or a tick every 5ms), so we need to switch every 8 ticks.
+// The scheduler needs to switch task every 40ms and the timer runs at 1kHz (or a tick every 1ms), so we need to switch every 40 ticks.
 
 #define MS_PER_SCHEDULER_CYCLE 40
 #define TICKS_PER_SCHEDULER_CYCLE MS_PER_SCHEDULER_CYCLE / MS_PER_TICK
+
 
 namespace Scheduling {
 
@@ -44,6 +45,7 @@ namespace Scheduling {
         struct ProcessorInfo {
             Processor* processor;
             uint64_t id;
+            Thread::Register_Frame thread_metadata;
             uint8_t kernel_run_count; // the amount of times a kernel thread has been run in a row
             uint8_t high_run_count;   // the amount of times a high thread has been run in a row
             uint8_t normal_run_count; // the amount of times a normal thread has been run in a row
@@ -51,7 +53,7 @@ namespace Scheduling {
             bool running;
             size_t ticks;
             uint32_t start_allowed; // when this is locked, the processor is not allowed to run anything
-        };
+        } __attribute__((packed));
 
         void ClearGlobalData();
 
@@ -65,6 +67,9 @@ namespace Scheduling {
         void AddProcessor(Processor* processor);
         Processor* GetProcessor(uint8_t ID);
         ProcessorInfo* GetProcessorInfo(Processor* processor);
+        void RemoveProcessor(Processor* processor);
+
+        void SetThreadFrame(ProcessorInfo* info, Thread::Register_Frame* frame);
 
         void InitProcessorTimers();
 
@@ -83,10 +88,17 @@ namespace Scheduling {
 
         void TimerTick(void* iregs); // Only to be called in timer IRQ
 
+        // Is the scheduler running globally.
+        bool GlobalIsRunning();
+
+        // Is the scheduler running on this CPU
         bool isRunning();
 
         void Stop();
         void Resume();
+
+        void StopGlobal();
+        void ResumeGlobal();
 
         void SleepThread(Thread* thread, uint64_t ms);
 

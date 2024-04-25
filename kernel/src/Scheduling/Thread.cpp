@@ -101,7 +101,7 @@ namespace Scheduling {
         return m_cleanup;
     } 
 
-    void* Thread::GetStackRegisterFrame() const {
+    Thread::Register_Frame* Thread::GetStackRegisterFrame() const {
         return &m_frame;
     }
 

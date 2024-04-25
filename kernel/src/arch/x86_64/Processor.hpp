@@ -29,6 +29,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "interrupts/APIC/LocalAPIC.hpp"
 
+namespace Scheduling::Scheduler {
+    struct ProcessorInfo;
+}
+
 class Processor {
 public:
     Processor(bool BSP);
@@ -46,6 +50,8 @@ public:
         return offsetof(Processor, m_kernel_stack);
     }
 
+    void __attribute__((noreturn)) StopThis(); // Stops the current processor
+
 private:
     bool m_BSP;
 
@@ -60,7 +66,10 @@ private:
 };
 
 Processor* GetCurrentProcessor();
+Scheduling::Scheduler::ProcessorInfo* GetCurrentProcessorInfo();
 
 uint8_t GetCurrentProcessorID();
+
+void __attribute__((noreturn)) x86_64_StopRequestHandler();
 
 #endif /* _X86_64_PROCESSOR_HPP */

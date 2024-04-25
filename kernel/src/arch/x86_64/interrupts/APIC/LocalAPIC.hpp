@@ -1,8 +1,31 @@
+/*
+Copyright (©) 2024  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #ifndef _X86_64_LOCAL_APIC_HPP
 #define _X86_64_LOCAL_APIC_HPP
 
 #include <stdint.h>
 #include <spinlock.h>
+
+#include "../isr.hpp"
+
+#include <Data-structures/LinkedList.hpp>
+
+#define LAPIC_TIMER_INT 0xF0
 
 struct x86_64_LocalAPICRegisters {
 #define LAPIC_REGISTER(name) uint32_t name; uint32_t _align_##name[3]
@@ -61,6 +84,8 @@ struct x86_64_LocalAPICRegisters {
 #undef LAPIC_REGISTER
 } __attribute__((packed));
 
+void x86_64_LAPIC_TimerCallback(x86_64_Interrupt_Registers* regs);
+
 class x86_64_LocalAPIC {
 public:
     x86_64_LocalAPIC(void* baseAddress, bool BSP, uint8_t ID);
@@ -76,15 +101,24 @@ public:
 
     uint8_t GetID() const;
 
-private:
-    void LAPICTimerCallback();
+    void LAPICTimerCallback(x86_64_Interrupt_Registers* regs);
+
+    x86_64_LocalAPICRegisters* GetRegisters() {
+        return m_registers;
+    }
 
 private:
     x86_64_LocalAPICRegisters* m_registers;
     bool m_BSP;
     uint8_t m_ID;
     spinlock_t m_timerLock;
-    uint64_t m_timerComplete;
+    
+    uint64_t m_timer_base_freq;
+    uint64_t m_timer_current_freq;
+    uint64_t m_timer_rticks_per_tick;
+    uint64_t m_timer_current_count; // just used to divide correctly
 };
+
+x86_64_LocalAPIC* x86_64_GetCurrentLocalAPIC();
 
 #endif /* _X86_64_LOCAL_APIC_HPP */

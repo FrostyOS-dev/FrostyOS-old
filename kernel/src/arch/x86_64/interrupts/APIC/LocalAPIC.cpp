@@ -1,14 +1,37 @@
+/*
+Copyright (©) 2024  Frosty515
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include "LocalAPIC.hpp"
 #include "IPI.hpp"
 
-#include <string.h>
-#include <util.h>
+#include "../pic.hpp"
 
+#include "../../cpuid.hpp"
 #include "../../io.h"
-#include "../../Processor.hpp"
 #include "../../PIT.hpp"
+#include "../../Processor.hpp"
 
 #include "../../Memory/PageMapIndexer.hpp"
+
+#include "../../Scheduling/taskutil.hpp"
+
+#include <math.h>
+#include <string.h>
+#include <util.h>
 
 #include <Memory/PageManager.hpp>
 
@@ -16,13 +39,17 @@
 #include <HAL/time.h>
 #include <HAL/drivers/HPET.hpp>
 
-#include "../pic.hpp"
+#include <Scheduling/Scheduler.hpp>
 
 
 extern void* ap_trampoline;
 
 extern "C" {
 uint64_t aps_running;
+}
+
+void x86_64_LAPIC_TimerCallback(x86_64_Interrupt_Registers* regs) {
+    x86_64_GetCurrentLocalAPIC()->LAPICTimerCallback(regs);
 }
 
 x86_64_LocalAPIC::x86_64_LocalAPIC(void* baseAddress, bool BSP, uint8_t ID) : m_registers((x86_64_LocalAPICRegisters*)baseAddress), m_BSP(BSP), m_ID(ID), m_timerLock(0) {
@@ -56,11 +83,11 @@ void x86_64_LocalAPIC::StartCPU() {
         //x86_64_unmap_page(&K_PML4_Array, (void*)0x0000);
         uint64_t old_aps_running = aps_running;
         m_registers->ErrorStatus = 0; // clear errors
-        x86_64_SendIPI(m_registers, 0, x86_64_IPI_DeliveryMode::INIT, false, false, 0, m_ID); // send INIT IPI
-        x86_64_SendIPI(m_registers, 0, x86_64_IPI_DeliveryMode::INIT, true, false, 0, m_ID); // deassert
+        x86_64_SendIPI(m_registers, 0, x86_64_IPI_DeliveryMode::INIT, false, false, x86_64_IPI_DestinationShorthand::NoShorthand, m_ID); // send INIT IPI
+        x86_64_SendIPI(m_registers, 0, x86_64_IPI_DeliveryMode::INIT, true, false, x86_64_IPI_DestinationShorthand::NoShorthand, m_ID); // deassert
         for (int i = 0; i < 2; i++) {
             m_registers->ErrorStatus = 0; // clear errors
-            x86_64_SendIPI(m_registers, 0x00, x86_64_IPI_DeliveryMode::StartUp, false, false, 0, m_ID); // send SIPI
+            x86_64_SendIPI(m_registers, 0x00, x86_64_IPI_DeliveryMode::StartUp, false, false, x86_64_IPI_DestinationShorthand::NoShorthand, m_ID); // send SIPI
             uint64_t current_time = GetTimer();
             while (aps_running == old_aps_running && (GetTimer() - current_time) < (i == 0 ? 1 : 1000)) { // timeout of 1ms for first attempt, 1000ms for second
                 __asm__ volatile("" ::: "memory");
@@ -110,23 +137,70 @@ void x86_64_LocalAPIC::InitTimer() {
 
     // we set the APIC timer to periodic mode
     uint32_t lvt_timer = volatile_read32(m_registers->LVT_TIMER);
-    lvt_timer &= 0xFFFCFF00; // clear vector and mode
-    lvt_timer |= 0x20000; // periodic mode
+    lvt_timer &= 0xFFF9FF00; // clear vector and mode (will run in one-shot mode)
     volatile_write32(m_registers->LVT_TIMER, lvt_timer);
 
     // divide by 16
     volatile_write32(m_registers->DivideConfiguration, 0x3);
 
-    // we wait for 1ms of the HAL timer
-    while(!g_HPET->StartTimer(1'000'000'000'000, (HPETCallback)&x86_64_LocalAPIC::LAPICTimerCallback, this)) {
-        dbgprintf("Warning: HPET timer failed to start for LAPIC timer init on CPU %hu\n", m_ID);
-        sleep(1);
-    }
-    volatile_write32(m_registers->InitialCount, -1);
-    __atomic_store_8(&m_timerComplete, 1, __ATOMIC_SEQ_CST);
-    x86_64_EnableInterrupts();
-    while (__atomic_load_8(&m_timerComplete, __ATOMIC_SEQ_CST) != 0)
+    // we poll for 10ms to pass on the HPET, and see how many LAPIC ticks have occurred.
+
+    uint64_t msInHPETTicks = 10'000'000'000'000 / g_HPET->GetClockPeriod();
+
+    uint64_t start = g_HPET->GetMainCounter();
+    volatile_write32(m_registers->InitialCount, 0xFFFFFFFF);
+    __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    while (true) {
+        uint64_t current = g_HPET->GetMainCounter();
+        if ((current - start) >= msInHPETTicks)
+            break;
         __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    }
+    uint64_t ticksIn1ms = (0xFFFFFFFF - volatile_read32(m_registers->CurrentCount)) * 16;
+
+    // stop the timer for now
+    volatile_write32(m_registers->InitialCount, 0);
+    
+    uint64_t freq = ticksIn1ms * 100;
+    dbgprintf("LAPIC %hu timer run as %luHz. There are %lu ticks in 10ms.\n", m_ID, freq, ticksIn1ms);
+    // align freq to nearest 100kHz
+    freq = (freq + 50'000) / 100'000 * 100'000;
+    m_timer_base_freq = freq;
+    uint64_t divisor = m_timer_base_freq / 1'000; // 1kHz
+    uint8_t real_divisor_shift = min(get_lsb(divisor), 7);
+    uint64_t real_divisor = divisor >> real_divisor_shift;
+    m_timer_current_freq = m_timer_base_freq / real_divisor;
+    m_timer_rticks_per_tick = real_divisor;
+
+    // now we set the divide configuration using this table:
+    /*
+        000: Divide by 2
+        001: Divide by 4
+        010: Divide by 8
+        011: Divide by 16
+        100: Divide by 32
+        101: Divide by 64
+        110: Divide by 128
+        111: Divide by 1
+    */
+    if (real_divisor_shift == 0)
+        volatile_write32(m_registers->DivideConfiguration, 0b111);
+    else
+        volatile_write32(m_registers->DivideConfiguration, real_divisor_shift - 1);
+
+    if (m_BSP)
+        x86_64_ISR_RegisterHandler(LAPIC_TIMER_INT, x86_64_LAPIC_TimerCallback);
+
+    // we set the timer to periodic mode
+
+    lvt_timer = volatile_read32(m_registers->LVT_TIMER);
+    lvt_timer &= 0xFFF8FF00; // clear vector, mode, and mask
+    lvt_timer |= 0x20000 | LAPIC_TIMER_INT; // set periodic mode and vector
+    volatile_write32(m_registers->LVT_TIMER, lvt_timer);
+
+    // set the initial count
+
+    volatile_write32(m_registers->InitialCount, m_timer_rticks_per_tick);
 }
 
 void x86_64_LocalAPIC::AllowInitTimer() {
@@ -137,9 +211,16 @@ uint8_t x86_64_LocalAPIC::GetID() const {
     return m_ID;
 }
 
-void x86_64_LocalAPIC::LAPICTimerCallback() {
-    uint32_t ticksIn1ms = (0xFFFFFFFF - volatile_read32(m_registers->CurrentCount))*16;
-    dbgprintf("LAPIC %hu timer ticked %u ticks in 1ms.\n", m_ID, ticksIn1ms);
-    __asm__ volatile ("" ::: "memory");
-    __atomic_clear(&m_timerComplete, __ATOMIC_SEQ_CST);
+void x86_64_LocalAPIC::LAPICTimerCallback(x86_64_Interrupt_Registers* regs) {
+    if (!Scheduling::Scheduler::isRunning()) {
+        SendEOI();
+        return;
+    }
+    x86_64_SaveIRegistersToThread(Scheduling::Scheduler::GetCurrent(), regs);
+    Scheduling::Scheduler::TimerTick(regs);
+    SendEOI();
+}
+
+x86_64_LocalAPIC* x86_64_GetCurrentLocalAPIC() {
+    return GetCurrentProcessor()->GetLocalAPIC();
 }

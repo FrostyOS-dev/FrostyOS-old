@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -32,12 +32,8 @@ uint8_t g_EarlyBitmap[128 * 1024] = {0};
 
 /* Public Methods */
 
-PhysicalPageFrameAllocator::PhysicalPageFrameAllocator() {
-    m_FreeMem = 0;
-    m_ReservedMem = 0;
-    m_UsedMem = 0;
-    m_MemSize = 0;
-    m_nextFree = UINT64_MAX;
+PhysicalPageFrameAllocator::PhysicalPageFrameAllocator() : m_Bitmap(), m_FreeMem(0), m_ReservedMem(0), m_UsedMem(0), m_MemSize(0), m_nextFree(UINT64_MAX), m_fullyInitialised(false), m_BitmapLock(0), m_globalLock(0) {
+
 }
 
 PhysicalPageFrameAllocator::~PhysicalPageFrameAllocator() {
@@ -45,6 +41,10 @@ PhysicalPageFrameAllocator::~PhysicalPageFrameAllocator() {
 }
 
 void PhysicalPageFrameAllocator::EarlyInit(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount, uint64_t MemorySize) {
+    // we don't bother with locks in the early init, as this is way before we have any multithreading
+
+    m_fullyInitialised = false;
+    
     // Setup
     m_MemSize = (size_t)MemorySize;
     if (m_MemSize > GiB(4))
@@ -90,6 +90,8 @@ void PhysicalPageFrameAllocator::EarlyInit(const MemoryMapEntry* FirstMemoryMapE
 }
 
 void PhysicalPageFrameAllocator::FullInit(const MemoryMapEntry* FirstMemoryMapEntry, const size_t MemoryMapEntryCount, uint64_t MemorySize) {
+    // We still don't need to worry about locks here, as this is still before we have any multithreading
+    
     // Setup
     m_MemSize = MemorySize;
 
@@ -150,6 +152,11 @@ void PhysicalPageFrameAllocator::FullInit(const MemoryMapEntry* FirstMemoryMapEn
     }
 
     m_nextFree = UINT64_MAX;
+
+    m_fullyInitialised = true;
+
+    spinlock_init(&m_BitmapLock);
+    spinlock_init(&m_globalLock);
 }
 
 void* PhysicalPageFrameAllocator::AllocatePage() {
@@ -170,12 +177,24 @@ void* PhysicalPageFrameAllocator::AllocatePages(uint64_t count) {
 }
 
 void PhysicalPageFrameAllocator::ReservePage(void* page) {
-    if (m_Bitmap[((uint64_t)page >> 12)]) return;
+    if (m_fullyInitialised)
+        spinlock_acquire(&m_BitmapLock);
+    if (m_Bitmap[((uint64_t)page >> 12)]) {
+        if (m_fullyInitialised)
+            spinlock_release(&m_BitmapLock);
+        return;
+    }
     m_Bitmap.Set(((uint64_t)page >> 12), true);
+    if (m_fullyInitialised) {
+        spinlock_release(&m_BitmapLock);
+        spinlock_acquire(&m_globalLock);
+    }
     m_FreeMem -= 4096;
     m_ReservedMem += 4096;
     if (m_nextFree == ((uint64_t)page >> 12))
         m_nextFree = UINT64_MAX;
+    if (m_fullyInitialised)
+        spinlock_release(&m_globalLock);
 }
 
 void PhysicalPageFrameAllocator::ReservePages(void* start, uint64_t count) {
@@ -185,11 +204,23 @@ void PhysicalPageFrameAllocator::ReservePages(void* start, uint64_t count) {
 }
 
 void PhysicalPageFrameAllocator::UnreservePage(void* page) {
-    if (!m_Bitmap[((uint64_t)page >> 12)]) return;
+    if (m_fullyInitialised)
+        spinlock_acquire(&m_BitmapLock);
+    if (!m_Bitmap[((uint64_t)page >> 12)]) {
+        if (m_fullyInitialised)
+            spinlock_release(&m_BitmapLock);
+        return;
+    }
     m_Bitmap.Set(((uint64_t)page >> 12), false);
+    if (m_fullyInitialised) {
+        spinlock_release(&m_BitmapLock);
+        spinlock_acquire(&m_globalLock);
+    }
     m_FreeMem += 4096;
     m_ReservedMem -= 4096;
     m_nextFree = ((uint64_t)page >> 12);
+    if (m_fullyInitialised)
+        spinlock_release(&m_globalLock);
 }
 
 void PhysicalPageFrameAllocator::UnreservePages(void* start, uint64_t count) {
@@ -199,11 +230,23 @@ void PhysicalPageFrameAllocator::UnreservePages(void* start, uint64_t count) {
 }
 
 void PhysicalPageFrameAllocator::FreePage(void* page) {
-    if (!m_Bitmap[((uint64_t)page >> 12)]) return;
+    if (m_fullyInitialised)
+        spinlock_acquire(&m_BitmapLock);
+    if (!m_Bitmap[((uint64_t)page >> 12)]) {
+        if (m_fullyInitialised)
+            spinlock_release(&m_BitmapLock);
+        return;
+    }
     m_Bitmap.Set(((uint64_t)page >> 12), false);
+    if (m_fullyInitialised) {
+        spinlock_release(&m_BitmapLock);
+        spinlock_acquire(&m_globalLock);
+    }
     m_FreeMem += 4096;
     m_UsedMem -= 4096;
     m_nextFree = ((uint64_t)page >> 12);
+    if (m_fullyInitialised)
+        spinlock_release(&m_globalLock);
 }
 
 void PhysicalPageFrameAllocator::FreePages(void* start, uint64_t count) {
@@ -215,10 +258,22 @@ void PhysicalPageFrameAllocator::FreePages(void* start, uint64_t count) {
 /* Private Methods */
 
 void PhysicalPageFrameAllocator::LockPage(void* page) {
-    if (m_Bitmap[((uint64_t)page >> 12)]) return;
+    if (m_fullyInitialised)
+        spinlock_acquire(&m_BitmapLock);
+    if (m_Bitmap[((uint64_t)page >> 12)]) {
+        if (m_fullyInitialised)
+            spinlock_release(&m_BitmapLock);
+        return;
+    }
     m_Bitmap.Set(((uint64_t)page >> 12), true);
+    if (m_fullyInitialised) {
+        spinlock_release(&m_BitmapLock);
+        spinlock_acquire(&m_globalLock);
+    }
     m_FreeMem -= 4096;
     m_UsedMem += 4096;
+    if (m_fullyInitialised)
+        spinlock_release(&m_globalLock);
 }
 
 void PhysicalPageFrameAllocator::LockPages(void* start, uint64_t count) {
@@ -229,10 +284,22 @@ void PhysicalPageFrameAllocator::LockPages(void* start, uint64_t count) {
 
 
 void PhysicalPageFrameAllocator::UnlockPage(void* page) {
-    if (!m_Bitmap[((uint64_t)page >> 12)]) return;
+    if (m_fullyInitialised)
+        spinlock_acquire(&m_BitmapLock);
+    if (!m_Bitmap[((uint64_t)page >> 12)]) {
+        if (m_fullyInitialised)
+            spinlock_release(&m_BitmapLock);
+        return;
+    }
     m_Bitmap.Set(((uint64_t)page >> 12), false);
+    if (m_fullyInitialised) {
+        spinlock_release(&m_BitmapLock);
+        spinlock_acquire(&m_globalLock);
+    }
     m_FreeMem += 4096;
     m_UsedMem -= 4096;
+    if (m_fullyInitialised)
+        spinlock_release(&m_globalLock);
 }
 
 void PhysicalPageFrameAllocator::UnlockPages(void* start, uint64_t count) {
@@ -242,25 +309,45 @@ void PhysicalPageFrameAllocator::UnlockPages(void* start, uint64_t count) {
 }
 
 uint64_t PhysicalPageFrameAllocator::FindFreePage() {
+    if (m_fullyInitialised) {
+        spinlock_acquire(&m_BitmapLock);
+        spinlock_acquire(&m_globalLock);
+    }
     if (m_nextFree != UINT64_MAX) {
         uint64_t i = m_nextFree;
         if ((i + 1) < (m_Bitmap.GetSize() << 3) && m_Bitmap[i + 1] == 0)
             m_nextFree = i + 1;
         else
             m_nextFree = UINT64_MAX;
+        if (m_fullyInitialised) {
+            spinlock_release(&m_globalLock);
+            spinlock_release(&m_BitmapLock);
+        }
         return i;
     }
     for (uint64_t i = 0; i < (m_Bitmap.GetSize() << 3); i++) {
         if (m_Bitmap[i] == 0) {
             if ((i + 1) < (m_Bitmap.GetSize() << 3) && m_Bitmap[i + 1] == 0)
                 m_nextFree = i + 1;
+            if (m_fullyInitialised) {
+                spinlock_release(&m_globalLock);
+                spinlock_release(&m_BitmapLock);
+            }
             return i;
         }
+    }
+    if (m_fullyInitialised) {
+        spinlock_release(&m_globalLock);
+        spinlock_release(&m_BitmapLock);
     }
     return UINT64_MAX; // impossible offset into bitmap, so good for errors
 }
 
 uint64_t PhysicalPageFrameAllocator::FindFreePages(uint64_t count) {
+    if (m_fullyInitialised) {
+        spinlock_acquire(&m_BitmapLock);
+        spinlock_acquire(&m_globalLock);
+    }
     uint64_t next = 0;
     if (count == 0) return UINT64_MAX; // impossible offset into bitmap, so good for errors
     for (uint64_t i = 0; i < (m_Bitmap.GetSize() << 3); i+=next) {
@@ -269,6 +356,10 @@ uint64_t PhysicalPageFrameAllocator::FindFreePages(uint64_t count) {
             if (count == 1) {
                 if (m_nextFree == i)
                     m_nextFree = UINT64_MAX;
+                if (m_fullyInitialised) {
+                    spinlock_release(&m_globalLock);
+                    spinlock_release(&m_BitmapLock);
+                }
                 return i * 8;
             }
             bool found = true;
@@ -284,9 +375,17 @@ uint64_t PhysicalPageFrameAllocator::FindFreePages(uint64_t count) {
             if (found) {
                 if (m_nextFree >= i && (i + count) > m_nextFree)
                     m_nextFree = UINT64_MAX; // reset it
+                if (m_fullyInitialised) {
+                    spinlock_release(&m_globalLock);
+                    spinlock_release(&m_BitmapLock);
+                }
                 return i; // return start page index of the block
             }
         }
+    }
+    if (m_fullyInitialised) {
+        spinlock_release(&m_globalLock);
+        spinlock_release(&m_BitmapLock);
     }
     return UINT64_MAX; // impossible offset into bitmap, so good for errors
 }

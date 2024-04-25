@@ -15,32 +15,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _X86_64_APIC_IPI_HPP
-#define _X86_64_APIC_IPI_HPP
+#ifndef _x86_64_NMI_HPP
+#define _x86_64_NMI_HPP
 
 #include <stdint.h>
 
-#include "LocalAPIC.hpp"
+#include "isr.hpp"
 
-enum class x86_64_IPI_DeliveryMode {
-    Fixed = 0,
-    LowPriority = 1,
-    SMI = 2,
-    NMI = 4,
-    INIT = 5,
-    StartUp = 6
+enum class x86_64_NMI_Type {
+    IPI,
+    Watchdog,
+    Channel,
+    Parity
 };
 
-enum class x86_64_IPI_DestinationShorthand {
-    NoShorthand = 0,
-    Self = 1,
-    AllIncludingSelf = 2,
-    AllExcludingSelf = 3
-};
+x86_64_NMI_Type x86_64_GetNMIType();
 
-void x86_64_SendIPI(x86_64_LocalAPICRegisters* regs, uint8_t vector, x86_64_IPI_DeliveryMode deliveryMode, bool level, bool trigger_mode, x86_64_IPI_DestinationShorthand destShorthand, uint8_t destination);
+void x86_64_NMI_Handler(x86_64_Interrupt_Registers* regs);
 
+void x86_64_NMIInit();
 
-void x86_64_NMI_IPIHandler(x86_64_Interrupt_Registers*);
-
-#endif /* _X86_64_APIC_IPI_HPP */
+#endif /* _x86_64_NMI_HPP */

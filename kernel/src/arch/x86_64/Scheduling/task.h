@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -65,6 +65,8 @@ void* x86_64_get_stack_ptr();
 void __attribute__((noreturn)) x86_64_kernel_thread_end();
 
 void x86_64_set_kernel_gs_base(uint64_t base);
+
+uint64_t x86_64_get_kernel_gs_base();
 
 #ifdef __cplusplus
 }

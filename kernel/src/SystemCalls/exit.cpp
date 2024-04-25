@@ -34,11 +34,7 @@ void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running)
     x86_64_LoadCR3((uint64_t)(g_KPM->GetPageTable().GetRootTablePhysical()) & 0x000FFFFFFFFFF000); // reset the CR3 value so we are not using an address space that it being destroyed
 #endif
     if (parent == nullptr) {
-        ThreadCleanup_t cleanup = thread->GetCleanupFunction();
-        delete thread;
-        if (cleanup.function != nullptr)
-            cleanup.function(cleanup.data);
-        return;
+        PANIC("Parent-less thread exiting.");
     }
     Scheduling::Scheduler::RemoveThread(thread);
     if (thread->GetFlags() & CREATE_STACK)

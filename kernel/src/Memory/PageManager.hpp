@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 #include <stddef.h>
+#include <spinlock.h>
 
 #include "PageObject.hpp"
 #include "Memory.hpp"
@@ -83,10 +84,10 @@ private:
     PageTable m_PT;
 
     bool m_mode;
-
     bool m_page_object_pool_used;
-
     bool m_auto_expand;
+
+    mutable spinlock_t m_lock;
 };
 
 extern PageManager* g_KPM;

@@ -30,8 +30,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/io.h>
 #include <arch/x86_64/Processor.hpp>
 #include <arch/x86_64/Stack.hpp>
+
 #include <arch/x86_64/interrupts/pic.hpp>
+
+#include <arch/x86_64/interrupts/APIC/IOAPIC.hpp>
+
 #include <arch/x86_64/Memory/PagingUtil.hpp>
+
 #include <arch/x86_64/Scheduling/taskutil.hpp>
 #endif
 
@@ -80,6 +85,9 @@ namespace Scheduling {
             g_BSPInfo.ticks = 0;
             g_BSPInfo.start_allowed = 0;
             g_processors.insert(&g_BSPInfo); // no point in locking, as we are the only ones running
+#ifdef __x86_64__
+            x86_64_set_kernel_gs_base((uint64_t)&g_BSPInfo);
+#endif
         }
 
         void AddProcess(Process* process) {
@@ -249,10 +257,10 @@ namespace Scheduling {
             g_processors.insert(info);
             g_processors.unlock();
 #ifdef __x86_64__
+            x86_64_set_kernel_gs_base((uint64_t)info);
             x86_64_LocalAPIC* LAPIC = processor->GetLocalAPIC();
             if (LAPIC == nullptr)
                 return;
-            LAPIC->InitTimer();
 #endif
             while (info->start_allowed == 0) {
                 // wait for the processor to be allowed to start
@@ -265,7 +273,10 @@ namespace Scheduling {
             }
             assert(info->current_thread->GetCPURegisters() != nullptr);
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(info->current_thread->GetStackRegisterFrame()));
+            LAPIC->InitTimer();
+#endif
+            SetThreadFrame(info, info->current_thread->GetStackRegisterFrame());
+#ifdef __x86_64__
             if (info->current_thread->GetParent()->GetPriority() == Priority::KERNEL) // NOTE: we do not lock the parent process here, as we are the only ones with access to it at this stage.
                 x86_64_kernel_switch(info->current_thread->GetCPURegisters());
             else
@@ -303,6 +314,25 @@ namespace Scheduling {
             }
             g_processors.unlock();
             return nullptr;
+        }
+
+        void RemoveProcessor(Processor* processor) {
+            g_processors.lock();
+            for (uint64_t i = 0; i < g_processors.getCount(); i++) {
+                ProcessorInfo* info = g_processors.get(i);
+                if (info->processor == processor) {
+                    g_processors.remove(i);
+                    g_processors.unlock();
+                    return;
+                }
+            }
+            g_processors.unlock();
+        }
+
+        void SetThreadFrame(ProcessorInfo* info, Thread::Register_Frame* frame) {
+            if (info == nullptr)
+                return;
+            memcpy(&info->thread_metadata, frame, sizeof(Thread::Register_Frame));
         }
 
         void InitProcessorTimers() {
@@ -355,7 +385,7 @@ namespace Scheduling {
             }
             assert(current_processor->current_thread->GetCPURegisters() != nullptr);
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(current_processor->current_thread->GetStackRegisterFrame()));
+            SetThreadFrame(current_processor, current_processor->current_thread->GetStackRegisterFrame());
             if (current_processor->current_thread->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(current_processor->current_thread->GetCPURegisters());
             else
@@ -367,14 +397,14 @@ namespace Scheduling {
         void __attribute__((noreturn)) Next() {
             if (!g_scheduler_running)
                 PANIC("Scheduler: Scheduler is not running. This should not be possible.");
-            ProcessorInfo* info = GetProcessorInfo(GetCurrentProcessor());
+            ProcessorInfo* info = GetCurrentProcessorInfo();
             if (info->current_thread == nullptr) {
                 PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
             }
             assert(info->current_thread->GetCPURegisters() != nullptr);
             info->ticks = 0;
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(info->current_thread->GetStackRegisterFrame()));
+            SetThreadFrame(info, info->current_thread->GetStackRegisterFrame());
             if (info->current_thread->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(info->current_thread->GetCPURegisters());
             else
@@ -384,16 +414,17 @@ namespace Scheduling {
         }
 
         void Next(void* iregs) {
-            if (!g_scheduler_running)
+            if (!g_scheduler_running) {
                 PANIC("Scheduler: Scheduler is not running. This should not be possible.");
-            ProcessorInfo* info = GetProcessorInfo(GetCurrentProcessor());
+            }
+            ProcessorInfo* info = GetCurrentProcessorInfo();
             if (info->current_thread == nullptr) {
                 PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
             }
             assert(info->current_thread->GetCPURegisters() != nullptr);
             info->ticks = 0;
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(info->current_thread->GetStackRegisterFrame()));
+            SetThreadFrame(info, info->current_thread->GetStackRegisterFrame());
             if (info->current_thread->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(info->current_thread->GetCPURegisters());
             else {
@@ -407,7 +438,7 @@ namespace Scheduling {
         void __attribute__((noreturn)) Next(Thread* thread) {
             if (!g_scheduler_running)
                 PANIC("Scheduler: Scheduler is not running. This should not be possible.");
-            ProcessorInfo* info = GetProcessorInfo(GetCurrentProcessor());
+            ProcessorInfo* info = GetCurrentProcessorInfo();
 #ifdef __x86_64__
             x86_64_DisableInterrupts();
 #endif
@@ -415,7 +446,7 @@ namespace Scheduling {
             assert(thread->GetCPURegisters() != nullptr);
             info->ticks = 0;
 #ifdef __x86_64__
-            x86_64_set_kernel_gs_base((uint64_t)(thread->GetStackRegisterFrame()));
+            SetThreadFrame(info, thread->GetStackRegisterFrame());
             if (thread->GetParent()->GetPriority() == Priority::KERNEL)
                 x86_64_kernel_switch(thread->GetCPURegisters());
             else
@@ -425,7 +456,7 @@ namespace Scheduling {
         }
 
         void End() {
-            ProcessorInfo* info = GetProcessorInfo(GetCurrentProcessor());
+            ProcessorInfo* info = GetCurrentProcessorInfo();
             // TODO: call any destructors or other destruction function
             if (info->current_thread->GetFlags() & CREATE_STACK)
                 info->current_thread->GetParent()->GetPageManager()->FreePages((void*)(info->current_thread->GetStack() - KiB(64)));
@@ -437,7 +468,7 @@ namespace Scheduling {
         Thread* GetCurrent() {
             if (!g_scheduler_running)
                 return nullptr;
-            ProcessorInfo* info = GetProcessorInfo(GetCurrentProcessor());
+            ProcessorInfo* info = GetCurrentProcessorInfo();
             if (!info->running)
                 return nullptr;
             return info->current_thread;
@@ -445,7 +476,7 @@ namespace Scheduling {
 
         void PickNext(ProcessorInfo* info) {
             if (info == nullptr)
-                info = GetProcessorInfo(GetCurrentProcessor());
+                info = GetCurrentProcessorInfo();
             spinlock_acquire(&g_global_lock);
             if (g_total_threads == 0) {
                 PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
@@ -504,6 +535,7 @@ namespace Scheduling {
                         info->current_thread = g_normal_threads.get(0);
                         g_normal_threads.remove(UINT64_C(0));
                         g_normal_threads.unlock();
+                        g_low_threads.unlock();
                     }
                     info->high_run_count = 0;
                 }
@@ -511,6 +543,8 @@ namespace Scheduling {
                     info->current_thread = g_high_threads.get(0);
                     g_high_threads.remove(UINT64_C(0));
                     g_high_threads.unlock();
+                    g_normal_threads.unlock();
+                    g_low_threads.unlock();
                 }
                 info->kernel_run_count = 0;
             }
@@ -522,12 +556,15 @@ namespace Scheduling {
                     g_kernel_threads.remove(UINT64_C(0));
                 }
                 g_kernel_threads.unlock();
+                g_high_threads.unlock();
+                g_normal_threads.unlock();
+                g_low_threads.unlock();
             }
         }
 
 
         void TimerTick(void* iregs) {
-            ProcessorInfo* info = GetProcessorInfo(GetCurrentProcessor());
+            ProcessorInfo* info = GetCurrentProcessorInfo();
             info->ticks++;
             for (uint64_t i = 0; i < g_sleeping_threads.getCount(); i++) {
                 Thread* thread = g_sleeping_threads.get(i);
@@ -551,23 +588,38 @@ namespace Scheduling {
                 PickNext(info);
 #ifdef __x86_64__
                 if (info->current_thread->GetParent()->GetPriority() == Priority::KERNEL)
-                    x86_64_PIC_sendEOI(0); // FIXME
+                    x86_64_IOAPIC_SendEOI();
 #endif
                 Next(iregs);
             }
         }
 
-        bool isRunning() {
+        bool GlobalIsRunning() {
             return g_scheduler_running;
         }
 
-        void Stop() {
+        bool isRunning() {
+            ProcessorInfo* info = GetCurrentProcessorInfo();
+            return info->running;
+        }
+
+        void StopGlobal() {
+            spinlock_acquire(&g_global_lock);
             g_scheduler_running = false;
+            spinlock_release(&g_global_lock);
+        }
+
+        void Stop() {
+            ProcessorInfo* info = GetCurrentProcessorInfo();
+            info->running = false;
+        }
+
+        void ResumeGlobal() {
+            PANIC("Scheduler: Global resume not supported yet.");
         }
 
         void Resume() {
-            g_scheduler_running = true;
-            ProcessorInfo* info = GetProcessorInfo(GetCurrentProcessor());
+            ProcessorInfo* info = GetCurrentProcessorInfo();
             info->running = true;
             if (info->current_thread == nullptr)
                 PickNext(info);
@@ -578,6 +630,7 @@ namespace Scheduling {
         }
 
         void SleepThread(Thread* thread, uint64_t ms) {
+            PANIC("Scheduler: sleeping not supported.");
             assert(thread != nullptr);
             // Remove the thread
             bool found = false;

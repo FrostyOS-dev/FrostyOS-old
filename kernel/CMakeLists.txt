@@ -24,6 +24,7 @@ if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/APIC/LocalAPIC.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/IRQ.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/isr.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/NMI.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Memory/PagingUtil.asm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Memory/PagingUtil.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Memory/PageMapIndexer.cpp

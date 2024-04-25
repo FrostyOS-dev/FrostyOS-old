@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -40,6 +40,11 @@ namespace Scheduling {
 
     class Thread {
     public:
+        struct Register_Frame {
+            uint64_t user_stack;
+            uint64_t kernel_stack;
+        } __attribute__((packed));
+
         Thread(Process* parent, ThreadEntry_t entry = nullptr, void* entry_data = nullptr, uint8_t flags = THREAD_USER_DEFAULT, tid_t TID = -1);
         ~Thread();
 
@@ -57,7 +62,7 @@ namespace Scheduling {
         uint64_t GetStack() const;
         uint64_t GetKernelStack() const;
         ThreadCleanup_t GetCleanupFunction() const;
-        void* GetStackRegisterFrame() const;
+        Register_Frame* GetStackRegisterFrame() const;
 
         void Start();
 
@@ -102,10 +107,7 @@ namespace Scheduling {
         void* m_entry_data;
         uint8_t m_flags;
         uint64_t m_stack;
-        mutable struct Register_Frame {
-            uint64_t user_stack;
-            uint64_t kernel_stack;
-        } __attribute__((packed)) m_frame;
+        mutable Register_Frame m_frame;
         mutable CPU_Registers m_regs;
         ThreadCleanup_t m_cleanup;
         FileDescriptorManager m_FDManager;

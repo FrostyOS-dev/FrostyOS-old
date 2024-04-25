@@ -125,7 +125,21 @@
         "clang-diagnostic-error",
         "clang-diagnostic-error",
         "clang-diagnostic-empty-body",
-        "clang-diagnostic-abstract-final-class"
+        "clang-diagnostic-abstract-final-class",
+        "clang-diagnostic-error",
+        "clang-diagnostic-int-conversion",
+        "clang-diagnostic-implicit-function-declaration",
+        "clang-diagnostic-gnu-array-member-paren-init",
+        "clang-diagnostic-dynamic-class-memaccess",
+        "clang-diagnostic-format",
+        "clang-diagnostic-macro-redefined",
+        "clang-diagnostic-builtin-requires-header",
+        "clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling",
+        "clang-diagnostic-address-of-packed-member",
+        "clang-analyzer-core.NullDereference",
+        "clang-analyzer-cplusplus.NewDeleteLeaks",
+        "clang-analyzer-deadcode.DeadStores",
+        "clang-analyzer-security.insecureAPI.strcpy"
     ],
     "C_Cpp.files.exclude": {
         "**/toolchain" : true,

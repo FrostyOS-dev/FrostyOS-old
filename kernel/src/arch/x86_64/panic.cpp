@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "ELFSymbols.hpp"
 
 #include "Scheduling/taskutil.hpp"
+
+#include "interrupts/APIC/IPI.hpp"
 
 #include <stdio.h>
 
@@ -46,6 +48,8 @@ char const* g_panic_reason = nullptr;
 extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void* data, const bool type) {
     x86_64_DisableInterrupts();
 
+    x86_64_SendIPI(x86_64_GetCurrentLocalAPIC()->GetRegisters(), 0, x86_64_IPI_DeliveryMode::NMI, false, false, x86_64_IPI_DestinationShorthand::AllExcludingSelf, 0);
+    
     Scheduling::Scheduler::Stop();
 
     //reason = "temp";
