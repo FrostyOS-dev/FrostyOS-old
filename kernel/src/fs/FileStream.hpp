@@ -22,33 +22,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Inode.hpp"
 #include "FilePrivilegeLevel.hpp"
 
-enum class FileStreamError {
-    SUCCESS = 0,
-    INVALID_ARGUMENTS = 1, // Invalid argument(s). e.g. invalid pointer
-    INTERNAL_ERROR = 2, // error in internal data structures
-    ALLOCATION_FAILED = 3, // either new, malloc or AllocatePage(s) failed
-    INVALID_MODE = 4, // Invalid stream mode. e.g. write attempted on read-only stream
-    INVALID_INODE = 5, // Invalid Inode. e.g. a folder Inode or a NULL inode
-    INVALID_FS_TYPE = 6, // Invalid FileSystem type
-    INVALID_MOUNTPOINT = 7, // Invalid VFS Mount-point
-    STREAM_CLOSED = 8, // File stream is closed
-    NO_PERMISSION = 9 // No permission to perform operation
-};
+#include <stdint.h>
+#include <spinlock.h>
 
 class FileStream {
 public:
     FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes, FilePrivilegeLevel privilege);
     ~FileStream();
 
-    bool Open();
-    bool Close();
-    uint64_t ReadStream(uint8_t* bytes, uint64_t count = 1);
-    uint64_t WriteStream(const uint8_t* bytes, uint64_t count = 1);
-    bool Seek(uint64_t offset);
-    bool Rewind();
-    uint64_t GetOffset() const;
+    int Open();
+    int Close();
+    int64_t ReadStream(uint8_t* bytes, int64_t count = 1);
+    int64_t WriteStream(const uint8_t* bytes, int64_t count = 1);
+    int Seek(int64_t offset);
+    int Rewind();
+    int64_t GetOffset() const;
     bool isOpen() const;
-    size_t GetSize() const;
+    int64_t GetSize() const;
 
     Inode* GetInode() const;
     FileSystem* GetFileSystem() const;
@@ -70,6 +60,8 @@ private:
     FilePrivilegeLevel m_privilege;
 
     mutable FileStreamError m_lastError;
+
+    mutable spinlock_t m_lock;
 };
 
 #endif /* _FILE_STREAM_HPP */

@@ -30,33 +30,29 @@ enum class InodeType {
     SymLink = 2
 };
 
-enum class InodeError {
-    SUCCESS = 0,
-    STREAM_CLOSED = 1, // The stream is closed. e.g. ReadStream attempted, but the stream is closed.
-    INVALID_ARGUMENTS = 2, // One or more arguments are invalid. e.g. invalid byte count
-    INVALID_TYPE = 3, // Invalid operation for Inode. e.g. Read/Write on folder, Adding a child to a file, Unknown Inode type
-    ALLOCATION_FAILED = 4, // Memory allocation failed
-    INTERNAL_ERROR = 5, // An error with class data structure(s)
-    NO_PERMISSION = 6 // No permission to perform operation
-};
 
 class Inode {
 public:
+    struct ErrorAndResult {
+        int error;
+        uint64_t result;
+    };
+
     virtual ~Inode() {}
 
-    virtual bool Open() = 0;
-    virtual bool Close() = 0;
-    virtual uint64_t ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, uint64_t count = 1) = 0;
-    virtual uint64_t WriteStream(FilePrivilegeLevel privilege, const uint8_t* bytes, uint64_t count = 1) = 0;
-    virtual bool Seek(uint64_t offset) = 0;
-    virtual bool Rewind() = 0;
-    virtual uint64_t GetOffset() const { return p_CurrentOffset; }
+    virtual int Open() = 0;
+    virtual int Close() = 0;
+    virtual int64_t ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, int64_t count = 1) = 0;
+    virtual int64_t WriteStream(FilePrivilegeLevel privilege, const uint8_t* bytes, int64_t count = 1) = 0;
+    virtual int Seek(int64_t offset) = 0;
+    virtual int Rewind() = 0;
+    virtual int64_t GetOffset() const { return p_CurrentOffset; }
     virtual bool isOpen() const { return p_isOpen; }
 
-    virtual uint64_t Read(FilePrivilegeLevel privilege, uint64_t offset, uint8_t* bytes, uint64_t count = 1) = 0;
-    virtual uint64_t Write(FilePrivilegeLevel privilege, uint64_t offset, const uint8_t* bytes, uint64_t count = 1) = 0;
+    virtual ErrorAndResult Read(FilePrivilegeLevel privilege, int64_t offset, uint8_t* bytes, int64_t count = 1) = 0;
+    virtual ErrorAndResult Write(FilePrivilegeLevel privilege, int64_t offset, const uint8_t* bytes, int64_t count = 1) = 0;
 
-    virtual bool Expand(size_t new_size) = 0;
+    virtual int Expand(size_t new_size) = 0;
 
     virtual const char* GetName() const { return p_name; }
     virtual void SetName(const char* name) { p_name = name; }
@@ -73,8 +69,6 @@ public:
     virtual uint64_t GetID() const { return p_ID; }
     virtual void ResetID(uint32_t seed = 0) = 0;
 
-    virtual InodeError GetLastError() const { return p_lastError; }
-
     virtual Inode* GetParent() const = 0;
 
     virtual FilePrivilegeLevel GetPrivilegeLevel() const = 0;
@@ -84,8 +78,8 @@ public:
     virtual Inode* GetChild(uint64_t index) const = 0;
     virtual Inode* GetChild(const char* name) const = 0;
 
-protected:
-    virtual void SetLastError(InodeError error) const { p_lastError = error; } // const so const functions can perform error reporting
+    virtual void Lock() const = 0;
+    virtual void Unlock() const = 0;
 
 protected:
     // Standard members
@@ -94,13 +88,9 @@ protected:
     size_t p_blockSize;
     uint64_t p_ID;
 
-    // Error management
-    mutable InodeError p_lastError; // mutable so const functions can perform error reporting
-
     // Stream members
-    uint64_t p_CurrentOffset;
+    int64_t p_CurrentOffset;
     bool p_isOpen;
-
 };
 
 #endif /* _INODE_HPP */

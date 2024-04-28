@@ -185,6 +185,8 @@ void Kernel_Stage2(void* params_addr) {
 
     HAL_FullInit();
 
+    *(volatile uint64_t*)0x0 = 1;
+
     VFS* KVFS = (VFS*)kcalloc_eternal(1, sizeof(VFS));
     g_VFS = KVFS;
     assert(KVFS->MountRoot(FileSystemType::TMPFS));

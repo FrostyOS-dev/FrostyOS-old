@@ -31,44 +31,46 @@ namespace TempFS {
     class TempFSInode : public Inode {
     public:
         struct Head {
-            uint64_t CurrentOffset;
+            int64_t CurrentOffset;
             bool isOpen;
             
             void* currentBlock;
-            uint64_t currentBlockIndex;
+            int64_t currentBlockIndex;
             size_t currentBlockOffset;
         };
+
+        
 
         TempFSInode();
         ~TempFSInode() override;
 
-        bool Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, FilePrivilegeLevel privilege, size_t blockSize = PAGE_SIZE, void* extra = nullptr, uint32_t seed = 0);
-        bool Delete(bool delete_target = false, bool delete_name = false); // normally just deletes this and not the target
+        int Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, FilePrivilegeLevel privilege, size_t blockSize = PAGE_SIZE, void* extra = nullptr, uint32_t seed = 0);
+        int Delete(bool delete_target = false, bool delete_name = false); // normally just deletes this and not the target
 
-        bool Open() override;
-        bool Close() override;
-        uint64_t ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, uint64_t count = 1) override;
-        uint64_t WriteStream(FilePrivilegeLevel privilege, const uint8_t* bytes, uint64_t count = 1) override;
-        bool Seek(uint64_t offset) override;
-        bool Rewind() override;
+        int Open() override;
+        int Close() override;
+        int64_t ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, int64_t count = 1) override;
+        int64_t WriteStream(FilePrivilegeLevel privilege, const uint8_t* bytes, int64_t count = 1) override;
+        int Seek(int64_t offset) override;
+        int Rewind() override;
 
-        uint64_t Read(FilePrivilegeLevel privilege, uint64_t offset, uint8_t* bytes, uint64_t count = 1) override;
-        uint64_t Write(FilePrivilegeLevel privilege, uint64_t offset, const uint8_t* bytes, uint64_t count = 1) override;
+        int64_t Read(FilePrivilegeLevel privilege, int64_t offset, uint8_t* bytes, int64_t count = 1) override;
+        int64_t Write(FilePrivilegeLevel privilege, int64_t offset, const uint8_t* bytes, int64_t count = 1) override;
 
-        bool Expand(size_t new_size) override;
+        int Expand(size_t new_size) override;
 
         InodeType GetType() const override;
         void SetType(InodeType type) override;
 
-        bool AddChild(TempFSInode* child);
+        int AddChild(TempFSInode* child);
         TempFSInode* GetTMPFSChild(uint64_t ID) const;
         TempFSInode* GetTMPFSChild(const char* name) const;
         Inode* GetChild(uint64_t index) const override;
         Inode* GetChild(const char* name) const override;
         uint64_t GetChildCount() const override;
-        bool RemoveChild(TempFSInode* child);
+        int RemoveChild(TempFSInode* child);
 
-        bool SetParent(TempFSInode* parent);
+        int SetParent(TempFSInode* parent);
         TempFSInode* GetParent() const override;
 
         void ResetID(uint32_t seed = 0) override;
@@ -81,9 +83,10 @@ namespace TempFS {
         void SetCurrentHead(Head head);
         Head GetCurrentHead() const;
 
-    protected:
+        void Lock() const override;
+        void Unlock() const override;
 
-        void SetLastError(InodeError error) const override;
+    protected:
 
         TempFSInode* GetTarget(); // resolve the actual target of an operation. for files and folders, it just returns `this`, but for symbolic links, it returns the sub inode.
         const TempFSInode* GetTarget() const;

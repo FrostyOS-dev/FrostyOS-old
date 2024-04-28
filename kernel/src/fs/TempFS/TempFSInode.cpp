@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <Memory/PageManager.hpp>
 
@@ -32,11 +33,9 @@ namespace TempFS {
 
     }
 
-    bool TempFSInode::Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, FilePrivilegeLevel privilege, size_t blockSize, void* extra, uint32_t seed) {
-        if (name == nullptr || fileSystem == nullptr || blockSize == 0 || type == InodeType::Unkown || (type == InodeType::SymLink && extra == nullptr)) {
-            SetLastError(InodeError::INVALID_ARGUMENTS);
-            return false;
-        }
+    int TempFSInode::Create(const char* name, TempFSInode* parent, InodeType type, TempFileSystem* fileSystem, FilePrivilegeLevel privilege, size_t blockSize, void* extra, uint32_t seed) {
+        if (name == nullptr || fileSystem == nullptr || blockSize == 0 || type == InodeType::Unkown || (type == InodeType::SymLink && extra == nullptr))
+            return -EINVAL;
         m_parent = parent;
         m_fileSystem = fileSystem;
         m_privilegeLevel = privilege;
@@ -47,18 +46,18 @@ namespace TempFS {
         p_CurrentOffset = 0;
         ResetID(seed);
         if (m_parent != nullptr) {
-            if (!m_parent->AddChild(this))
-                return false;
+            int rc = m_parent->AddChild(this);
+            if (rc != ESUCCESS)
+                return rc;
         }
         else
             m_fileSystem->CreateNewRootInode(this);
         if (p_type == InodeType::SymLink)
             m_children.insert((TempFSInode*)extra);
-        SetLastError(InodeError::SUCCESS);
-        return true;
+        return ESUCCESS;
     }
 
-    bool TempFSInode::Delete(bool delete_target, bool delete_name) {
+    int TempFSInode::Delete(bool delete_target, bool delete_name) {
         TempFSInode* target = GetTarget();
         if (target != this && delete_target) {
             if (target == nullptr)
@@ -69,19 +68,15 @@ namespace TempFS {
         }
         for (uint64_t i = GetChildCount(); i > 0; i--) {
             TempFSInode* child = m_children.get(i - 1);
-            if (child == nullptr) {
-                SetLastError(InodeError::INTERNAL_ERROR);
-                return false;
-            }
+            if (child == nullptr)
+                return -ENOSYS;
             child->Delete(delete_name);
             delete child;
         }
         if (m_parent != nullptr) {
-            if (!m_parent->RemoveChild(this)) {
-                if (GetLastError() == InodeError::INVALID_ARGUMENTS)
-                    SetLastError(InodeError::INTERNAL_ERROR);
-                return false;
-            }
+            int rc = m_parent->RemoveChild(this);
+            if (rc == -EINVAL)
+                return -ENOSYS;
         }
         else
             m_fileSystem->DeleteRootInode(this);
@@ -89,10 +84,8 @@ namespace TempFS {
         if (p_type == InodeType::File) {
             for (uint64_t i = 0; i < m_data.getCount(); i++) {
                 MemBlock* block = m_data.get(i);
-                if (block == nullptr) {
-                    SetLastError(InodeError::INTERNAL_ERROR);
-                    return false;
-                }
+                if (block == nullptr)
+                    return -ENOSYS;
                 uint64_t pages = block->size / PAGE_SIZE;
                 if (pages > 1)
                     g_KPM->FreePages(block->address);
@@ -104,88 +97,66 @@ namespace TempFS {
         if (delete_name)
             delete[] p_name;
         p_ID = 0; // invalidate this inode
-        SetLastError(InodeError::SUCCESS);
-        return true;
+        return ESUCCESS;
     }
     
-    bool TempFSInode::Open() {
+    int TempFSInode::Open() {
         TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr)
                 return false;
             return target->Open();
         }
-        if (p_isOpen) {
-            SetLastError(InodeError::SUCCESS);
-            return true; // already open
-        }
-        if (p_type != InodeType::File) {
-            SetLastError(InodeError::INVALID_TYPE);
-            return false;
-        }
+        if (p_isOpen)
+            return ESUCCESS; // already open
+        if (p_type != InodeType::File)
+            return -EISDIR;
         p_isOpen = true;
-        if (!Rewind())
-            return false;
-        SetLastError(InodeError::SUCCESS);
-        return true;
+        int rc = Rewind();
+        if (rc != ESUCCESS)
+            return rc;
+        return ESUCCESS;
     }
     
-    bool TempFSInode::Close() {
+    int TempFSInode::Close() {
         TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr)
-                return false;
+                return -ENOENT;
             return target->Close();
         }
-        if (!p_isOpen) {
-            SetLastError(InodeError::SUCCESS);
-            return true; // already closed
-        }
-        if (p_type != InodeType::File) {
-            SetLastError(InodeError::INVALID_TYPE);
-            return false;
-        }
+        if (!p_isOpen)
+            return ESUCCESS; // already closed
+        if (p_type != InodeType::File)
+            return -EISDIR;
         p_isOpen = false;
-        SetLastError(InodeError::SUCCESS);
-        return true;
+        return ESUCCESS;
     }
     
-    uint64_t TempFSInode::ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, uint64_t count) {
+    int64_t TempFSInode::ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, int64_t count) {
         TempFSInode* target = GetTarget();
         if (target != this) {
             if (target == nullptr) // error is already set by GetTarget()
                 return 0;
             return target->ReadStream(privilege, bytes, count);
         }
-        if (!p_isOpen) {
-            SetLastError(InodeError::STREAM_CLOSED);
-            return 0;
-        }
-        if (p_type != InodeType::File) {
-            SetLastError(InodeError::INVALID_TYPE);
-            return 0;
-        }
-        if (bytes == nullptr || count == 0) {
-            SetLastError(InodeError::INVALID_ARGUMENTS);
-            return 0;
-        }
+        if (!p_isOpen)
+            return -EBADF;
+        if (p_type != InodeType::File)
+            return -EISDIR;
+        if (bytes == nullptr || count == 0)
+            return -EINVAL;
         if (privilege.UID == m_privilegeLevel.UID || privilege.UID == 0) {
-            if (!((m_privilegeLevel.ACL & ACL_USER_READ) > 0)) {
-                SetLastError(InodeError::NO_PERMISSION);
-                return 0;
-            }
+            if (!((m_privilegeLevel.ACL & ACL_USER_READ) > 0))
+                return -EACCES;
         }
         else if (privilege.GID == m_privilegeLevel.GID || privilege.GID == 0) {
-            if (!((m_privilegeLevel.ACL & ACL_GROUP_READ) > 0)) {
-                SetLastError(InodeError::NO_PERMISSION);
-                return 0;
-            }
+            if (!((m_privilegeLevel.ACL & ACL_GROUP_READ) > 0))
+                return -EACCES;
         }
         else {
-            if (!((m_privilegeLevel.ACL & ACL_OTHER_READ) > 0)) {
-                SetLastError(InodeError::NO_PERMISSION);
-                return 0;
-            }
+            if (!((m_privilegeLevel.ACL & ACL_OTHER_READ) > 0))
+                return -EACCES;
         }
         uint16_t bytes_read = 0;
         for (uint64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
@@ -735,5 +706,11 @@ namespace TempFS {
             return 0;
         }
         return m_size;
+    }
+
+    void TempFSInode::Lock() const {
+    }
+
+    void TempFSInode::Unlock() const {
     }
 }
