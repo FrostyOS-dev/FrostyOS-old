@@ -39,7 +39,7 @@ void* g_HHDM_start = nullptr;
 
 #include <Memory/PhysicalPageFrameAllocator.hpp>
 
-void* x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr) {
+void* __attribute__((no_sanitize("undefined"))) x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr) {
 
     // check if there is a simpler way
     if ((uint64_t)virtualaddr >= (uint64_t)g_kernel_virtual && ((uint64_t)g_kernel_virtual + g_kernel_length) > (uint64_t)virtualaddr) {
@@ -84,7 +84,7 @@ void* x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr) {
     return (void*)((uint64_t)Page_addr | offset);
 }
 
-void* x86_64_to_HHDM(void* physaddr) {
+void* __attribute__((no_sanitize("undefined"))) x86_64_to_HHDM(void* physaddr) {
     if (((uint64_t)physaddr < 0x1000))
         return nullptr;
     else if ((uint64_t)physaddr > (GiB(512) - 1))
@@ -92,7 +92,7 @@ void* x86_64_to_HHDM(void* physaddr) {
     return (void*)((uint64_t)physaddr + (uint64_t)g_HHDM_start);
 }
 
-void x86_64_map_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_map_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
     uint64_t physical_addr = (uint64_t)physaddr & ~0xFFF;
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
 
@@ -162,17 +162,17 @@ void x86_64_map_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtu
 }
 
 
-void x86_64_map_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_map_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
     x86_64_map_page_noflush(PML4Array, physaddr, virtualaddr, flags);
     x86_64_FlushTLB();
 }
 
-void x86_64_unmap_page(Level4Group* PML4Array, void* virtualaddr) {
+void __attribute__((no_sanitize("undefined"))) x86_64_unmap_page(Level4Group* PML4Array, void* virtualaddr) {
     x86_64_unmap_page_noflush(PML4Array, virtualaddr);
     x86_64_FlushTLB();
 }
 
-void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
+void __attribute__((no_sanitize("undefined"))) x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
 
     const uint16_t pt    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
@@ -236,13 +236,13 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
 }
 
 // Update flags of page mapping
-void x86_64_remap_page(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_remap_page(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
     x86_64_remap_page_noflush(PML4Array, virtualaddr, flags);
     x86_64_FlushTLB();
 }
 
 // Update flags of page mapping with no TLB flush
-void x86_64_remap_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_remap_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
 
     const uint16_t pt    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
@@ -289,7 +289,7 @@ void x86_64_remap_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32
 }
 
 // Identity map memory. If length and/or start_phys aren't page aligned, the values used are rounded down to the nearest page boundary.
-void x86_64_identity_map(Level4Group* PML4Array, void* start_phys, uint64_t length, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_identity_map(Level4Group* PML4Array, void* start_phys, uint64_t length, uint32_t flags) {
 
     // ensure everything is page aligned
     length -= length % 4096;
@@ -305,7 +305,7 @@ void x86_64_identity_map(Level4Group* PML4Array, void* start_phys, uint64_t leng
     }
 }
 
-void x86_64_map_large_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_map_large_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
     uint64_t physical_addr = (uint64_t)physaddr & ~0x1FFFFF;
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0x1FFFFF;
 
@@ -355,12 +355,12 @@ void x86_64_map_large_page_noflush(Level4Group* PML4Array, void* physaddr, void*
     ((PageMapLevel2Entry_LargePages*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = PML2;
 }
 
-void x86_64_map_large_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_map_large_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
     x86_64_map_large_page_noflush(PML4Array, physaddr, virtualaddr, flags);
     x86_64_FlushTLB();
 }
 
-void x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
+void __attribute__((no_sanitize("undefined"))) x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0x1FFFFF;
 
     const uint16_t pd    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
@@ -405,19 +405,19 @@ void x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) 
     }
 }
 
-void x86_64_unmap_large_page(Level4Group* PML4Array, void* virtualaddr) {
+void __attribute__((no_sanitize("undefined"))) x86_64_unmap_large_page(Level4Group* PML4Array, void* virtualaddr) {
     x86_64_unmap_large_page_noflush(PML4Array, virtualaddr);
     x86_64_FlushTLB();
 }
 
 // Update flags of page mapping
-void x86_64_remap_large_page(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_remap_large_page(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
     x86_64_remap_page_noflush(PML4Array, virtualaddr, flags);
     x86_64_FlushTLB();
 }
 
 // Update flags of page mapping with no TLB flush
-void x86_64_remap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_remap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0x1FFFFF;
 
     const uint16_t pd    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
