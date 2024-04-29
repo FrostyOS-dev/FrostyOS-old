@@ -104,6 +104,8 @@ set(kernel_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/VirtualPageManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/VirtualRegion.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ProgramLoader/ELF.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sanitiser/sanitiser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sanitiser/ubsan.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Scheduling/Process.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Scheduling/Scheduler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Scheduling/Thread.cpp

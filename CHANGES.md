@@ -1,8 +1,16 @@
 # Changes
 
-## Latest Changes - 08/04/2024
+## Latest Changes - 29/04/2024
 
-- Update the initramfs initialisation to check if the file siz of and item is zero.
+- Added `ubsan` support.
+- The bitmap in the PhysicalPageFrameAllocator is now cleared to all 1s before usage to ensure all pages default to being used/reserved.
+- Added ubsan disabled attributes to page mapping functions, ELF Symbol table init and ACPI `getOtherSDT` to prevent false positives.
+- Updated image size to be 10MiB so larger builds of the kernel with ubsan enabled can fit.
+- Fixed a spelling mistake in change list for previous commit.
+
+## 08/04/2024
+
+- Update the initramfs initialisation to check if the file size of an item is zero.
 - Convert build system over to CMake. The old Makefile-based system will remain for now, but it is deprecated.
 - The toolchain and mkgpt are now built with shell scripts called from CMake.
 - OVMF_VARS is now updated using a shell script called from CMake.

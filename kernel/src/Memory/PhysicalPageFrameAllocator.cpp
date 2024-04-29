@@ -58,6 +58,8 @@ void PhysicalPageFrameAllocator::EarlyInit(const MemoryMapEntry* FirstMemoryMapE
     m_Bitmap.SetSize(BitmapSize);
     m_Bitmap.SetBuffer(g_EarlyBitmap);
 
+    memset(m_Bitmap.GetBuffer(), 0xFF, BitmapSize); // we set all bits to 1, as that means the page is reserved
+
     // Fill bitmap
     for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
         MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)FirstMemoryMapEntry + (i * MEMORY_MAP_ENTRY_SIZE));
@@ -103,7 +105,7 @@ void PhysicalPageFrameAllocator::FullInit(const MemoryMapEntry* FirstMemoryMapEn
     assert(BitmapAddress != nullptr);
     m_Bitmap.SetSize(BitmapSize);
     m_Bitmap.SetBuffer((uint8_t*)to_HHDM(BitmapAddress));
-    memset(m_Bitmap.GetBuffer(), 0, BitmapSize);
+    memset(m_Bitmap.GetBuffer(), 0xFF, BitmapSize); // we set all bits to 1, as that means the page is reserved
 
     // Copy old bitmap
     memcpy(m_Bitmap.GetBuffer(), g_EarlyBitmap, KiB(128));

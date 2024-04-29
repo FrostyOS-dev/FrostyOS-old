@@ -63,8 +63,8 @@ if (UNIX)
 
     add_custom_target(build_iso
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/iso
-	    COMMAND dd if=/dev/zero of=${CMAKE_SOURCE_DIR}/iso/fat.img bs=1k count=1440
-	    COMMAND mformat -i ${CMAKE_SOURCE_DIR}/iso/fat.img -f 1440 -I 32 ::
+	    COMMAND dd if=/dev/zero of=${CMAKE_SOURCE_DIR}/iso/fat.img bs=1k count=10240
+	    COMMAND mformat -i ${CMAKE_SOURCE_DIR}/iso/fat.img -h 4 -t 80 -s 64 -I 32 ::
 	    COMMAND mmd -i ${CMAKE_SOURCE_DIR}/iso/fat.img ::/EFI
 	    COMMAND mmd -i ${CMAKE_SOURCE_DIR}/iso/fat.img ::/EFI/BOOT
 	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/EFI/BOOT/BOOTX64.EFI ::/EFI/BOOT
@@ -72,7 +72,7 @@ if (UNIX)
 	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS/kernel.elf ::/WorldOS
 	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS/initramfs.tar ::/WorldOS
 	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/limine.cfg ::
-        COMMAND ${CMAKE_SOURCE_DIR}/depend/tools/bin/mkgpt -o ${CMAKE_SOURCE_DIR}/iso/hdimage.bin --image-size 8192 --part ${CMAKE_SOURCE_DIR}/iso/fat.img --type system
+        COMMAND ${CMAKE_SOURCE_DIR}/depend/tools/bin/mkgpt -o ${CMAKE_SOURCE_DIR}/iso/hdimage.bin --image-size 24576 --part ${CMAKE_SOURCE_DIR}/iso/fat.img --type system
 		BYPRODUCTS ${CMAKE_SOURCE_DIR}/iso/hdimage.bin ${CMAKE_SOURCE_DIR}/iso/fat.img
 	)
 endif()

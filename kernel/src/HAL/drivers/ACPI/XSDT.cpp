@@ -31,7 +31,7 @@ bool InitAndValidateXSDT(void* XSDT) {
     return false;
 }
 
-ACPISDTHeader* getOtherSDT(uint64_t index) {
+ACPISDTHeader* __attribute__((no_sanitize("undefined"))) getOtherSDT(uint64_t index) {
     uint64_t* start = (uint64_t*)((uint64_t)g_XSDT + sizeof(ACPISDTHeader));
     return (ACPISDTHeader*)to_HHDM((void*)(start[index]));
 }
