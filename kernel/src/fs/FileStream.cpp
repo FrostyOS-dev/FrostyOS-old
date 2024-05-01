@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <errno.h>
 
-FileStream::FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes, FilePrivilegeLevel privilege) : m_open(false), m_inode(inode), m_inode_state(nullptr), m_mountPoint(mountPoint), m_modes(modes), m_privilege(privilege), m_lastError(FileStreamError::SUCCESS), m_lock(0) {
+FileStream::FileStream(Inode* inode, VFS_MountPoint* mountPoint, uint8_t modes, FilePrivilegeLevel privilege) : m_open(false), m_inode(inode), m_inode_state(nullptr), m_mountPoint(mountPoint), m_modes(modes), m_privilege(privilege), m_lock(0) {
 
 }
 
@@ -101,7 +101,7 @@ int FileStream::Close() {
     return ESUCCESS;
 }
 
-int64_t FileStream::ReadStream(uint8_t* bytes, int64_t count) {
+int64_t FileStream::ReadStream(uint8_t* bytes, int64_t count, int* status) {
     if (count < 0)
         return -EINVAL;
 
@@ -119,41 +119,60 @@ int64_t FileStream::ReadStream(uint8_t* bytes, int64_t count) {
                     return -EISDIR;
                 }
                 inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
-                uint64_t status = inode->ReadStream(m_privilege, bytes, count);
-                if (status != count) {
-                    InodeError error = inode->GetLastError();
-                    if (error == InodeError::INVALID_ARGUMENTS)
-                        SetLastError(FileStreamError::INVALID_ARGUMENTS);
-                    else if (error == InodeError::STREAM_CLOSED)
-                        SetLastError(FileStreamError::STREAM_CLOSED);
-                    else if (error == InodeError::NO_PERMISSION)
-                        SetLastError(FileStreamError::NO_PERMISSION);
-                    else
-                        SetLastError(FileStreamError::INTERNAL_ERROR);
-                }
-                else
-                    SetLastError(FileStreamError::SUCCESS);
+                int i_status;
+                int64_t rc = inode->ReadStream(m_privilege, bytes, count, &i_status);
+                if (rc >= 0 && status != nullptr)
+                    *status = i_status;
                 *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
-                return status;
+                return rc;
             }
             break;
         default:
-            SetLastError(FileStreamError::INVALID_FS_TYPE);
-            return 0;
+            return -ENODEV;
             break;
     }
-    SetLastError(FileStreamError::INTERNAL_ERROR); // should be unreachable
-    return 0;
+    return -ENOSYS;
 }
 
-uint64_t FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
-    if (m_mountPoint == nullptr) {
-        SetLastError(FileStreamError::INVALID_MOUNTPOINT);
-        return 0;
+int64_t FileStream::WriteStream(const uint8_t* bytes, int64_t count, int* status) {
+    if (count < 0)
+        return -EINVAL;
+    if (m_mountPoint == nullptr)
+        return -ENODEV;
+    if (!(m_modes & VFS_WRITE))
+        return -EACCES;
+    switch (m_mountPoint->type) {
+        case FileSystemType::TMPFS:
+            {
+                using namespace TempFS;
+                TempFSInode* inode = (TempFSInode*)m_inode;
+                if (inode == nullptr || inode->GetType() != InodeType::File)
+                    return -EISDIR;
+                inode->Lock();
+                inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
+                int i_status;
+                int64_t rc = inode->WriteStream(m_privilege, bytes, count, &i_status);
+                *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
+                inode->Unlock();
+                if (rc >= 0 && status != nullptr)
+                    *status = i_status;
+                return rc;
+            }
+            break;
+        default:
+            return -ENODEV;
+            break;
     }
-    if (!(m_modes & VFS_WRITE)) {
-        SetLastError(FileStreamError::INVALID_MODE);
-        return 0;
+    return -ENOSYS;
+}
+
+int FileStream::Seek(int64_t offset) {
+    if (offset < 0)
+        return -EINVAL;
+    spinlock_acquire(&m_lock);
+    if (m_mountPoint == nullptr) {
+        spinlock_release(&m_lock);
+        return -ENODEV;
     }
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS:
@@ -161,43 +180,34 @@ uint64_t FileStream::WriteStream(const uint8_t* bytes, uint64_t count) {
                 using namespace TempFS;
                 TempFSInode* inode = (TempFSInode*)m_inode;
                 if (inode == nullptr || inode->GetType() != InodeType::File) {
-                    SetLastError(FileStreamError::INVALID_INODE);
-                    return 0;
+                    spinlock_release(&m_lock);
+                    return -EISDIR;
                 }
+                inode->Lock();
                 inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
-                uint64_t status = inode->WriteStream(m_privilege, bytes, count);
-                if (status != count) {
-                    InodeError error = inode->GetLastError();
-                    if (error == InodeError::INVALID_ARGUMENTS)
-                        SetLastError(FileStreamError::INVALID_ARGUMENTS);
-                    else if (error == InodeError::ALLOCATION_FAILED)
-                        SetLastError(FileStreamError::ALLOCATION_FAILED);
-                    else if (error == InodeError::STREAM_CLOSED)
-                        SetLastError(FileStreamError::STREAM_CLOSED);
-                    else if (error == InodeError::NO_PERMISSION)
-                        SetLastError(FileStreamError::NO_PERMISSION);
-                    else
-                        SetLastError(FileStreamError::INTERNAL_ERROR);
-                }
-                else
-                    SetLastError(FileStreamError::SUCCESS);
+                int rc = inode->Seek(offset);
                 *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
-                return status;
+                inode->Unlock();
+                if (rc < 0) {
+                    spinlock_release(&m_lock);
+                    return rc;
+                }
             }
             break;
         default:
-            SetLastError(FileStreamError::INVALID_FS_TYPE);
-            return 0;
+            spinlock_release(&m_lock);
+            return -ENODEV;
             break;
     }
-    SetLastError(FileStreamError::INTERNAL_ERROR); // should be unreachable
-    return 0;
+    spinlock_release(&m_lock);
+    return ESUCCESS;
 }
 
-bool FileStream::Seek(uint64_t offset) {
+int FileStream::Rewind() {
+    spinlock_acquire(&m_lock);
     if (m_mountPoint == nullptr) {
-        SetLastError(FileStreamError::INVALID_MOUNTPOINT);
-        return false;
+        spinlock_release(&m_lock);
+        return -ENODEV;
     }
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS:
@@ -205,159 +215,147 @@ bool FileStream::Seek(uint64_t offset) {
                 using namespace TempFS;
                 TempFSInode* inode = (TempFSInode*)m_inode;
                 if (inode == nullptr || inode->GetType() != InodeType::File) {
-                    SetLastError(FileStreamError::INVALID_INODE);
-                    return false;
+                    spinlock_release(&m_lock);
+                    return -EISDIR;
                 }
+                inode->Lock();
                 inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
-                if (!inode->Seek(offset)) {
-                    InodeError error = inode->GetLastError();
-                    if (error == InodeError::INVALID_ARGUMENTS)
-                        SetLastError(FileStreamError::INVALID_ARGUMENTS);
-                    else if (error == InodeError::STREAM_CLOSED)
-                        SetLastError(FileStreamError::STREAM_CLOSED);
-                    else
-                        SetLastError(FileStreamError::INTERNAL_ERROR);
-                    *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
-                    return false;
-                }
+                int rc = inode->Rewind();
                 *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
+                inode->Unlock();
+                if (rc < 0) {
+                    spinlock_release(&m_lock);
+                    return rc;
+                }
             }
             break;
         default:
-            SetLastError(FileStreamError::INVALID_FS_TYPE);
-            return false;
+            spinlock_release(&m_lock);
+            return -ENODEV;
             break;
     }
-    SetLastError(FileStreamError::SUCCESS);
-    return true;
+    spinlock_release(&m_lock);
+    return ESUCCESS;
 }
 
-bool FileStream::Rewind() {
+int64_t FileStream::GetOffset() const {
+    spinlock_acquire(&m_lock);
     if (m_mountPoint == nullptr) {
-        SetLastError(FileStreamError::INVALID_MOUNTPOINT);
-        return false;
-    }
-    switch (m_mountPoint->type) {
-        case FileSystemType::TMPFS:
-            {
-                using namespace TempFS;
-                TempFSInode* inode = (TempFSInode*)m_inode;
-                if (inode == nullptr || inode->GetType() != InodeType::File) {
-                    SetLastError(FileStreamError::INVALID_INODE);
-                    return false;
-                }
-                inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
-                if (!inode->Rewind()) {
-                    if (inode->GetLastError() == InodeError::STREAM_CLOSED)
-                        SetLastError(FileStreamError::STREAM_CLOSED);
-                    else
-                        SetLastError(FileStreamError::INTERNAL_ERROR);
-                    *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
-                    return false;
-                }
-                *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
-            }
-            break;
-        default:
-            SetLastError(FileStreamError::INVALID_FS_TYPE);
-            return false;
-            break;
-    }
-    SetLastError(FileStreamError::SUCCESS);
-    return true;
-}
-
-uint64_t FileStream::GetOffset() const {
-    if (m_mountPoint == nullptr) {
-        SetLastError(FileStreamError::INVALID_MOUNTPOINT);
-        return false;
+        spinlock_release(&m_lock);
+        return -ENODEV;
     }
     if (m_inode == nullptr || m_inode->GetType() != InodeType::File) {
-        SetLastError(FileStreamError::INVALID_INODE);
-        return 0;
+        spinlock_release(&m_lock);
+        return -EISDIR;
     }
+    int64_t offset;
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS: {
             using namespace TempFS;
             TempFSInode* inode = (TempFSInode*)m_inode;
+            inode->Lock();
             inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
+            offset = inode->GetOffset();
+            inode->Unlock();
             break;
         }
         default:
-            SetLastError(FileStreamError::INVALID_FS_TYPE);
-            return 0;
+            spinlock_release(&m_lock);
+            return -ENODEV;
             break;
     }
-    SetLastError(FileStreamError::SUCCESS);
-    return m_inode->GetOffset();
+    spinlock_release(&m_lock);
+    return offset;
 }
 
-bool FileStream::isOpen() const {
+bool FileStream::isOpen(int* status) const {
+    spinlock_acquire(&m_lock);
     if (m_mountPoint == nullptr) {
-        SetLastError(FileStreamError::INVALID_MOUNTPOINT);
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = -ENODEV;
         return false;
     }
     if (m_inode == nullptr || m_inode->GetType() != InodeType::File) {
-        SetLastError(FileStreamError::INVALID_INODE);
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = -EISDIR;
         return false;
     }
+    bool open;
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS: {
             using namespace TempFS;
             TempFSInode* inode = (TempFSInode*)m_inode;
+            inode->Lock();
             inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
+            open = inode->isOpen();
+            inode->Unlock();
             break;
         }
         default:
-            SetLastError(FileStreamError::INVALID_FS_TYPE);
-            return 0;
+            spinlock_release(&m_lock);
+            if (status != nullptr)
+                *status = -ENODEV;
+            return false;
             break;
     }
-    SetLastError(FileStreamError::SUCCESS);
-    return m_inode->isOpen();
+    spinlock_release(&m_lock);
+    if (status != nullptr)
+        *status = ESUCCESS;
+    return open;
 }
 
-size_t FileStream::GetSize() const {
+size_t FileStream::GetSize(int* status) const {
+    spinlock_acquire(&m_lock);
     if (m_inode == nullptr || m_inode->GetType() != InodeType::File) {
-        SetLastError(FileStreamError::INVALID_INODE);
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = -EISDIR;
         return 0;
     }
     switch (m_mountPoint->type) {
-    case FileSystemType::TMPFS:
-        return ((TempFS::TempFSInode*)m_inode)->GetSize();
+    case FileSystemType::TMPFS: {
+        using namespace TempFS;
+        TempFSInode* inode = (TempFSInode*)m_inode;
+        int i_status;
+        inode->Lock();
+        size_t size = inode->GetSize(&i_status);
+        inode->Unlock();
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = i_status;
+        return size;
+    }
     default:
-        SetLastError(FileStreamError::INVALID_FS_TYPE);
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = -ENODEV;
         return 0;
     }
-    SetLastError(FileStreamError::INTERNAL_ERROR); // should be unreachable
+    spinlock_release(&m_lock);
+    if (status != nullptr)
+        *status = -ENOSYS;
     return 0;
 }
 
 Inode* FileStream::GetInode() const {
-    SetLastError(FileStreamError::SUCCESS);
     return m_inode;
 }
 
-FileSystem* FileStream::GetFileSystem() const {
+FileSystem* FileStream::GetFileSystem(int* status) const {
+    spinlock_acquire(&m_lock);
     if (m_mountPoint == nullptr) {
-        SetLastError(FileStreamError::INVALID_MOUNTPOINT);
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = -ENODEV;
         return nullptr;
     }
-    SetLastError(FileStreamError::SUCCESS);
+    if (status != nullptr)
+        *status = ESUCCESS;
     return m_mountPoint->fs;
 }
 
 VFS_MountPoint* FileStream::GetMountPoint() const {
-    SetLastError(FileStreamError::SUCCESS);
     return m_mountPoint;
-}
-
-FileStreamError FileStream::GetLastError() const {
-    return m_lastError;
-}
-
-/* Private members */
-
-void FileStream::SetLastError(FileStreamError error) const {
-    m_lastError = error;
 }

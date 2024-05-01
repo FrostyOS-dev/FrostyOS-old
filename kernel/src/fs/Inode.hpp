@@ -33,24 +33,19 @@ enum class InodeType {
 
 class Inode {
 public:
-    struct ErrorAndResult {
-        int error;
-        uint64_t result;
-    };
-
     virtual ~Inode() {}
 
     virtual int Open() = 0;
     virtual int Close() = 0;
-    virtual int64_t ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, int64_t count = 1) = 0;
-    virtual int64_t WriteStream(FilePrivilegeLevel privilege, const uint8_t* bytes, int64_t count = 1) = 0;
+    virtual int64_t ReadStream(FilePrivilegeLevel privilege, uint8_t* bytes, int64_t count = 1, int* status = nullptr) = 0; // status will be set if not nullptr, and if the return value is >= 0
+    virtual int64_t WriteStream(FilePrivilegeLevel privilege, const uint8_t* bytes, int64_t count = 1, int* status = nullptr) = 0; // status will be set if not nullptr, and if the return value is >= 0
     virtual int Seek(int64_t offset) = 0;
     virtual int Rewind() = 0;
     virtual int64_t GetOffset() const { return p_CurrentOffset; }
     virtual bool isOpen() const { return p_isOpen; }
 
-    virtual ErrorAndResult Read(FilePrivilegeLevel privilege, int64_t offset, uint8_t* bytes, int64_t count = 1) = 0;
-    virtual ErrorAndResult Write(FilePrivilegeLevel privilege, int64_t offset, const uint8_t* bytes, int64_t count = 1) = 0;
+    virtual int64_t Read(FilePrivilegeLevel privilege, int64_t offset, uint8_t* bytes, int64_t count = 1, int* status = nullptr) = 0; // status will be set if not nullptr, and if the return value is >= 0
+    virtual int64_t Write(FilePrivilegeLevel privilege, int64_t offset, const uint8_t* bytes, int64_t count = 1, int* status = nullptr) = 0; // status will be set if not nullptr, and if the return value is >= 0
 
     virtual int Expand(size_t new_size) = 0;
 
@@ -69,14 +64,14 @@ public:
     virtual uint64_t GetID() const { return p_ID; }
     virtual void ResetID(uint32_t seed = 0) = 0;
 
-    virtual Inode* GetParent() const = 0;
+    virtual Inode* GetParent(int* status = nullptr) const = 0; // status will be set if not nullptr
 
     virtual FilePrivilegeLevel GetPrivilegeLevel() const = 0;
     virtual void SetPrivilegeLevel(FilePrivilegeLevel privilege) = 0;
 
     virtual uint64_t GetChildCount() const = 0;
-    virtual Inode* GetChild(uint64_t index) const = 0;
-    virtual Inode* GetChild(const char* name) const = 0;
+    virtual Inode* GetChild(uint64_t index, int* status = nullptr) const = 0; // status will be set if not nullptr
+    virtual Inode* GetChild(const char* name, int* status = nullptr) const = 0; // status will be set if not nullptr
 
     virtual void Lock() const = 0;
     virtual void Unlock() const = 0;

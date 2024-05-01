@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "TempFileSystem.hpp"
 
+#include <errno.h>
 #include <string.h>
 
 #include <Memory/kmalloc.hpp>
@@ -26,39 +27,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace TempFS {
     TempFileSystem::TempFileSystem(size_t blockSize, FilePrivilegeLevel rootPrivilege) : m_rootPrivilege(rootPrivilege) {
         p_blockSize = blockSize;
-        p_lastError = FileSystemError::SUCCESS;
     }
 
     TempFileSystem::~TempFileSystem() {
 
     }
 
-    bool TempFileSystem::CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size, bool inherit_permissions, FilePrivilegeLevel privilege) {
-        if (name == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            return false;
-        }
+    int TempFileSystem::CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size, bool inherit_permissions, FilePrivilegeLevel privilege) {
+        if (name == nullptr)
+            return -EFAULT;
         TempFSInode* parent_inode = GetInode(parent);
         if (parent_inode == nullptr && parent != nullptr)
             return false;
         FilePrivilegeLevel parent_priv = parent_inode == nullptr ? m_rootPrivilege : parent_inode->GetPrivilegeLevel();
         if (current_privilege.UID == parent_priv.UID || current_privilege.UID == 0) {
-            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0))
+                return -EACCES;
         }
         else if (current_privilege.GID == parent_priv.GID || current_privilege.GID == 0) {
-            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0))
+                return -EACCES;
         }
         else {
-            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0))
+                return -EACCES;
         }
         TempFSInode* inode = new TempFSInode;
         FilePrivilegeLevel priv = {0, 0, 00644};
@@ -66,49 +58,32 @@ namespace TempFS {
             priv = parent_priv;
         else
             priv = privilege;
-        if (!inode->Create(name, parent_inode, InodeType::File, this, priv, p_blockSize)) {
-            if (inode->GetLastError() == InodeError::INVALID_TYPE)
-                SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            else
-                SetLastError(FileSystemError::INTERNAL_ERROR);
-            return false;
-        }
+        int rc = inode->Create(name, parent_inode, InodeType::File, this, priv, p_blockSize);
+        if (rc < 0)
+            return rc;
         if (size > 0) {
-            if (!inode->Expand(size)) {
-                if (inode->GetLastError() == InodeError::ALLOCATION_FAILED)
-                    SetLastError(FileSystemError::ALLOCATION_FAILED);
-                else
-                    SetLastError(FileSystemError::INTERNAL_ERROR);
-                return false;
-            }
+            int rc = inode->Expand(size);
+            if (rc < 0)
+                return rc;
         }
-        SetLastError(FileSystemError::SUCCESS);
-        return true;
+        return ESUCCESS;
     }
 
-    bool TempFileSystem::CreateFile(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, size_t size, bool inherit_permissions, FilePrivilegeLevel privilege) {
-        if (name == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            return false;
-        }
+    int TempFileSystem::CreateFile(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, size_t size, bool inherit_permissions, FilePrivilegeLevel privilege) {
+        if (name == nullptr)
+            return -EFAULT;
         FilePrivilegeLevel parent_priv = parent == nullptr ? m_rootPrivilege : parent->GetPrivilegeLevel();
         if (current_privilege.UID == parent_priv.UID || current_privilege.UID == 0) {
-            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0))
+                return -EACCES;
         }
         else if (current_privilege.GID == parent_priv.GID || current_privilege.GID == 0) {
-            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0))
+                return -EACCES;
         }
         else {
-            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0))
+                return -EACCES;
         }
         TempFSInode* inode = new TempFSInode;
         FilePrivilegeLevel priv = {0, 0, 00644};
@@ -116,52 +91,35 @@ namespace TempFS {
             priv = parent_priv;
         else
             priv = privilege;
-        if (!inode->Create(name, parent, InodeType::File, this, priv, p_blockSize)) {
-            if (inode->GetLastError() == InodeError::INVALID_TYPE)
-                SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            else
-                SetLastError(FileSystemError::INTERNAL_ERROR);
-            return false;
-        }
+        int rc = inode->Create(name, parent, InodeType::File, this, priv, p_blockSize);
+        if (rc < 0)
+            return rc;
         if (size > 0) {
-            if (!inode->Expand(size)) {
-                if (inode->GetLastError() == InodeError::ALLOCATION_FAILED)
-                    SetLastError(FileSystemError::ALLOCATION_FAILED);
-                else
-                    SetLastError(FileSystemError::INTERNAL_ERROR);
-                return false;
-            }
+            int rc = inode->Expand(size);
+            if (rc < 0)
+                return rc;
         }
-        SetLastError(FileSystemError::SUCCESS);
-        return true;
+        return ESUCCESS;
     }
 
-    bool TempFileSystem::CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions, FilePrivilegeLevel privilege) {
-        if (name == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            return false;
-        }
+    int TempFileSystem::CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions, FilePrivilegeLevel privilege) {
+        if (name == nullptr)
+            return -EFAULT;
         TempFSInode* parent_inode = GetInode(parent);
         if (parent_inode == nullptr && parent != nullptr)
-            return false;
+            return -ENOENT;
         FilePrivilegeLevel parent_priv = parent_inode == nullptr ? m_rootPrivilege : parent_inode->GetPrivilegeLevel();
         if (current_privilege.UID == parent_priv.UID || current_privilege.UID == 0) {
-            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0))
+                return -EACCES;
         }
         else if (current_privilege.GID == parent_priv.GID || current_privilege.GID == 0) {
-            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0))
+                return -EACCES;
         }
         else {
-            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0))
+                return -EACCES;
         }
         TempFSInode* inode = new TempFSInode;
         FilePrivilegeLevel priv = {0, 0, 00644};
@@ -169,40 +127,27 @@ namespace TempFS {
             priv = parent_priv;
         else
             priv = privilege;
-        if (!inode->Create(name, parent_inode, InodeType::Folder, this, priv, p_blockSize)) {
-            if (inode->GetLastError() == InodeError::INVALID_TYPE)
-                SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            else
-                SetLastError(FileSystemError::INTERNAL_ERROR);
-            return false;
-        }
-        SetLastError(FileSystemError::SUCCESS);
-        return true;
+        int rc = inode->Create(name, parent_inode, InodeType::Folder, this, priv, p_blockSize);
+        if (rc < 0)
+            return rc;
+        return ESUCCESS;
     }
 
-    bool TempFileSystem::CreateFolder(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, bool inherit_permissions, FilePrivilegeLevel privilege) {
-        if (name == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            return false;
-        }
+    int TempFileSystem::CreateFolder(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, bool inherit_permissions, FilePrivilegeLevel privilege) {
+        if (name == nullptr)
+            return -EFAULT;
         FilePrivilegeLevel parent_priv = parent == nullptr ? m_rootPrivilege : parent->GetPrivilegeLevel();
         if (current_privilege.UID == parent_priv.UID || current_privilege.UID == 0) {
-            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0))
+                return -EACCES;
         }
         else if (current_privilege.GID == parent_priv.GID || current_privilege.GID == 0) {
-            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0))
+                return -EACCES;
         }
         else {
-            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0))
+                return -EACCES;
         }
         TempFSInode* inode = new TempFSInode;
         FilePrivilegeLevel priv = {0, 0, 00644};
@@ -210,46 +155,33 @@ namespace TempFS {
             priv = parent_priv;
         else
             priv = privilege;
-        if (!inode->Create(name, parent, InodeType::Folder, this, priv, p_blockSize)) {
-            if (inode->GetLastError() == InodeError::INVALID_TYPE)
-                SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            else
-                SetLastError(FileSystemError::INTERNAL_ERROR);
-            return false;
-        }
-        SetLastError(FileSystemError::SUCCESS);
-        return true;
+        int rc = inode->Create(name, parent, InodeType::Folder, this, priv, p_blockSize);
+        if (rc < 0)
+            return rc;
+        return ESUCCESS;
     }
 
-    bool TempFileSystem::CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions, FilePrivilegeLevel privilege) {
-        if (name == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            return false;
-        }
+    int TempFileSystem::CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions, FilePrivilegeLevel privilege) {
+        if (name == nullptr)
+            return -EFAULT;
         TempFSInode* parent_inode = GetInode(parent);
         if (parent_inode == nullptr && parent != nullptr)
-            return false;
+            return -ENOENT;
         TempFSInode* target_inode = GetInode(target);
         if (target_inode == nullptr)
-            return false;
+            return -ENOENT;
         FilePrivilegeLevel parent_priv = parent_inode == nullptr ? m_rootPrivilege : parent_inode->GetPrivilegeLevel();
         if (current_privilege.UID == parent_priv.UID || current_privilege.UID == 0) {
-            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0))
+                return -EACCES;
         }
         else if (current_privilege.GID == parent_priv.GID || current_privilege.GID == 0) {
-            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0))
+                return -EACCES;
         }
         else {
-            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0))
+                return -EACCES;
         }
         TempFSInode* inode = new TempFSInode;
         FilePrivilegeLevel priv = {0, 0, 00644};
@@ -257,40 +189,27 @@ namespace TempFS {
             priv = parent_priv;
         else
             priv = privilege;
-        if (!inode->Create(name, parent_inode, InodeType::SymLink, this, priv, p_blockSize, target_inode)) {
-            if (inode->GetLastError() == InodeError::INVALID_TYPE)
-                SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            else
-                SetLastError(FileSystemError::INTERNAL_ERROR);
-            return false;
-        }
-        SetLastError(FileSystemError::SUCCESS);
-        return true;
+        int rc = inode->Create(name, parent_inode, InodeType::SymLink, this, priv, p_blockSize, target_inode);
+        if (rc < 0)
+            return rc;
+        return ESUCCESS;
     }
 
-    bool TempFileSystem::CreateSymLink(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, TempFSInode* target, bool inherit_permissions, FilePrivilegeLevel privilege) {
-        if (name == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            return false;
-        }
+    int TempFileSystem::CreateSymLink(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, TempFSInode* target, bool inherit_permissions, FilePrivilegeLevel privilege) {
+        if (name == nullptr)
+            return -EFAULT;
         FilePrivilegeLevel parent_priv = parent == nullptr ? m_rootPrivilege : parent->GetPrivilegeLevel();
         if (current_privilege.UID == parent_priv.UID) {
-            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_USER_WRITE) > 0))
+                return -EACCES;
         }
         else if (current_privilege.GID == parent_priv.GID) {
-            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0))
+                return -EACCES;
         }
         else {
-            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0))
+                return -EACCES;
         }
         TempFSInode* inode = new TempFSInode;
         FilePrivilegeLevel priv = {0, 0, 00644};
@@ -298,87 +217,63 @@ namespace TempFS {
             priv = parent_priv;
         else
             priv = privilege;
-        if (!inode->Create(name, parent, InodeType::SymLink, this, priv, p_blockSize, target)) {
-            if (inode->GetLastError() == InodeError::INVALID_TYPE)
-                SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            else
-                SetLastError(FileSystemError::INTERNAL_ERROR);
-            return false;
-        }
-        SetLastError(FileSystemError::SUCCESS);
-        return true;
+        int rc = inode->Create(name, parent, InodeType::SymLink, this, priv, p_blockSize, target);
+        if (rc < 0)
+            return rc;
+        return ESUCCESS;
     }
 
-    bool TempFileSystem::DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive, bool delete_name) {
-        if (path == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            return false;
-        }
-        TempFSInode* inode = GetInode(path);
+    int TempFileSystem::DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive, bool delete_name) {
+        if (path == nullptr)
+            return -EFAULT;
+        int status;
+        TempFSInode* inode = GetInode(path, nullptr, nullptr, &status);
         if (inode == nullptr)
-            return false; // Error code is already set
+            return status;
         TempFSInode* parent = inode->GetParent();
         FilePrivilegeLevel parent_priv = parent == nullptr ? m_rootPrivilege : parent->GetPrivilegeLevel();
         // Deletion is ALWAYS allowed if we are the owner
         if (current_privilege.GID == parent_priv.GID && current_privilege.UID != parent_priv.UID) {
-            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0))
+                return -EACCES;
         }
         else if (current_privilege.UID != parent_priv.UID) {
-            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0))
+                return -EACCES;
         }
-        if (inode->GetChildCount() > 0 && !recursive) {
-            SetLastError(FileSystemError::RECURSION_ERROR);
-            return false;
-        }
-        if (!inode->Delete(false, delete_name)) {
-            SetLastError(FileSystemError::INTERNAL_ERROR);
-            return false;
-        }
+        if (inode->GetChildCount() > 0 && !recursive)
+            return -ENOTEMPTY;
+        int rc = inode->Delete(false, delete_name);
+        if (rc < 0)
+            return rc;
         delete inode;
-        SetLastError(FileSystemError::SUCCESS);
-        return true;
+        return ESUCCESS;
     }
 
-    bool TempFileSystem::DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive, bool delete_name) {
-        if (inode == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-            return false;
-        }
+    int TempFileSystem::DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive, bool delete_name) {
+        if (inode == nullptr)
+            return -EFAULT;
         TempFSInode* parent = inode->GetParent();
         FilePrivilegeLevel parent_priv = parent == nullptr ? m_rootPrivilege : parent->GetPrivilegeLevel();
         // Deletion is ALWAYS allowed if we are the owner
         if (current_privilege.GID == parent_priv.GID && current_privilege.UID != parent_priv.UID) {
-            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_GROUP_WRITE) > 0))
+                return -EACCES;
         }
         else if (current_privilege.UID != parent_priv.UID) {
-            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0)) {
-                SetLastError(FileSystemError::NO_PERMISSION);
-                return false;
-            }
+            if (!((parent_priv.ACL & ACL_OTHER_WRITE) > 0))
+                return -EACCES;
         }
-        if (inode->GetChildCount() > 0 && !recursive) {
-            SetLastError(FileSystemError::RECURSION_ERROR);
-            return false;
-        }
-        if (!inode->Delete(false, delete_name)) {
-            SetLastError(FileSystemError::INTERNAL_ERROR);
-            return false;
-        }
+        if (inode->GetChildCount() > 0 && !recursive)
+            return -ENOTEMPTY;
+        int rc = inode->Delete(false, delete_name);
+        if (rc < 0)
+            return rc;
         delete inode;
-        SetLastError(FileSystemError::SUCCESS);
-        return true;
+        return ESUCCESS;
     }
 
-    void TempFileSystem::DestroyFileSystem() {
+    int TempFileSystem::DestroyFileSystem() {
         for (uint64_t i = 0; i < m_rootInodes.getCount(); i++) {
             TempFSInode* inode = m_rootInodes.get(0);
             if (inode != nullptr) {
@@ -386,6 +281,7 @@ namespace TempFS {
                 delete inode;
             }
         }
+        return ESUCCESS;
     }
 
     void TempFileSystem::CreateNewRootInode(TempFSInode* inode) {
@@ -396,22 +292,26 @@ namespace TempFS {
         m_rootInodes.remove(inode);
     }
 
-    Inode* TempFileSystem::GetRootInode(uint64_t index) const {
+    Inode* TempFileSystem::GetRootInode(uint64_t index, int* status) const {
         if (index >= m_rootInodes.getCount()) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+            if (status != nullptr)
+                *status = -EINVAL;
             return nullptr;
         }
-        SetLastError(FileSystemError::SUCCESS);
-        return m_rootInodes.get(index);
+        Inode* inode = m_rootInodes.get(index);
+        if (inode == nullptr && status != nullptr)
+            *status = -ENOSYS;
+        return inode;
     }
 
     uint64_t TempFileSystem::GetRootInodeCount() const {
         return m_rootInodes.getCount();
     }
 
-    TempFSInode* TempFileSystem::GetSubInode(TempFSInode* parent, const char* path, TempFSInode** lastInode, int64_t* end_index) {
+    TempFSInode* TempFileSystem::GetSubInode(TempFSInode* parent, const char* path, TempFSInode** lastInode, int64_t* end_index, int* status) {
         if (path == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
+            if (status != nullptr)
+                *status = -EFAULT;
             if (lastInode != nullptr)
                 *lastInode = nullptr;
             return nullptr;
@@ -429,7 +329,8 @@ namespace TempFS {
                 if (last_separator < i && (i - last_separator) > 1) {
                     char* name = (char*)kmalloc(i - (last_separator + 1) + 1);
                     if (name == nullptr) {
-                        SetLastError(FileSystemError::ALLOCATION_FAILED);
+                        if (status != nullptr)
+                            *status = -ENOMEM;
                         if (lastInode != nullptr)
                             *lastInode = last_inode;
                         if (end_index != nullptr)
@@ -442,14 +343,12 @@ namespace TempFS {
                         if (strcmp(name, "..") == 0)
                             last_inode = last_inode->GetParent();
                         else if (strcmp(name, ".") != 0) {
-                            TempFSInode* inode = last_inode->GetTMPFSChild(name);
+                            int i_status;
+                            TempFSInode* inode = last_inode->GetTMPFSChild(name, &i_status);
                             if (inode == nullptr) {
                                 kfree(name);
-                                InodeError error = last_inode->GetLastError();
-                                if (error == InodeError::INVALID_ARGUMENTS || error == InodeError::INVALID_TYPE)
-                                    SetLastError(FileSystemError::INVALID_ARGUMENTS);
-                                else
-                                    SetLastError(FileSystemError::INTERNAL_ERROR);
+                                if (status != nullptr)
+                                    *status = i_status;
                                 if (lastInode != nullptr)
                                     *lastInode = last_inode;
                                 if (end_index != nullptr)
@@ -466,7 +365,8 @@ namespace TempFS {
                                 // We do this by setting the last inode to nullptr and returning nullptr, while the error is success.
                                 // This is a hack, but it is faster than the VFS pre-scanning the path.
                                 kfree(name);
-                                SetLastError(FileSystemError::SUCCESS);
+                                if (status != nullptr)
+                                    *status = ESUCCESS;
                                 if (lastInode != nullptr)
                                     *lastInode = nullptr;
                                 if (end_index != nullptr)
@@ -477,7 +377,9 @@ namespace TempFS {
                                 for (uint64_t j = 0; j < m_rootInodes.getCount(); j++) {
                                     TempFSInode* inode = m_rootInodes.get(j);
                                     if (inode == nullptr) {
-                                        SetLastError(FileSystemError::INTERNAL_ERROR);
+                                        kfree(name);
+                                        if (status != nullptr)
+                                            *status = -ENOSYS;
                                         if (lastInode != nullptr)
                                             *lastInode = last_inode;
                                         if (end_index != nullptr)
@@ -502,7 +404,8 @@ namespace TempFS {
         if (last_separator < i && (i - last_separator) > 1) {
             char* name = (char*)kmalloc(i - (last_separator + 1) + 1);
             if (name == nullptr) {
-                SetLastError(FileSystemError::ALLOCATION_FAILED);
+                if (status != nullptr)
+                    *status = -ENOMEM;
                 if (lastInode != nullptr)
                     *lastInode = last_inode;
                 if (end_index != nullptr)
@@ -512,14 +415,12 @@ namespace TempFS {
             strcpy(name, &(path[last_separator + 1]));
             name[i - (last_separator + 1)] = '\0';
             if (last_inode != nullptr) {
-                TempFSInode* inode = last_inode->GetTMPFSChild(name);
+                int i_status;
+                TempFSInode* inode = last_inode->GetTMPFSChild(name, &i_status);
                 if (inode == nullptr) {
                     kfree(name);
-                    InodeError error = last_inode->GetLastError();
-                    if (error == InodeError::INVALID_ARGUMENTS || error == InodeError::INVALID_TYPE)
-                        SetLastError(FileSystemError::INVALID_ARGUMENTS);
-                    else
-                        SetLastError(FileSystemError::INTERNAL_ERROR);
+                    if (status != nullptr)
+                        *status = i_status;
                     if (lastInode != nullptr)
                         *lastInode = last_inode;
                     if (end_index != nullptr)
@@ -533,7 +434,8 @@ namespace TempFS {
                     TempFSInode* inode = m_rootInodes.get(j);
                     if (inode == nullptr) {
                         kfree(name);
-                        SetLastError(FileSystemError::INTERNAL_ERROR);
+                        if (status != nullptr)
+                            *status = -ENOSYS;
                         if (lastInode != nullptr)
                             *lastInode = last_inode;
                         if (end_index != nullptr)
@@ -548,11 +450,8 @@ namespace TempFS {
                 kfree(name);
             }
         }
-        if (last_inode == nullptr) {
-            SetLastError(FileSystemError::INVALID_ARGUMENTS);
-        }
-        else
-            SetLastError(FileSystemError::SUCCESS);
+        if (last_inode == nullptr && status != nullptr)
+            *status = -ENOENT;
         if (lastInode != nullptr)
             *lastInode = last_inode;
         if (end_index != nullptr)
@@ -560,8 +459,8 @@ namespace TempFS {
         return last_inode;
     }
 
-    TempFSInode* TempFileSystem::GetInode(const char* path, TempFSInode** lastInode, int64_t* end_index) {
-        return GetSubInode(nullptr, path, lastInode, end_index);
+    TempFSInode* TempFileSystem::GetInode(const char* path, TempFSInode** lastInode, int64_t* end_index, int* status) {
+        return GetSubInode(nullptr, path, lastInode, end_index, status);
     }
 
     FileSystemType TempFileSystem::GetType() const {

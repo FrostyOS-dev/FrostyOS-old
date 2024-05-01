@@ -32,24 +32,18 @@ public:
 
     int Open();
     int Close();
-    int64_t ReadStream(uint8_t* bytes, int64_t count = 1);
-    int64_t WriteStream(const uint8_t* bytes, int64_t count = 1);
+    int64_t ReadStream(uint8_t* bytes, int64_t count = 1, int* status = nullptr); // status will be set if not nullptr
+    int64_t WriteStream(const uint8_t* bytes, int64_t count = 1, int* status = nullptr); // status will be set if not nullptr
     int Seek(int64_t offset);
     int Rewind();
     int64_t GetOffset() const;
-    bool isOpen() const;
-    int64_t GetSize() const;
+    bool isOpen(int* status = nullptr) const; // status will be set if not nullptr
+    size_t GetSize(int* status = nullptr) const; // status will be set if not nullptr
 
     Inode* GetInode() const;
-    FileSystem* GetFileSystem() const;
+    FileSystem* GetFileSystem(int* status = nullptr) const; // status will be set if not nullptr
 
     VFS_MountPoint* GetMountPoint() const;
-
-    FileStreamError GetLastError() const;
-
-private:
-
-    void SetLastError(FileStreamError) const;
 
 private:
     bool m_open;
@@ -58,8 +52,6 @@ private:
     VFS_MountPoint* m_mountPoint;
     uint8_t m_modes;
     FilePrivilegeLevel m_privilege;
-
-    mutable FileStreamError m_lastError;
 
     mutable spinlock_t m_lock;
 };
