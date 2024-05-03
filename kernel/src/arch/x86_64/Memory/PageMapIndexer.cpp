@@ -16,18 +16,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "PageMapIndexer.hpp"
+#include "PagingUtil.hpp"
 
 Level4Group __attribute__((aligned(0x1000))) K_PML4_Array;
-Level3Group __attribute__((aligned(0x1000))) PML3_LowestArray;
-Level2Group __attribute__((aligned(0x1000))) PML2_LowestArray;
-Level1Group __attribute__((aligned(0x1000))) PML1_LowestArray;
-Level3Group __attribute__((aligned(0x1000))) PML3_KernelGroup; // only highest 2 entries are used
-Level2Group __attribute__((aligned(0x1000))) PML2_KernelLower;
-Level1Group __attribute__((aligned(0x1000))) PML1_KernelLowest;
-//Level3Group __attribute__((aligned(0x1000))) PML3_HHDMLowest;
-//Level2Group __attribute__((aligned(0x1000))) PML2_HHDMLowest;
-
-void* g_KPML4_physical = nullptr;
 
 void* g_kernel_physical = nullptr;
 void* g_kernel_virtual  = nullptr;
@@ -50,15 +41,11 @@ void* __attribute__((no_sanitize("undefined"))) x86_64_get_physaddr(Level4Group*
         return (void*)((uint64_t)virtualaddr - (uint64_t)g_HHDM_start);
 
     uint64_t virtualAddress = (uint64_t)virtualaddr;
-    uint16_t offset = virtualAddress & 0xFFF;
-    virtualAddress >>= 12;
-    uint16_t PT_i = virtualAddress & 0x1ff;
-    virtualAddress >>= 9;
-    uint16_t PD_i = virtualAddress & 0x1ff;
-    virtualAddress >>= 9;
-    uint16_t PDP_i = virtualAddress & 0x1ff;
-    virtualAddress >>= 9;
-    uint16_t PML4_i = virtualAddress & 0x1ff;
+    const uint16_t offset = (uint16_t)((virtualAddress & 0x000000000FFF) >>  0);
+    const uint16_t PT_i   = (uint16_t)((virtualAddress & 0x0000001FF000) >> 12);
+    const uint16_t PD_i   = (uint16_t)((virtualAddress & 0x00003FE00000) >> 21);
+    const uint16_t PDP_i  = (uint16_t)((virtualAddress & 0x007FC0000000) >> 30);
+    const uint16_t PML4_i = (uint16_t)((virtualAddress & 0xFF8000000000) >> 39);
 
     PageMapLevel4Entry PML4 = PML4Array->entries[PML4_i];
     if (PML4.Present == 0)
@@ -73,16 +60,15 @@ void* __attribute__((no_sanitize("undefined"))) x86_64_get_physaddr(Level4Group*
         return nullptr;
 
     if (PML2.PageSize == 1) {
-        return (void*)(((uint64_t)(PML2.Address) << 12) | PT_i | offset);
+        PageMapLevel2Entry_LargePages PML2_Large = *(PageMapLevel2Entry_LargePages*)(&PML2);
+        return (void*)(((uint64_t)(PML2_Large.Address) << 21) | (PT_i << 12) | offset);
     }
 
     PageMapLevel1Entry PML1 = (((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)PML2.Address << 12)))[PT_i]);
     if (PML1.Present == 0)
         return nullptr;
-
-    void* Page_addr = (void*)((uint64_t)PML1.Address << 12);
     
-    return (void*)((uint64_t)Page_addr | offset);
+    return (void*)(((uint64_t)PML1.Address << 12) | offset);
 }
 
 void* __attribute__((no_sanitize("undefined"))) x86_64_to_HHDM(void* physaddr) {
@@ -108,8 +94,7 @@ void __attribute__((no_sanitize("undefined"))) x86_64_map_page_noflush(Level4Gro
         PML4 = *(PageMapLevel4Entry*)(&temp);
         PML4.Present = 1;
         PML4.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML4.Address << 12), x86_64_to_HHDM((void*)(PML4.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 512);
+        memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 4096);
         PML4Array->entries[pml4] = PML4;
     }
     else {
@@ -125,8 +110,7 @@ void __attribute__((no_sanitize("undefined"))) x86_64_map_page_noflush(Level4Gro
         PML3 = *(PageMapLevel3Entry*)(&temp);
         PML3.Present = 1;
         PML3.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML3.Address << 12), x86_64_to_HHDM((void*)(PML3.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 512);
+        memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 4096);
         ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = PML3;
     }
     else {
@@ -142,8 +126,7 @@ void __attribute__((no_sanitize("undefined"))) x86_64_map_page_noflush(Level4Gro
         PML2 = *(PageMapLevel2Entry*)(&temp);
         PML2.Present = 1;
         PML2.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML2.Address << 12), x86_64_to_HHDM((void*)(PML2.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML2.Address << 12)), 0, 512);
+        memset(x86_64_to_HHDM((void*)(PML2.Address << 12)), 0, 4096);
         ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = PML2;
     }
     else {
@@ -193,7 +176,7 @@ void __attribute__((no_sanitize("undefined"))) x86_64_unmap_page_noflush(Level4G
     if (PML2->Present == 0 || PML2->PageSize)
         return; // page isn't mapped or is a 2MiB page
 
-    fast_memset(&(((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2->Address) << 12)))[pt]), 0, (sizeof(PageMapLevel1Entry) >> 3));
+    memset(&(((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2->Address) << 12)))[pt]), 0, sizeof(PageMapLevel1Entry));
 
     Level1Group* group = (Level1Group*)x86_64_to_HHDM((void*)((uint64_t)(PML2->Address) << 12));
     bool used = false;
@@ -204,7 +187,6 @@ void __attribute__((no_sanitize("undefined"))) x86_64_unmap_page_noflush(Level4G
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group);
         g_PPFA->FreePage(group);
         PML2->Present = 0;
     }
@@ -217,7 +199,6 @@ void __attribute__((no_sanitize("undefined"))) x86_64_unmap_page_noflush(Level4G
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group2);
         g_PPFA->FreePage(group2);
         PML3->Present = 0;
     }
@@ -230,7 +211,6 @@ void __attribute__((no_sanitize("undefined"))) x86_64_unmap_page_noflush(Level4G
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group3);
         g_PPFA->FreePage(group3);
         PML4->Present = 0;
     }
@@ -320,8 +300,7 @@ void __attribute__((no_sanitize("undefined"))) x86_64_map_large_page_noflush(Lev
         PML4 = *(PageMapLevel4Entry*)(&temp);
         PML4.Present = 1;
         PML4.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML4.Address << 12), x86_64_to_HHDM((void*)(PML4.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 512);
+        memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 4096);
         PML4Array->entries[pml4] = PML4;
     }
     else {
@@ -337,8 +316,7 @@ void __attribute__((no_sanitize("undefined"))) x86_64_map_large_page_noflush(Lev
         PML3 = *(PageMapLevel3Entry*)(&temp);
         PML3.Present = 1;
         PML3.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML3.Address << 12), x86_64_to_HHDM((void*)(PML3.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 512);
+        memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 4096);
         ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = PML3;
     }
     else {
@@ -376,7 +354,7 @@ void __attribute__((no_sanitize("undefined"))) x86_64_unmap_large_page_noflush(L
     if (PML3->Present == 0)
         return; // page isn't mapped
 
-    fast_memset(&(((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3->Address) << 12)))[pd]), 0, (sizeof(PageMapLevel2Entry) >> 3));
+    memset(&(((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3->Address) << 12)))[pd]), 0, sizeof(PageMapLevel2Entry));
 
     Level2Group* group2 = (Level2Group*)x86_64_to_HHDM((void*)((uint64_t)(PML3->Address) << 12));
     bool used = false;
@@ -387,7 +365,6 @@ void __attribute__((no_sanitize("undefined"))) x86_64_unmap_large_page_noflush(L
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group2);
         g_PPFA->FreePage(group2);
         PML3->Present = 0;
     }
@@ -400,7 +377,6 @@ void __attribute__((no_sanitize("undefined"))) x86_64_unmap_large_page_noflush(L
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group3);
         g_PPFA->FreePage(group3);
         PML3->Present = 0;
     }

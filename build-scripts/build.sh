@@ -49,5 +49,5 @@ else
     cd build
 fi
 
-cmake -GNinja -DWORLDOS_BUILD_CONFIG=$WORLDOS_BUILD_CONFIG --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
+cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWORLDOS_BUILD_CONFIG=$WORLDOS_BUILD_CONFIG --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
 ninja build_iso

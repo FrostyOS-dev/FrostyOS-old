@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,8 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 // standard new/delete functions
 
-void* operator new(size_t size) throw();
-void* operator new[](size_t size) throw();
+void* operator new(size_t size);
+void* operator new[](size_t size);
 
 void operator delete(void* p);
 void operator delete[](void* p);

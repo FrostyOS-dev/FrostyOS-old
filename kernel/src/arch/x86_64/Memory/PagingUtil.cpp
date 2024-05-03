@@ -24,14 +24,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 void x86_64_InitUserTable(void* PML4) {
     Level4Group* group = (Level4Group*)PML4;
 
-    fast_memset(group, 0, sizeof(Level4Group) >> 3);
+    memset(group, 0, sizeof(Level4Group) >> 3);
 
-    group->entries[511].Present = 1;
-    group->entries[511].ReadWrite = 1;
-    group->entries[511].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML3_KernelGroup) >> 12;
-
+    group->entries[511] = K_PML4_Array.entries[511];
     uint16_t HHDM_PML4_offset = ((uint64_t)x86_64_GetHHDMStart() & 0x0000ff8000000000) >> 39;
-    group->entries[HHDM_PML4_offset].Present = 1;
-    group->entries[HHDM_PML4_offset].ReadWrite = 1;
-    group->entries[HHDM_PML4_offset].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML3_LowestArray) >> 12;
+    group->entries[HHDM_PML4_offset] = K_PML4_Array.entries[HHDM_PML4_offset];
 }

@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _KERNEL_X86_64_PAGE_MAP_INDEXER_HPP
 
 #include "PageTables.hpp"
-#include "PagingUtil.hpp"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -79,12 +78,6 @@ void x86_64_SetHHDMStart(void* virtualaddr);
 void* x86_64_GetHHDMStart();
 
 extern Level4Group K_PML4_Array;
-extern Level3Group PML3_LowestArray;
-extern Level2Group PML2_LowestArray;
-extern Level1Group PML1_LowestArray;
-extern Level3Group PML3_KernelGroup; // only highest 2 entries are used
-extern Level2Group PML2_KernelLower;
-extern Level1Group PML1_KernelLowest;
 
 extern void* g_KPML4_physical;
 

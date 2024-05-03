@@ -157,6 +157,7 @@ target_compile_options(kernel
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-Wno-pointer-arith>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-Wno-unused-parameter>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-Wno-switch>
+    PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-Wno-packed-bitfield-compat>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-nostdlib>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-ffreestanding>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-fno-pie>
