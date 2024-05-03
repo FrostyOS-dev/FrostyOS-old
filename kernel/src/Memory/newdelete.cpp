@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,60 +21,46 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <util.h>
 
-void* operator new(size_t size) throw() {
-    if (NewDeleteInitialised()) {
+#include <HAL/hal.hpp>
+
+void* operator new(size_t size) {
+    if (NewDeleteInitialised())
         return kcalloc(DIV_ROUNDUP(size, 8), 8);
-    }
-    else {
-        dbgprintf("operator new attempted when unavailable. returning a null pointer.\n");
-    }
-    return nullptr;
+    PANIC("operator new attempted when unavailable.");
 }
 
-void* operator new[](size_t size) throw() {
-    if (NewDeleteInitialised()) {
+void* operator new[](size_t size) {
+    if (NewDeleteInitialised())
         return kcalloc(DIV_ROUNDUP(size, 8), 8);
-    }
-    else {
-        dbgprintf("operator new[] attempted when unavailable. returning a null pointer.\n");
-    }
-    return nullptr;
+    PANIC("operator new[] attempted when unavailable.");
 }
 
 void operator delete(void* p) {
-    if (NewDeleteInitialised()) {
+    if (NewDeleteInitialised())
         return kfree(p);
-    }
-    else {
+    else
         dbgprintf("operator delete attempted when unavailable. doing nothing.\n");
-    }
 }
 
 void operator delete[](void* p) {
-    if (NewDeleteInitialised()) {
+    if (NewDeleteInitialised())
         return kfree(p);
-    }
-    else {
+    else
         dbgprintf("operator delete[] attempted when unavailable. doing nothing.\n");
-    }
 }
 
 void operator delete(void* p, size_t) {
-    if (NewDeleteInitialised()) {
+    if (NewDeleteInitialised())
         return kfree(p);
-    }
-    else {
+    else
         dbgprintf("operator delete attempted when unavailable. doing nothing.\n");
-    }
 }
 
 void operator delete[](void* p, size_t) {
-    if (NewDeleteInitialised()) {
+    if (NewDeleteInitialised())
         return kfree(p);
-    }
-    else {
+    else
         dbgprintf("operator delete[] attempted when unavailable. doing nothing.\n");
-    }
 }
 
 

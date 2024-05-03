@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "io.h"
 
 #include <util.h>
-#include <math.h>
 
 enum class RTC_Registers {
     SECONDS = 0x00,
@@ -44,8 +43,14 @@ bool operator==(RTCTime a, RTCTime b) {
 int8_t g_null_days[12] = {1, 12, 5, 2, 7, 4, 9, 6, 3, 8, 12, 10};
 
 uint8_t GetWeekDay(uint16_t y, uint8_t m, uint8_t d) {
-    int w = (d += m < 3 ? y-- : y - 2, 23 * m / 9 + d + 4 + y / 4 - y / 100 + y / 400) % 7; // https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Keith
-    return (uint8_t)w + 1;
+    if (m < 3) {
+        m += 12;
+        y--;
+    }
+    int K = y % 100;
+    int J = y / 100;
+    int h = (d + ((m + 1) * 26) / 10 + K + K / 4 + J / 4 + 5 * J) % 7;
+    return (uint8_t)(h == 0 ? 7 : h);
 }
 
 bool g_BCD = false; // true for BCD, false for binary
@@ -78,7 +83,7 @@ RTCTime RTC_getCurrentTime() {
     if (g_BCD)
         Minutes = BCD_TO_BINARY(Minutes);
     uint8_t Hours = CMOS_Read((uint8_t)RTC_Registers::HOURS);
-    bool is_pm; // only used in 12-hour time
+    bool is_pm = false; // only used in 12-hour time
     if (g_12Hour) {
         is_pm = (Hours & 0x80) == 0x80;
         Hours &= ~0x80; // Clear the bit

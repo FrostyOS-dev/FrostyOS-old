@@ -83,6 +83,7 @@
     "cSpell.words": [
         "ACPISDT",
         "bgcolour",
+        "clangd",
         "dbgprintf",
         "dbgputs",
         "divrem",
@@ -102,7 +103,9 @@
         "KVFS",
         "KVPM",
         "libgcc",
+        "memset",
         "noflush",
+        "nullptr",
         "pdptr",
         "physaddr",
         "PPFA",

@@ -1,6 +1,17 @@
 # Changes
 
-## Latest Changes - 29/04/2024
+## Latest Changes - 03/05/2024
+
+- Cleaned up page mapping/unmapping functions to not map freshly allocated tables as they are in the HHDM and remove usage of the old deprecated `fast_memset` function.
+- Removed all of the page tables included in the kernel other than the kernel PML4 array.
+- Updated RTC GetWeekDay function to use the correct formula.
+- Updated RTC time printing to set a minimum width of 2 for the hour, minute and second fields.
+- Updated build and run scripts so that cmake generates a `compile_commands.json` for clangd. This included updating the gitignore to ignore the `compile_commands.json` file.
+- Added to `-Wno-packed-bitfield-compat` to the CMake flags to suppress a warning that is not relevant to this project.
+- Cleaned up includes in some files to remove unnecessary includes.
+- Updated new to just panic the kernel on failure instead of returning `nullptr`.
+
+## 29/04/2024
 
 - Added `ubsan` support.
 - The bitmap in the PhysicalPageFrameAllocator is now cleared to all 1s before usage to ensure all pages default to being used/reserved.

@@ -25,6 +25,7 @@ PageTable g_KPT {false, g_KPM};
 
 #ifdef __x86_64__
 #include <arch/x86_64/Memory/PageMapIndexer.hpp>
+#include <arch/x86_64/Memory/PagingUtil.hpp>
 
 
 PageTable::PageTable(bool mode, PageManager* pm) : m_root_table(nullptr), m_mode(mode), m_pm(pm) {
