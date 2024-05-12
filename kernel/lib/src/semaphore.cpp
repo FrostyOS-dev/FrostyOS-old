@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,16 +15,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "TSS.hpp"
-#include "Stack.hpp"
-#include "GDT.hpp"
+#include <semaphore.h>
 
-#include <util.h>
+#include <SystemCalls/Synchronisation.hpp>
 
-x86_64_TSS g_TSS;
+// For all of these, we can actually just use the system calls directly, as they are already implemented in the kernel.
 
-void x86_64_TSS_Init() {
-    fast_memset(&g_TSS, 0, sizeof(g_TSS) / 8);
-    g_TSS.RSP[0] = (uint64_t)kernel_stack + kernel_stack_size;
-    x86_64_GDT_SetTSS(&g_TSS);
+extern "C" int createSemaphore(int value) {
+    return sys_createSemaphore(value);
+}
+
+extern "C" int acquireSemaphore(int ID) {
+    return sys_acquireSemaphore(ID);
+}
+
+extern "C" int releaseSemaphore(int ID) {
+    return sys_releaseSemaphore(ID);
+}
+
+extern "C" int destroySemaphore(int ID) {
+    return sys_destroySemaphore(ID);
 }

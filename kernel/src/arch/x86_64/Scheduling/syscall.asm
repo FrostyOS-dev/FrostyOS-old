@@ -1,4 +1,4 @@
-; Copyright (©) 2023  Frosty515
+; Copyright (©) 2023-2024  Frosty515
 ; 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -111,8 +111,8 @@ global x86_64_HandleSystemCall
 x86_64_HandleSystemCall:
     swapgs ; get kernel gs base
 
-    mov QWORD [gs:0], rsp ; save user stack
-    mov rsp, QWORD [gs:8] ; get kernel stack
+    mov QWORD [gs:16], rsp ; save user stack
+    mov rsp, QWORD [gs:24] ; get kernel stack
 
     sub rsp, 4 ; used to fix alignment later
     push 0 ; dummy cr3 value until we can actually save it
@@ -129,7 +129,7 @@ x86_64_HandleSystemCall:
 
     ; we now have at least 2 free GPRs, so we can save the kernel stack better and save the user stack in the register frame.
     lea r14, QWORD [rsp+36]
-    mov r15, QWORD [gs:0]
+    mov r15, QWORD [gs:16]
 
     ; don't need gs base anymore, so we can restore it
     swapgs
@@ -208,7 +208,7 @@ x86_64_HandleSystemCall:
 
     swapgs ; get offset again
 
-    mov rsp, QWORD [gs:0]
+    mov rsp, QWORD [gs:16]
 
     swapgs ; restore gs base
 

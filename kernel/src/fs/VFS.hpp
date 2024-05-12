@@ -52,44 +52,54 @@ public:
     VFS(FileSystemType root_type);
     ~VFS();
 
-    bool MountRoot(FileSystemType type);
-    bool Mount(FilePrivilegeLevel current_privilege, const char* path, FileSystemType type);
-    bool Unmount(FilePrivilegeLevel current_privilege, const char* path, VFS_WorkingDirectory* working_directory = nullptr);
+    int MountRoot(FileSystemType type);
+    int Mount(FilePrivilegeLevel current_privilege, const char* path, FileSystemType type);
+    int Unmount(FilePrivilegeLevel current_privilege, const char* path, VFS_WorkingDirectory* working_directory = nullptr);
 
-    bool CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
-    bool CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
-    bool CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+    int CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+    int CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+    int CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
 
-    bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false, bool delete_name = false) override; // delete_name is not used by the VFS as it **always** deletes the name
+    int DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false, bool delete_name = false) override; // delete_name is not used by the VFS as it **always** deletes the name
 
-    FileStream* OpenStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes, VFS_WorkingDirectory* working_directory = nullptr);
-    bool CloseStream(FileStream* stream);
+    FileStream* OpenStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes, VFS_WorkingDirectory* working_directory = nullptr, int* status = nullptr); // status will be set if not nullptr.
+    int CloseStream(FileStream* stream);
 
-    DirectoryStream* OpenDirectoryStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes, VFS_WorkingDirectory* working_directory = nullptr);
-    bool CloseDirectoryStream(DirectoryStream* stream);
+    DirectoryStream* OpenDirectoryStream(FilePrivilegeLevel current_privilege, const char* path, uint8_t modes, VFS_WorkingDirectory* working_directory = nullptr, int* status = nullptr); // status will be set if not nullptr.
+    int CloseDirectoryStream(DirectoryStream* stream);
 
-    bool IsValidPath(const char* path, VFS_WorkingDirectory* working_directory = nullptr) const;
+    bool IsValidPath(const char* path, VFS_WorkingDirectory* working_directory = nullptr, int* status = nullptr) const; // status will be set if not nullptr.
 
-    Inode* GetInode(const char* path, VFS_WorkingDirectory* working_directory = nullptr, FileSystem** fs = nullptr, VFS_MountPoint** mountpoint = nullptr) const;
+    Inode* GetInode(const char* path, VFS_WorkingDirectory* working_directory = nullptr, FileSystem** fs = nullptr, VFS_MountPoint** mountpoint = nullptr, int* status = nullptr) const; // status will be set if not nullptr.
 
-    VFS_MountPoint* GetMountPoint(FileSystem* fs) const;
+    VFS_MountPoint* GetMountPoint(FileSystem* fs, int* status = nullptr) const; // status will be set if not nullptr.
 
     VFS_WorkingDirectory* GetRootWorkingDirectory() const;
 
+    int DestroyFileSystem() override; // does not currently do anything.
+
+    // These to functions are just parsed to the root mountpoint.
+    Inode* GetRootInode(uint64_t index, int* status = nullptr) const override; // status will be set if not nullptr
+    uint64_t GetRootInodeCount() const override;
+
+    FileSystemType GetType() const override;
+
+    FilePrivilegeLevel GetRootPrivilege() const override;
+
 private:
-    VFS_MountPoint* GetMountPoint(const char* path, VFS_WorkingDirectory* working_directory = nullptr, Inode** inode = nullptr) const;
+    VFS_MountPoint* GetMountPoint(const char* path, VFS_WorkingDirectory* working_directory = nullptr, Inode** inode = nullptr, int* status = nullptr) const; // status will be set if not nullptr.
 
     // Get the mountpoint for a child of the given path.
-    VFS_MountPoint* GetChildMountPoint(const char* path, VFS_WorkingDirectory* working_directory = nullptr, Inode** inode = nullptr) const;
+    VFS_MountPoint* GetChildMountPoint(const char* path, VFS_WorkingDirectory* working_directory = nullptr, Inode** inode = nullptr, int* status = nullptr) const; // status will be set if not nullptr.
 
-    bool isMountpoint(const char* path, size_t len, VFS_WorkingDirectory* working_directory = nullptr); // When false is returned, the caller **MUST** check for any errors.
+    bool isMountpoint(const char* path, size_t len, VFS_WorkingDirectory* working_directory = nullptr, int* status = nullptr); // When false is returned, the caller **MUST** check for any errors. status will be set if not nullptr.
 
 private:
     VFS_MountPoint* m_root;
 
-    LinkedList::SimpleLinkedList<VFS_MountPoint> m_mountPoints;
-    LinkedList::SimpleLinkedList<FileStream> m_streams;
-    LinkedList::SimpleLinkedList<DirectoryStream> m_directoryStreams;
+    LinkedList::LockableLinkedList<VFS_MountPoint> m_mountPoints;
+    LinkedList::LockableLinkedList<FileStream> m_streams;
+    LinkedList::LockableLinkedList<DirectoryStream> m_directoryStreams;
 };
 
 extern VFS* g_VFS;

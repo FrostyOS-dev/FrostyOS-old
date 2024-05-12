@@ -54,6 +54,7 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     x86_64_SetHHDMStart((void*)HHDM_start);
     
     volatile uint64_t PML4_phys = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &K_PML4_Array);
+    g_KPML4_physical = (void*)PML4_phys;
 
     // Perform early initialisation of physical MM
     PPFA.EarlyInit(MemoryMap[0], MMEntryCount, g_MemorySize);
@@ -69,28 +70,22 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     MapKernel((void*)kernel_physical, (void*)kernel_virtual, kernel_size); // do not flush TLB until after kernel is loaded
 
     // Map from end of 1st page until 2MiB
-    for (uint64_t i = PAGE_SIZE; i < MiB(2); i += PAGE_SIZE)
+    for (uint64_t i = 0x1000; i < 0x200000; i += 0x1000)
         x86_64_map_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
     
     
     // Map from 2MiB to 4GiB with 2MiB pages
-    for (uint64_t i = MiB(2); i < GiB(4); i += MiB(2))
+    for (uint64_t i = 0x200000; i < 0x100000000; i += 0x200000)
         x86_64_map_large_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
 
     for (uint64_t i = 0; i < MMEntryCount; i++) {
         MemoryMapEntry* entry = MemoryMap[i];
-        if ((entry->Address + entry->length) <= GiB(4)) continue; // skip entries that have already been mapped
-        uint64_t addr = ALIGN_DOWN(entry->Address, PAGE_SIZE);
-        uint64_t length = ALIGN_UP(entry->length, PAGE_SIZE);
-
-        uint64_t large_page_length = ALIGN_DOWN(length, MiB(2));
-
-        for (uint64_t j = 0; j < large_page_length; j += MiB(2))
-            x86_64_map_large_page_noflush(&K_PML4_Array, (void*)(j + addr), (void*)(j + addr + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+        if ((entry->Address + entry->length) < 0x100000000) continue; // skip entries that have already been mapped
+        uint64_t addr = entry->Address & ~0xfff;
+        uint64_t length = entry->length + 0xfff;
+        length &= ~0xfff;
         
-        length -= large_page_length;
-
-        for (uint64_t j = 0; j < length; j += PAGE_SIZE)
+        for (uint64_t j = 0; j < length; j+=0x1000)
             x86_64_map_page_noflush(&K_PML4_Array, (void*)(j + addr), (void*)(j + addr + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
     }
 
@@ -135,3 +130,22 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     KVPM.InitVPageMgr(MemoryMap, MMEntryCount, (void*)kernel_virtual, kernel_size, (void*)fb_virt, fb_size, KVRegion);
     g_KVPM = &KVPM;
 }
+
+/*Level4Group* x86_64_CreatePageTable(uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, uint64_t HHDM_start) {
+    Level4Group* PML4 = (Level4Group*)x86_64_to_HHDM(PPFA.AllocatePage());
+
+    fast_memset(PML4, 0, sizeof(Level4Group) / 8);
+
+    // Map from end of 1st page until 2MiB
+    for (uint64_t i = 0x1000; i < 0x200000; i += 0x1000)
+        x86_64_map_page_noflush(PML4, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+    
+    
+    // Map from 2MiB to 4GiB with 2MiB pages
+    for (uint64_t i = 0x200000; i < 0x100000000; i += 0x200000)
+        x86_64_map_large_page_noflush(PML4, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+
+    MapKernel((void*)kernel_physical, (void*)kernel_virtual, kernel_size); // FIXME: change PML4 group
+
+
+}*/

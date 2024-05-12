@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Memory/PageManager.hpp>
 
-void* sys$mmap(unsigned long size, unsigned long perms, void* addr) {
+void* sys_mmap(unsigned long size, unsigned long perms, void* addr) {
     Scheduling::Process* process = Scheduling::Scheduler::GetCurrent()->GetParent();
     PagePermissions i_perms;
     if (perms == PROT_READ)
@@ -53,7 +53,7 @@ void* sys$mmap(unsigned long size, unsigned long perms, void* addr) {
     return address;
 }
 
-int sys$munmap(void* addr, unsigned long size) {
+int sys_munmap(void* addr, unsigned long size) {
     Scheduling::Process* process = Scheduling::Scheduler::GetCurrent()->GetParent();
     addr = ALIGN_ADDRESS_DOWN(addr, PAGE_SIZE);
     size = ALIGN_UP(size, PAGE_SIZE);
@@ -69,7 +69,7 @@ int sys$munmap(void* addr, unsigned long size) {
     return 0;
 }
 
-int sys$mprotect(void* addr, unsigned long size, unsigned long perms) {
+int sys_mprotect(void* addr, unsigned long size, unsigned long perms) {
     Scheduling::Process* process = Scheduling::Scheduler::GetCurrent()->GetParent();
     addr = ALIGN_ADDRESS_DOWN(addr, PAGE_SIZE);
     size = ALIGN_UP(size, PAGE_SIZE);

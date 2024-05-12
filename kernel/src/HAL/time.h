@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <time.h>
 
-#define TICKS_PER_SECOND 200
+#define TICKS_PER_SECOND 1000
 #define MS_PER_TICK (1000 / TICKS_PER_SECOND)
 
 #ifdef __cplusplus
@@ -31,6 +31,8 @@ extern "C" {
 void HAL_TimeInit();
 
 void sleep(uint64_t ms);
+
+uint64_t GetTimer();
 
 time_t getTime();
 

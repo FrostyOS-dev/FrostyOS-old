@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fs/FileStream.hpp>
 #include <fs/FilePrivilegeLevel.hpp>
 
-int sys$exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]) {
+int sys_exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]) {
     if (parent == nullptr || !parent->ValidateStringRead(path) || !parent->ValidateRead(argv, sizeof(char*)) || !parent->ValidateRead(envv, sizeof(char*)))
         return -EFAULT;
 
@@ -83,15 +83,10 @@ int Execute(Scheduling::Process* parent, const char *path, int argc, char *const
     uint32_t uid = parent->GetEUID();
     uint32_t gid = parent->GetEGID();
 
-    FileStream* stream = g_VFS->OpenStream({uid, gid, 07777}, path, VFS_READ);
-    if (stream == nullptr) {
-        switch (g_VFS->GetLastError()) {
-        case FileSystemError::ALLOCATION_FAILED:
-            return -ENOMEM;
-        default:
-            assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
-        }
-    }
+    int status = 0;
+    FileStream* stream = g_VFS->OpenStream({uid, gid, 07777}, path, VFS_READ, nullptr, &status);
+    if (stream == nullptr)
+        return status;
 
     Inode* inode = stream->GetInode();
     if (inode == nullptr)
@@ -121,7 +116,7 @@ int Execute(Scheduling::Process* parent, const char *path, int argc, char *const
 
     uint8_t* buffer = new uint8_t[size];
 
-    assert(size == stream->ReadStream(buffer, size)); // This should NEVER fail under these conditions.
+    assert((int64_t)size == stream->ReadStream(buffer, size)); // This should NEVER fail under these conditions.
 
     stream->Close();
 

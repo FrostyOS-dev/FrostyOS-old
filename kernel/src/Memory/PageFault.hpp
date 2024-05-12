@@ -30,6 +30,6 @@ struct PageFaultErrorCode {
     bool instruction_fetch;
 };
 
-void __attribute__((noreturn)) PageFaultHandler(PageFaultErrorCode error_code, void* faulting_address, void* current_address, CPU_Registers* regs, BasicVGA* VGADevice, Colour& background);
+void __attribute__((noreturn)) PageFaultHandler(PageFaultErrorCode error_code, void* faulting_address, void* current_address, CPU_Registers* regs);
 
 #endif /* _PAGE_FAULT_HPP */

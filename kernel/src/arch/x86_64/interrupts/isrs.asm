@@ -1,4 +1,4 @@
-; Copyright (©) 2022-2023  Frosty515
+; Copyright (©) 2022-2024  Frosty515
 ; 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -352,15 +352,17 @@ isr_common:
     mov fs, ax
     mov gs, ax
 
-    push QWORD [rsp+168] ; rip
+    mov r15, rsp
+
+    push QWORD [r15+168] ; rip
     push rbp
-    mov rbp, rsp ; get proper stack trace
+    mov rbp, rsp
 
     lea rdi, QWORD [rsp+16]
     
     call x86_64_ISR_Handler
 
-    add rsp, 16 ; remove rip and rbp
+    add rsp, 16 ; remove rip, rbp
 
     pop rax             ; restore old segment
     mov ds, ax

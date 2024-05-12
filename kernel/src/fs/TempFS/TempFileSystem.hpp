@@ -31,26 +31,26 @@ namespace TempFS {
         TempFileSystem(size_t blockSize, FilePrivilegeLevel rootPrivilege);
         ~TempFileSystem();
 
-        bool CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
-        bool CreateFile(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
-        bool CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
-        bool CreateFolder(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
-        bool CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
-        bool CreateSymLink(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, TempFSInode* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
+        int CreateFile(FilePrivilegeLevel current_privilege, const char* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+        int CreateFile(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, size_t size = 0, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
+        int CreateFolder(FilePrivilegeLevel current_privilege, const char* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+        int CreateFolder(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
+        int CreateSymLink(FilePrivilegeLevel current_privilege, const char* parent, const char* name, const char* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644}) override;
+        int CreateSymLink(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, TempFSInode* target, bool inherit_permissions = true, FilePrivilegeLevel privilege = {0, 0, 00644});
 
-        bool DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false, bool delete_name = false) override;
-        bool DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive = false, bool delete_name = false);
+        int DeleteInode(FilePrivilegeLevel current_privilege, const char* path, bool recursive = false, bool delete_name = false) override;
+        int DeleteInode(FilePrivilegeLevel current_privilege, TempFSInode* inode, bool recursive = false, bool delete_name = false);
 
-        void DestroyFileSystem() override;
+        int DestroyFileSystem() override;
 
         void CreateNewRootInode(TempFSInode* inode);
         void DeleteRootInode(TempFSInode* inode);
 
-        Inode* GetRootInode(uint64_t index) const override;
+        Inode* GetRootInode(uint64_t index, int* status = nullptr) const override; // status will be set if not nullptr
         uint64_t GetRootInodeCount() const override;
 
-        TempFSInode* GetSubInode(TempFSInode* parent, const char* path, TempFSInode** lastInode = nullptr, int64_t* end_index = nullptr);  // last_inode and end_index are only filled if they are non-null pointers
-        TempFSInode* GetInode(const char* path, TempFSInode** lastInode = nullptr, int64_t* end_index = nullptr); // last_inode and end_index are only filled if they are non-null pointers
+        TempFSInode* GetSubInode(TempFSInode* parent, const char* path, TempFSInode** lastInode = nullptr, int64_t* end_index = nullptr, int* status = nullptr);  // last_inode and end_index are only filled if they are non-null pointers. status will be set if not nullptr
+        TempFSInode* GetInode(const char* path, TempFSInode** lastInode = nullptr, int64_t* end_index = nullptr, int* status = nullptr); // last_inode and end_index are only filled if they are non-null pointers. status will be set if not nullptr
 
         FileSystemType GetType() const override;
 
@@ -58,7 +58,7 @@ namespace TempFS {
 
     private:
         FilePrivilegeLevel m_rootPrivilege;
-        LinkedList::SimpleLinkedList<TempFSInode> m_rootInodes;
+        LinkedList::LockableLinkedList<TempFSInode> m_rootInodes;
     };
 }
 

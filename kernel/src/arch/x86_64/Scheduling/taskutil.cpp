@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "taskutil.hpp"
 
 #include "../interrupts/isr.hpp"
+#include "Scheduling/Semaphore.hpp"
 
 #include <util.h>
 #include <assert.h>
@@ -134,4 +135,11 @@ void* x86_64_GetSignalReturnInstructions(size_t* size, int signum) {
     buf[13] = 0x05;
     *size = 14;
     return buf;
+}
+
+extern "C" void x86_64_HandleSemaphoreAcquire(Scheduling::Semaphore* semaphore, Scheduling::Thread* thread, x86_64_Registers* regs) {
+    if (regs != nullptr) {
+        memcpy(thread->GetCPURegisters(), regs, sizeof(x86_64_Registers));
+        semaphore->acquire(thread);
+    }
 }

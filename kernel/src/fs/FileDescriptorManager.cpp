@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "FileDescriptorManager.hpp"
+#include "spinlock.h"
 
 #include <stdlib.h>
 #include <util.h>
@@ -28,29 +29,36 @@ FileDescriptorManager::FileDescriptorManager() : m_auto_expand(true) {
 
 }
 
-FileDescriptorManager::FileDescriptorManager(uint8_t* buffer, size_t max_size) : m_auto_expand(false), m_bitmap(buffer, ALIGN_UP(max_size, 8)) { // size must be divisible by 8
-    fast_memset(buffer, 0, max_size >> 3);
+FileDescriptorManager::FileDescriptorManager(uint8_t* buffer, size_t max_size) : m_auto_expand(false), m_bitmap(buffer, ALIGN_UP(max_size, 8)), m_lock(0) {
+    memset(buffer, 0, max_size);
 }
 
 FileDescriptorManager::~FileDescriptorManager() {
+    spinlock_acquire(&m_lock);
     for (uint64_t i = 0; i < m_descriptors.getCount(); i++)
         m_descriptors.remove(UINT64_C(0));
+    spinlock_release(&m_lock);
 }
 
 bool FileDescriptorManager::ReserveFileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode, fd_t ID) {
-    if ((long)(m_bitmap.GetSize() << 3) > ID && m_bitmap[ID])
+    spinlock_acquire(&m_lock);
+    if ((long)(m_bitmap.GetSize() << 3) > ID && m_bitmap[ID]) {
+        spinlock_release(&m_lock);
         return false;
-    if (!ExpandBitmap(ALIGN_UP((ID+1), 8)))
+    }
+    if (!ExpandBitmap(ALIGN_UP((ID+1), 8))) {
+        spinlock_release(&m_lock);
         return false;
+    }
     FileDescriptor* descriptor = new FileDescriptor(type, data, mode, ID);
-    if (descriptor == nullptr)
-        return false;
-    if (descriptor->GetLastError() != FileDescriptorError::SUCCESS) {
+    if (!descriptor->WasInitSuccessful()) {
         delete descriptor;
+        spinlock_release(&m_lock);
         return false;
     }
     m_descriptors.insert(descriptor);
     m_bitmap.Set(ID, true);
+    spinlock_release(&m_lock);
     return true;
 }
 
@@ -58,12 +66,18 @@ bool FileDescriptorManager::ReserveFileDescriptor(FileDescriptor* descriptor) {
     if (descriptor == nullptr)
         return false;
     fd_t ID = descriptor->GetID();
-    if ((long)(m_bitmap.GetSize() << 3) > ID && m_bitmap[ID])
+    spinlock_acquire(&m_lock);
+    if ((long)(m_bitmap.GetSize() << 3) > ID && m_bitmap[ID]) {
+        spinlock_release(&m_lock);
         return false;
-    if (!ExpandBitmap(ALIGN_UP((ID+1), 8)))
+    }
+    if (!ExpandBitmap(ALIGN_UP((ID+1), 8))) {
+        spinlock_release(&m_lock);
         return false;
+    }
     m_descriptors.insert(descriptor);
     m_bitmap.Set(ID, true);
+    spinlock_release(&m_lock);
     return true;
 }
 
@@ -71,27 +85,38 @@ bool FileDescriptorManager::UnreserveFileDescriptor(fd_t ID) {
     FileDescriptor* descriptor = GetFileDescriptor(ID);
     if (descriptor == nullptr)
         return false;
+    spinlock_acquire(&m_lock);
     m_descriptors.remove(descriptor);
     m_bitmap.Set(ID, 0);
+    spinlock_release(&m_lock);
     return true;
 }
 
 FileDescriptor* FileDescriptorManager::GetFileDescriptor(fd_t ID) const {
-    if (ID >= (long)(m_bitmap.GetSize() << 3))
+    spinlock_acquire(&m_lock);
+    if (ID >= (long)(m_bitmap.GetSize() << 3)) {
+        spinlock_release(&m_lock);
         return nullptr;
+    }
     for (uint64_t i = 0; i < m_descriptors.getCount(); i++) {
         FileDescriptor* descriptor = m_descriptors.get(i);
-        if (descriptor == nullptr)
+        if (descriptor == nullptr) {
+            spinlock_release(&m_lock);
             return nullptr; // should never happen
-        if (descriptor->GetID() == ID)
+        }
+        if (descriptor->GetID() == ID) {
+            spinlock_release(&m_lock);
             return descriptor;
+        }
     }
+    spinlock_release(&m_lock);
     return nullptr;
 }
 
 fd_t FileDescriptorManager::AllocateFileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode) {
     fd_t ID;
     bool found = false;
+    spinlock_acquire(&m_lock);
     size_t size = m_bitmap.GetSize();
     for (uint64_t i = 0; i < (m_bitmap.GetSize() << 3); i++) {
         if (!m_bitmap[i]) {
@@ -101,20 +126,22 @@ fd_t FileDescriptorManager::AllocateFileDescriptor(FileDescriptorType type, void
         }
     }
     if (!found) {
-        if (!ExpandBitmap(ALIGN_UP((size + 1), 8)))
+        if (!ExpandBitmap(ALIGN_UP((size + 1), 8))) {
+            spinlock_release(&m_lock);
             return -1;
+        }
         ID = size;
         found = true;
     }
     FileDescriptor* descriptor = new FileDescriptor(type, data, mode, ID);
-    if (descriptor == nullptr)
-        return -1;
-    if (descriptor->GetLastError() != FileDescriptorError::SUCCESS) {
+    if (!descriptor->WasInitSuccessful()) {
+        spinlock_release(&m_lock);
         delete descriptor;
         return -1;
     }
     m_descriptors.insert(descriptor);
     m_bitmap.Set(ID, 1);
+    spinlock_release(&m_lock);
     return ID;
 }
 
@@ -122,9 +149,22 @@ bool FileDescriptorManager::FreeFileDescriptor(fd_t ID) {
     FileDescriptor* descriptor = GetFileDescriptor(ID);
     if (descriptor == nullptr)
         return false;
+    spinlock_acquire(&m_lock);
     m_descriptors.remove(descriptor);
     m_bitmap.Set(ID, 0);
+    spinlock_release(&m_lock);
     return true;
+}
+
+void FileDescriptorManager::ForceUnlock() {
+    spinlock_acquire(&m_lock);
+    for (uint64_t i = 0; i < m_descriptors.getCount(); i++) {
+        FileDescriptor* descriptor = m_descriptors.get(i);
+        if (descriptor == nullptr)
+            continue;
+        descriptor->ForceUnlock();
+    }
+    spinlock_release(&m_lock);
 }
 
 bool FileDescriptorManager::ExpandBitmap(size_t new_size) {

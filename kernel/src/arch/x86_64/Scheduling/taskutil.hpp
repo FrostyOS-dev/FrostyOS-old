@@ -40,4 +40,13 @@ extern "C" void x86_64_PrepareThreadExit(Scheduling::Thread* thread, int status,
 // We generate the signal return instructions and copy them into a HEAP allocated buffer. The buffer MUST be freed after use. The size is outputted into the size parameter.
 void* x86_64_GetSignalReturnInstructions(size_t* size, int signum);
 
+extern "C" uint64_t x86_64_GetReturnAddress();
+
+extern "C" void x86_64_Prep_SemaphoreAcquire(Scheduling::Semaphore* semaphore, Scheduling::Thread* thread);
+
+extern "C" void x86_64_HandleSemaphoreAcquire(Scheduling::Semaphore* semaphore, Scheduling::Thread* thread, x86_64_Registers* regs);
+
+#define semaphore_acquire(semaphore, thread) x86_64_Prep_SemaphoreAcquire(semaphore, thread)
+
+
 #endif /* _X86_64_TASK_UTIL_HPP */

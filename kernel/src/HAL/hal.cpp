@@ -15,12 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <arch/x86_64/GDT.hpp>
-
-#include <arch/x86_64/interrupts/IDT.hpp>
-#include <arch/x86_64/interrupts/isr.hpp>
-#include <arch/x86_64/interrupts/IRQ.hpp>
-#include <arch/x86_64/interrupts/pic.hpp>
+#include <arch/x86_64/Processor.hpp>
 
 #include <arch/x86_64/io.h>
 #include <arch/x86_64/panic.hpp>
@@ -32,6 +27,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "drivers/ACPI/RSDP.hpp"
 #include "drivers/ACPI/XSDT.hpp"
 #include "drivers/ACPI/MCFG.hpp"
+#include "drivers/ACPI/MADT.hpp"
+#include "drivers/ACPI/HPET.hpp"
+
+#include "drivers/HPET.hpp"
 
 #include "drivers/PCI.hpp"
 
@@ -46,19 +45,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Memory/PagingUtil.hpp>
 
+#include <Scheduling/Scheduler.hpp>
+
+Processor g_BSP(true);
+
 void HAL_EarlyInit(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb) {
-    x86_64_GDTInit();
-
-    x86_64_IDT_Initialize();
-    x86_64_ISR_Initialize();
-    x86_64_IDT_Load(&idt.idtr);
-
-    x86_64_IRQ_Initialize();
-
     x86_64_DisableInterrupts();
-    HAL_TimeInit();
 
-    x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ((fb.bpp >> 3) * fb.FrameBufferHeight * fb.FrameBufferWidth), HHDM_start);
+    g_BSP = Processor(true);
+    g_BSP.Init(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, HHDM_start, fb);
+
 
     x86_64_SetPanicVGADevice(g_CurrentTTY->GetVGADevice());
 
@@ -70,14 +66,39 @@ void HAL_Stage2(void* RSDP) {
     assert(IsXSDTAvailable());
     assert(InitAndValidateXSDT(GetXSDT()));
     bool MCFGFound = false;
+    bool MADTFound = false;
+    bool HPETFound = false;
     for (uint64_t i = 0; i < getSDTCount(); i++) {
         ACPISDTHeader* header = getOtherSDT(i);
         if (strncmp(header->Signature, "MCFG", 4) == 0 && !MCFGFound) {
             assert(InitAndValidateMCFG(header));
             MCFGFound = true;
         }
+        else if (strncmp(header->Signature, "APIC", 4) == 0 && !MADTFound) {
+            assert(InitAndValidateMADT(header));
+            MADTFound = true;
+        }
+        else if (strncmp(header->Signature, "HPET", 4) == 0 && !HPETFound) {
+            assert(InitAndValidateHPET(header));
+            HPETFound = true;
+        }
     }
     assert(MCFGFound); // it must be found or device detection won't work
+    if (MADTFound)
+        EnumerateMADTEntries();
+    HPET* hpet = new HPET();
+    hpet->Init((HPETRegisters*)GetHPETAddress());
+    g_HPET = hpet;
+
+    x86_64_LocalAPIC* LAPIC = g_BSP.GetLocalAPIC();
+    HAL_TimeInit();
+    LAPIC->InitTimer();
+
+    Scheduling::Scheduler::InitProcessorTimers();
+    
+}
+
+void HAL_FullInit() {
     for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
         MCFGEntry* entry = GetMCFGEntry(i);
         PCI::EnumerateBuses(to_HHDM((void*)(entry->Address)));
@@ -87,7 +108,4 @@ void HAL_Stage2(void* RSDP) {
         dbgprintf("PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
         device = PCI::PCIDeviceList::GetPCIDevice(i);
     }
-
-    assert(x86_64_IsSystemCallSupported());
-    assert(x86_64_EnableSystemCalls(0x8, 0x18, x86_64_HandleSystemCall));
 }

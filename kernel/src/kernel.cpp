@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <tty/KeyboardInput.hpp>
 
 #include <assert.h>
+#include <errno.h>
 
 #include <fs/VFS.hpp>
 #include <fs/initramfs.hpp>
@@ -47,6 +48,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <SystemCalls/SystemCall.hpp>
 #include <SystemCalls/exec.hpp>
+
+#include <arch/x86_64/cpuid.hpp>
 
 FrameBuffer m_InitialFrameBuffer;
 Colour g_fgcolour;
@@ -111,6 +114,8 @@ extern "C" void StartKernel(KernelParams* params) {
     uint64_t kernel_size = (uint64_t)_kernel_end_addr - (uint64_t)_text_start_addr;
 
     g_KPT = PageTable(false, nullptr);
+    Scheduling::Scheduler::ClearGlobalData();
+    Scheduling::Scheduler::InitBSPInfo();
     params->MemoryMapEntryCount = UpdateMemorySize(const_cast<const MemoryMapEntry**>(params->MemoryMap), params->MemoryMapEntryCount);
     HAL_EarlyInit(params->MemoryMap, params->MemoryMapEntryCount, params->kernel_virtual_addr, params->kernel_physical_addr, kernel_size, params->hhdm_start_addr, m_InitialFrameBuffer);
     KPM.InitPageManager(VirtualRegion((void*)(params->kernel_virtual_addr + kernel_size), (void*)UINT64_MAX), g_KVPM, false);
@@ -123,6 +128,8 @@ extern "C" void StartKernel(KernelParams* params) {
     }
 
     // Do any early initialisation
+
+    HAL_Stage2(params->RSDP_table);
 
     KPS2Controller = PS2Controller();
     KPS2Controller.Init();
@@ -154,6 +161,11 @@ extern "C" void StartKernel(KernelParams* params) {
     KProcess->SetDefaultWorkingDirectory(KWorkingDirectory);
     KProcess->Start();
 
+    for (uint8_t i = 0; i < (Scheduling::Scheduler::GetProcessorCount() - 1); i++) {
+        Scheduling::Thread* thread = new Scheduling::Thread(KProcess, nullptr, nullptr, Scheduling::THREAD_KERNEL_DEFAULT);
+        Scheduling::Scheduler::AddIdleThread(thread);
+    }
+    
     Scheduling::Scheduler::Start();
 
     PANIC("Scheduler Start returned!\n");
@@ -167,11 +179,11 @@ void Kernel_Stage2(void* params_addr) {
 
     Stage2_Params* params = (Stage2_Params*)params_addr;
 
-    HAL_Stage2(params->RSDP_addr);
+    HAL_FullInit();
 
     VFS* KVFS = (VFS*)kcalloc_eternal(1, sizeof(VFS));
     g_VFS = KVFS;
-    assert(KVFS->MountRoot(FileSystemType::TMPFS));
+    assert(KVFS->MountRoot(FileSystemType::TMPFS) == ESUCCESS);
 
     dbgputs("VFS root mounted.\n");
 

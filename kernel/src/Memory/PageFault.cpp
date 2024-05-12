@@ -26,7 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/Stack.hpp>
 #endif
 
-void __attribute__((noreturn)) PageFaultHandler(PageFaultErrorCode error_code, void* faulting_address, void* current_address, CPU_Registers* regs, BasicVGA* VGADevice, Colour& background) {
+void __attribute__((noreturn)) PageFaultHandler(PageFaultErrorCode error_code, void* faulting_address, void* current_address, CPU_Registers* regs) {
     Scheduling::Thread* thread = Scheduling::Scheduler::GetCurrent();
     Scheduling::Process* process = nullptr;
     if (thread != nullptr) {

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,7 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "io.h"
 
 #include "interrupts/IRQ.hpp"
-#include "interrupts/pic.hpp"
+
+#include "interrupts/APIC/IOAPIC.hpp"
 
 #define PS2_DATA_PORT 0x60
 #define PS2_STATUS_PORT 0x64
@@ -65,10 +66,13 @@ void x86_64_8042_RegisterIRQHandler(x86_64_8042_IRQHandler_t handler, void* data
     g_8042_IRQHandlers[channel ? 1 : 0] = {handler, data};
     if (channel) {
         x86_64_IRQ_RegisterHandler(12, x86_64_8042_IRQHandler1);
-        x86_64_PIC_Unmask(12);
     }
     else {
         x86_64_IRQ_RegisterHandler(1, x86_64_8042_IRQHandler0);
-        x86_64_PIC_Unmask(1);
+        x86_64_IOAPIC* ioapic = x86_64_IOAPIC_GetIOAPICForIRQ(1);
+        x86_64_IOAPIC_RedirectionEntry entry = ioapic->GetRedirectionEntry(1 - ioapic->GetIRQBase());
+        entry.Mask = 0;
+        ioapic->SetRedirectionEntry(1 - ioapic->GetIRQBase(), entry);
+        x86_64_IRQ_ReserveIRQ(1);
     }
 }

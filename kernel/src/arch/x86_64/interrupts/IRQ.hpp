@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,14 +15,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_X86_64_IRQ_HPP
-#define _KERNEL_X86_64_IRQ_HPP
+#ifndef _X86_64_IRQ_HPP
+#define _X86_64_IRQ_HPP
 
 #include "isr.hpp"
 
+#define INVALID_IRQ 0xFF
+
 typedef void (*x86_64_IRQHandler_t)(x86_64_Interrupt_Registers* regs);
 
-void x86_64_IRQ_Initialize();
+/*
+0x00-0x1F - reserved for exceptions
+0x20-0x2F - reserved for the legacy 8259 PICs
+0x30-0xEF - available for I/O APICs
+0xF0      - LAPIC timer
+0xF1-0xFF - LAPIC/IPI reserved
+*/
+
+void x86_64_IRQ_EarlyInit(); // just configure and disable the PIC
+void x86_64_IRQ_FullInit(); // get the I/O APIC(s) ready
 void x86_64_IRQ_RegisterHandler(const uint8_t irq, x86_64_IRQHandler_t handler);
 
-#endif /* _KERNEL_X86_64_IRQ_HPP */
+void x86_64_IRQ_ReserveIRQ(uint8_t irq);
+void x86_64_IRQ_UnreserveIRQ(uint8_t irq);
+bool x86_64_IRQ_IsIRQReserved(uint8_t irq);
+uint8_t x86_64_IRQ_AllocateIRQ();
+uint8_t x86_64_IRQ_AllocateIRQ(uint64_t mask, uint64_t shift); // each bit in mask corresponds to an IRQ, shift is the number of bits to shift the mask
+void x86_64_IRQ_FreeIRQ(uint8_t irq);
+
+#endif /* _X86_64_IRQ_HPP */

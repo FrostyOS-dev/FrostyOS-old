@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Data-structures/Bitmap.hpp>
 
 #include <stddef.h>
+#include <stdint.h>
+#include <spinlock.h>
 
 class FileDescriptorManager {
 public:
@@ -40,6 +42,8 @@ public:
     fd_t AllocateFileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode);
     bool FreeFileDescriptor(fd_t ID);
 
+    void ForceUnlock(); // should only ever be used in a PANIC to get emergency access to resources.
+
 private:
     bool ExpandBitmap(size_t new_size);
 
@@ -47,6 +51,7 @@ private:
     bool m_auto_expand;
     LinkedList::SimpleLinkedList<FileDescriptor> m_descriptors;
     Bitmap m_bitmap;
+    mutable spinlock_t m_lock;
 };
 
 extern FileDescriptorManager* g_KFDManager;

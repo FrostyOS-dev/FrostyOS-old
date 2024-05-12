@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -77,6 +77,11 @@ void x86_64_SetHHDMStart(void* virtualaddr);
 // Get the HHDM start address
 void* x86_64_GetHHDMStart();
 
+// Issue a TLB shootdown
+void x86_64_TLBShootdown(void* address, uint64_t length, bool wait);
+
 extern Level4Group K_PML4_Array;
+
+extern void* g_KPML4_physical;
 
 #endif /* _KERNEL_X86_64_PAGE_MAP_INDEXER_HPP */

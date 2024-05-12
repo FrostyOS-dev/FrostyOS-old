@@ -25,7 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 int Mount(const char* source, const char* target, FileSystemType type, FilePrivilegeLevel current_privilege = {0, 0, 00755});
 int Unmount(const char* target, FilePrivilegeLevel current_privilege = {0, 0, 00755});
 
-int sys$mount(Scheduling::Thread* thread, const char* target, const char* type, const char* device);
-int sys$unmount(Scheduling::Thread* thread, const char* target);
+int sys_mount(Scheduling::Thread* thread, const char* target, const char* type, const char* device);
+int sys_unmount(Scheduling::Thread* thread, const char* target);
 
 #endif /* _MOUNT_HPP */

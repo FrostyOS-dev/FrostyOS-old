@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,7 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "string.h"
+#include <string.h>
+#include <errno.h>
 
 size_t strlen(const char* str) {
     size_t len = 0;
@@ -109,4 +110,13 @@ char* strrchr(const char* str, int character) {
     if (found)
         return &(((char*)str)[last]);
     return NULL;
+}
+
+char* strerror(int errnum) {
+    #define _STRERROR_CASE(i, n) case i: return n;
+    switch (errnum) {
+        ENUMERATE_ERRNO_CODES(_STRERROR_CASE)
+    }
+    #undef _STRERROR_CASE
+    return "Unknown error";
 }

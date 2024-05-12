@@ -41,21 +41,16 @@ int64_t internal_read(fd_t file, void* data, size_t size) {
     FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
     if (descriptor == nullptr)
         return -EBADF;
-    size_t status = descriptor->Read((uint8_t*)data, size);
-    if (status == 0) {
-        switch (descriptor->GetLastError()) {
-        case FileDescriptorError::INVALID_ARGUMENTS:
+    int status = 0;
+    int64_t rc = descriptor->Read((uint8_t*)data, size, &status);
+    if (rc == 0) {
+        if (status == -EINVAL)
             return EOF;
-        case FileDescriptorError::INVALID_MODE:
-        case FileDescriptorError::STREAM_ERROR:
-            return -EBADF;
-        default: {
-            PANIC("File descriptor internal error in kernel stdio.");
-        }
-        }
+        else
+            return status;
     }
     else
-        return status;
+        return rc;
 }
 
 int64_t internal_write(fd_t file, const void* data, size_t size) {
@@ -66,37 +61,16 @@ int64_t internal_write(fd_t file, const void* data, size_t size) {
     FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
     if (descriptor == nullptr)
         return -EBADF;
-    size_t status = descriptor->Write((const uint8_t*)data, size);
-    if (status == 0) {
-        switch (descriptor->GetLastError()) {
-        case FileDescriptorError::INVALID_ARGUMENTS:
+    int status = 0;
+    int64_t rc = descriptor->Write((const uint8_t*)data, size, &status);
+    if (rc == 0) {
+        if (status == -EINVAL)
             return EOF;
-        case FileDescriptorError::INVALID_MODE:
-        case FileDescriptorError::STREAM_ERROR: {
-            /* This gets complicated because we have no simple way to know if it is a allocation failure or a bad file descriptor.
-            We must check if the descriptor is a FileStream, and if it is, check if an allocation failure occurred.
-            If not, we can assume it is a bad file descriptor.
-            */
-            if (descriptor->GetType() == FileDescriptorType::FILE_STREAM) {
-                FileStream* stream = (FileStream*)descriptor->GetData();
-                if (stream != nullptr) {
-                    switch (stream->GetLastError()) {
-                    case FileStreamError::ALLOCATION_FAILED:
-                        return -ENOMEM;
-                    default:
-                        return -EBADF;
-                    }
-                }
-            }
-            return -EBADF;
-        }
-        default: {
-            PANIC("File descriptor internal error in kernel stdio.");
-        }
-        }
+        else
+            return status;
     }
     else
-        return status;
+        return rc;
 }
 
 fd_t internal_open(const char* path, unsigned long mode) {
@@ -144,33 +118,20 @@ fd_t internal_open(const char* path, unsigned long mode) {
             }
             else
                 parent = "/";
-            bool successful = g_VFS->CreateFile({0, 0, 07777}, parent, end == nullptr ? path : child_start, 0, false, {0, 0, 00644});
+            int rc = g_VFS->CreateFile({0, 0, 07777}, parent, end == nullptr ? path : child_start, 0, false, {0, 0, 00644});
             if (end != nullptr)
                 delete[] parent;
-            if (!successful) {
-                switch (g_VFS->GetLastError()) {
-                case FileSystemError::INVALID_ARGUMENTS:
-                    return -ENOTDIR;
-                case FileSystemError::ALLOCATION_FAILED:
-                    return -ENOMEM;
-                default:
-                    assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
-                }
-            }
+            if (rc != ESUCCESS)
+                return rc;
         }
     }
     else if (!valid_path)
         return -ENOENT;
     
-    FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, path, vfs_modes);
-    if (stream == nullptr) {
-        switch (g_VFS->GetLastError()) {
-        case FileSystemError::ALLOCATION_FAILED:
-            return -ENOMEM;
-        default:
-            assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
-        }
-    }
+    int status = 0;
+    FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, path, vfs_modes, nullptr, &status);
+    if (stream == nullptr)
+        return status;
 
     fd_t fd = g_KFDManager->AllocateFileDescriptor(FileDescriptorType::FILE_STREAM, stream, new_mode);
     if (fd < 0) {
@@ -216,17 +177,9 @@ long internal_seek(fd_t file, long offset) {
     if (offset < 0)
         return -EINVAL;
 
-    if (!descriptor->Seek((uint64_t)offset)) {
-        switch (descriptor->GetLastError()) {
-        case FileDescriptorError::INVALID_ARGUMENTS:
-            return -EINVAL;
-        case FileDescriptorError::INVALID_MODE:
-        case FileDescriptorError::STREAM_ERROR:
-            return -EBADF;
-        default:
-            assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
-        }
-    }
+    int rc = descriptor->Seek((uint64_t)offset);
+    if (rc != ESUCCESS)
+        return rc;
 
     return offset;
 }
@@ -234,6 +187,7 @@ long internal_seek(fd_t file, long offset) {
 extern "C" int getc() {
     int c = EOF;
     long rc = internal_read(stdin, &c, 1);
+    dbgprintf("getc() -> %c, rc = %ld", c, rc);
     return rc == EOF ? EOF : c;
 }
 
@@ -253,16 +207,30 @@ extern "C" void puts(const char* str) {
     g_CurrentTTY->GetVGADevice()->SwapBuffers();
 }
 
-void internal_fputc(const fd_t file, const char c, bool swap) {
+void internal_fputc(const fd_t file, const char c, bool swap, bool lock) {
+    if (file == stdout && lock)
+        g_CurrentTTY->Lock();
     internal_write(file, &c, 1);
-    if (file == stdout && swap)
-        g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    if (file == stdout) {
+        if (swap)
+            g_CurrentTTY->GetVGADevice()->SwapBuffers();
+        if (lock)
+            g_CurrentTTY->Unlock();
+    }
 }
 
-void internal_fputs(const fd_t file, const char* str, bool swap) {
+void internal_fputs(const fd_t file, const char* str, bool swap, bool lock) {
+    if (file == stdout && lock)
+        g_CurrentTTY->Lock();
     internal_write(file, str, strlen(str));
     if (file == stdout && swap)
         g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    if (file == stdout) {
+        if (swap)
+            g_CurrentTTY->GetVGADevice()->SwapBuffers();
+        if (lock)
+            g_CurrentTTY->Unlock();
+    }
 }
 
 extern "C" void dbgputc(const char c) {
@@ -274,11 +242,11 @@ extern "C" void dbgputs(const char* str) {
 }
 
 extern "C" void fputc(const fd_t file, const char c) {
-    internal_fputc(file, c, true);
+    internal_fputc(file, c, true, true);
 }
 
 extern "C" void fputs(const fd_t file, const char* str) {
-    internal_fputs(file, str, true);
+    internal_fputs(file, str, true, true);
 }
 
 enum class PRINTF_MODES {
@@ -314,21 +282,21 @@ int fprintf_uint(fd_t file, int min_length, int min_digits, uint64_t num, int ra
         if (min_length > 1) {
             if (padding_orientation) {
                 for (int i = 0; i < min_digits; i++) {
-                    internal_fputc(file, '0', false);
+                    internal_fputc(file, '0', false, false);
                     min_length--;
                     chars_printed++;
                 }
                 if (min_digits != 0) {
-                    internal_fputc(file, '0', false);
+                    internal_fputc(file, '0', false, false);
                     chars_printed++;
                     min_digits--;
                     min_length--;
                 }
                 for (int i = 0; i < min_length; i++) {
                     if (padding_type)
-                        internal_fputc(file, '0', false);
+                        internal_fputc(file, '0', false, false);
                     else
-                        internal_fputc(file, ' ', false);
+                        internal_fputc(file, ' ', false, false);
                     chars_printed++;
                 }
             }
@@ -341,22 +309,22 @@ int fprintf_uint(fd_t file, int min_length, int min_digits, uint64_t num, int ra
                 }
                 for (int i = 0; i < min_length; i++) {
                     if (padding_type || min_digits > 0) {
-                        internal_fputc(file, '0', false);
+                        internal_fputc(file, '0', false, false);
                         min_digits--;
                     }
                     else
-                        internal_fputc(file, ' ', false);
+                        internal_fputc(file, ' ', false, false);
                     chars_printed++;
                 }
                 if (print_zero) {
-                    internal_fputc(file, '0', false);
+                    internal_fputc(file, '0', false, false);
                     chars_printed++;
                 }
             }
         }
         else {   
             if (min_digits != 0) {
-                internal_fputc(file, '0', false);
+                internal_fputc(file, '0', false, false);
                 chars_printed++;
                 min_digits--;
                 min_length--;
@@ -380,19 +348,19 @@ int fprintf_uint(fd_t file, int min_length, int min_digits, uint64_t num, int ra
             min_length -= pos;
             min_digits -= pos;
             for (int i = 0; i < min_digits; i++) {
-                internal_fputc(file, '0', false);
+                internal_fputc(file, '0', false, false);
                 min_length--;
                 chars_printed++;
             }
             for (pos--; pos >= 0; pos--) {
-                internal_fputc(file, buffer[pos], false);
+                internal_fputc(file, buffer[pos], false, false);
                 chars_printed++;
             }
             for (int i = 0; i < min_length; i++) {
                 if (padding_type)
-                    internal_fputc(file, '0', false);
+                    internal_fputc(file, '0', false, false);
                 else
-                    internal_fputc(file, ' ', false);
+                    internal_fputc(file, ' ', false, false);
                 chars_printed++;
             }
         }
@@ -401,15 +369,15 @@ int fprintf_uint(fd_t file, int min_length, int min_digits, uint64_t num, int ra
             min_digits -= pos;
             for (int i = 0; i < min_length; i++) {
                 if (padding_type || min_digits > 0) {
-                    internal_fputc(file, '0', false);
+                    internal_fputc(file, '0', false, false);
                     min_digits--;
                 }
                 else
-                    internal_fputc(file, ' ', false);
+                    internal_fputc(file, ' ', false, false);
                 chars_printed++;
             }
             for (pos--; pos >= 0; pos--) {
-                internal_fputc(file, buffer[pos], false);
+                internal_fputc(file, buffer[pos], false, false);
                 chars_printed++;
             }
         }
@@ -417,7 +385,7 @@ int fprintf_uint(fd_t file, int min_length, int min_digits, uint64_t num, int ra
     else {
         pos--;
         for (; pos >= 0; pos--) {
-            internal_fputc(file, buffer[pos], false);
+            internal_fputc(file, buffer[pos], false, false);
             chars_printed++;
         }
     }
@@ -427,18 +395,18 @@ int fprintf_uint(fd_t file, int min_length, int min_digits, uint64_t num, int ra
 int fprintf_int(fd_t file, int64_t num, bool force_sign, bool pad_sign, int min_length, int min_digits, int radix, bool padding_type, bool padding_orientation /*true for right, false for left*/, bool uppercase) {
     int chars_printed = 0;
     if (num < 0) {
-        internal_fputc(file, '-', false);
+        internal_fputc(file, '-', false, false);
         chars_printed++;
         min_length--;
         num *= -1;
     }
     else if (force_sign) {
-        internal_fputc(file, '+', false);
+        internal_fputc(file, '+', false, false);
         chars_printed++;
         min_length--;
     }
     else if (pad_sign) {
-        internal_fputc(file, ' ', false);
+        internal_fputc(file, ' ', false, false);
         chars_printed++;
         min_length--;
     }
@@ -467,6 +435,9 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
     int width = 0;
     int precision = -1;
 
+    if (file == stdout)
+        g_CurrentTTY->Lock();
+
     while (c != 0) {
         switch (mode) {
             case (int)PRINTF_MODES::NORMAL:
@@ -476,7 +447,7 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
                         gotoNextChar = true;
                         break;
                     default:
-                        internal_fputc(file, c, false);
+                        internal_fputc(file, c, false, false);
                         gotoNextChar = true;
                         symbols_printed++;
                         break;
@@ -698,7 +669,7 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
                         number = true;
                         break;
                     case 'c': // character
-                        internal_fputc(file, va_arg(args, int /* char is promoted to int */), false);
+                        internal_fputc(file, va_arg(args, int /* char is promoted to int */), false, false);
                         symbols_printed++;
                         break;
                     case 's': // string.
@@ -709,14 +680,14 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
                             while (c2 != 0) {
                                 if (precision > 0 && j >= (unsigned int)precision)
                                     break;
-                                internal_fputc(file, c2, false);
+                                internal_fputc(file, c2, false, false);
                                 symbols_printed++;
                                 j++;
                                 c2 = str[j];
                                 width--;
                             }
                             for (int j = 0; j < width; j++) {
-                                internal_fputc(file, ' ', false);
+                                internal_fputc(file, ' ', false, false);
                                 symbols_printed++;
                             }
                             break;
@@ -750,7 +721,7 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
                         }
                         break;
                     case '%': // print a '%'
-                        internal_fputc(file, '%', false);
+                        internal_fputc(file, '%', false, false);
                         symbols_printed++;
                         break;
                     default: // ignore invalid spec
@@ -760,15 +731,15 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
                 if (flags_extra) {
                     switch (radix) {
                     case 16:
-                        internal_fputc(file, '0', false);
-                        internal_fputc(file, upper ? 'X' : 'x', false);
+                        internal_fputc(file, '0', false, false);
+                        internal_fputc(file, upper ? 'X' : 'x', false, false);
                         symbols_printed += 2;
                         width -= 2;
                         if (width < 0)
                             width = 0;
                         break;
                     case 8:
-                        internal_fputc(file, '0', false);
+                        internal_fputc(file, '0', false, false);
                         symbols_printed++;
                         width--;
                         if (width < 0)
@@ -866,6 +837,8 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
                 gotoNextChar = true;
                 break;
             default:
+                if (file == stdout)
+                    g_CurrentTTY->Unlock();
                 return -1; // invalid mode
         }
         if (gotoNextChar) {
@@ -873,6 +846,10 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
             c = format[i];
         }
     }
+
+
+    if (file == stdout)
+        g_CurrentTTY->Unlock();
 
     return symbols_printed;
 }

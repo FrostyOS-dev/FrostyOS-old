@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,6 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Scheduling/Thread.hpp>
 
-void sys$exit(Scheduling::Thread* thread, int status);
+void sys_exit(Scheduling::Thread* thread, int status);
 
 #endif /* _EXIT_HPP */

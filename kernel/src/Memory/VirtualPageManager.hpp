@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VirtualRegion.hpp"
 
 #include <stdint.h>
+#include <spinlock.h>
 
 #include <Data-structures/AVLTree.hpp>
 #include <Data-structures/LinkedList.hpp>
@@ -64,6 +65,9 @@ private:
     void FreePages(void* addr, uint64_t count);
     bool UnfreePage(void* addr, bool exact = false);
     bool UnfreePages(void* addr, uint64_t count, bool exact = false);
+
+    void do_cleanupRUTree(AVLTree::Node* node, AVLTree::Node* parent);
+
 private:
     uint64_t m_FreePagesCount;
     AVLTree::Node* m_FreePagesSizeTree;
@@ -71,6 +75,11 @@ private:
     uint64_t m_ReservedPagesCount;
     uint64_t m_UsedPagesCount;
     VirtualRegion m_region;
+
+    spinlock_t m_FreePagesSizeTreeLock;
+    spinlock_t m_ReservedANDUsedPagesLock;
+    spinlock_t m_GlobalLock;
+    spinlock_t m_RegionLock;
 };
 
 extern VirtualPageManager* g_VPM;

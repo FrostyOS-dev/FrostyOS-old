@@ -28,19 +28,85 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Data-structures/LinkedList.hpp>
 
-// The scheduler needs to switch task every 40ms and the timer runs at 200Hz (or a tick every 5ms), so we need to switch every 8 ticks.
+#ifdef __x86_64__
+#include <arch/x86_64/Processor.hpp>
+#endif
+
+// The scheduler needs to switch task every 40ms and the timer runs at 1kHz (or a tick every 1ms), so we need to switch every 40 ticks.
 
 #define MS_PER_SCHEDULER_CYCLE 40
 #define TICKS_PER_SCHEDULER_CYCLE MS_PER_SCHEDULER_CYCLE / MS_PER_TICK
+
 
 namespace Scheduling {
 
     namespace Scheduler {
 
+        class ThreadList {
+        public:
+            ThreadList();
+            ~ThreadList();
+
+            void PushBack(Thread* thread);
+            void PushFront(Thread* thread);
+
+            Thread* PopBack();
+            Thread* PopFront();
+
+            bool RemoveThread(Thread* thread);
+
+            Thread* Get(uint64_t index);
+
+            bool Contains(Thread* thread);
+
+            void EnumerateThreads(void (*callback)(Thread* thread, void* data), void* data);
+
+            uint64_t GetCount() const;
+
+            void Lock() const;
+            void Unlock() const;
+
+        private:
+            Thread* m_start;
+            Thread* m_end;
+            uint64_t m_count;
+
+            mutable spinlock_t m_lock;
+        };
+
+        struct ProcessorInfo {
+            Processor* processor;
+            uint64_t id;
+            Thread::Register_Frame thread_metadata;
+            uint8_t kernel_run_count; // the amount of times a kernel thread has been run in a row
+            uint8_t high_run_count;   // the amount of times a high thread has been run in a row
+            uint8_t normal_run_count; // the amount of times a normal thread has been run in a row
+            Thread* current_thread;
+            bool running;
+            size_t ticks;
+            uint32_t start_allowed; // when this is locked, the processor is not allowed to run anything
+        } __attribute__((packed));
+
+        void ClearGlobalData();
+
+        void InitBSPInfo();
+
         void AddProcess(Process* process);
         void RemoveProcess(Process* process);
         void ScheduleThread(Thread* thread);
         void RemoveThread(Thread* thread);
+
+        void AddProcessor(Processor* processor);
+        Processor* GetProcessor(uint8_t ID);
+        ProcessorInfo* GetProcessorInfo(Processor* processor);
+        ProcessorInfo* GetProcessorInfo(uint8_t ID);
+        void RemoveProcessor(Processor* processor);
+        uint8_t GetProcessorCount();
+        void EnumerateProcessors(void (*callback)(ProcessorInfo* info, void* data), void* data);
+
+        void SetThreadFrame(ProcessorInfo* info, Thread::Register_Frame* frame);
+
+        void InitProcessorTimers();
 
         void __attribute__((noreturn)) Start();
 
@@ -51,16 +117,23 @@ namespace Scheduling {
         // Called when a thread ends. Responsible for cleanup
         void End();
 
-        void PickNext();
+        void PickNext(ProcessorInfo* info = nullptr); // info points to the CPU which we want to pick the next thread for. If nullptr, the current CPU is used.
 
         Thread* GetCurrent();
 
         void TimerTick(void* iregs); // Only to be called in timer IRQ
 
+        // Is the scheduler running globally.
+        bool GlobalIsRunning();
+
+        // Is the scheduler running on this CPU
         bool isRunning();
 
         void Stop();
         void Resume();
+
+        void StopGlobal();
+        void ResumeGlobal();
 
         void SleepThread(Thread* thread, uint64_t ms);
 
@@ -69,6 +142,15 @@ namespace Scheduling {
         int SendSignal(Process* sender, pid_t PID, int signum);
 
         void PrintThreads(fd_t file);
+
+        void ForceUnlockEverything(); // Forces all scheduler data structures to be unlocked immediately. Should only be used for emergency resource access in a kernel panic.
+    
+        void AddIdleThread(Thread* thread);
+
+        int RegisterSemaphore(Semaphore* semaphore);
+        Semaphore* GetSemaphore(int ID);
+        int UnregisterSemaphore(int ID);
+        int UnregisterSemaphore(Semaphore* semaphore);
     }
 
 }

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <tty/TTY.hpp>
 
-#include <stddef.h>
 #include <stdint.h>
+#include <spinlock.h>
 
 #ifndef O_READ
 #define O_READ 1UL
@@ -56,29 +56,20 @@ enum class FileDescriptorMode {
     READ_WRITE
 };
 
-enum class FileDescriptorError {
-    SUCCESS = 0,
-    INVALID_ARGUMENTS = 1,
-    INTERNAL_ERROR = 2,
-    STREAM_ERROR = 3,
-    INVALID_MODE = 4,
-    NO_PERMISSION = 5
-};
-
 class FileDescriptor {
 public:
     FileDescriptor();
     FileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode, fd_t ID);
     ~FileDescriptor();
 
-    bool Open();
-    bool Close();
+    int Open();
+    int Close();
 
-    size_t Read(uint8_t* buffer, size_t count);
-    size_t Write(const uint8_t* buffer, size_t count);
+    int64_t Read(uint8_t* buffer, int64_t count, int* status = nullptr); // status will be set if not nullptr, and if the return value is >= 0.
+    int64_t Write(const uint8_t* buffer, int64_t count, int* status = nullptr); // status will be set if not nullptr, and if the return value is >= 0.
 
-    bool Seek(uint64_t offset);
-    bool Rewind();
+    int Seek(int64_t offset);
+    int Rewind();
 
     fd_t GetID() const;
 
@@ -86,13 +77,9 @@ public:
 
     FileDescriptorType GetType() const;
 
-    FileDescriptorError GetLastError() const;
+    bool WasInitSuccessful() const;
 
-protected:
-    void SetLastError(FileDescriptorError error) const;
-
-protected:
-    mutable FileDescriptorError p_lastError;
+    void ForceUnlock(); // should only ever be used in a PANIC to get emergency access to resources.
 
 private:
     TTY* m_TTY;
@@ -101,6 +88,10 @@ private:
     FileDescriptorType m_type;
     FileDescriptorMode m_mode;
     fd_t m_ID;
+
+    bool m_init_successful;
+
+    mutable spinlock_t m_lock;
 };
 
 #endif /* _FILE_DESCRIPTOR_HPP */

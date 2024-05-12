@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Memory/PageManager.hpp>
 
 #include "KeyboardInput.hpp"
+
+#include <spinlock.h>
 
 class TTY {
 public:
@@ -51,12 +53,18 @@ public:
 
     bool isInputMirroringEnabled() const;
 
+    void Lock() const;
+    void Unlock() const;
+
 private:
     BasicVGA* m_VGADevice;
     KeyboardInput* m_keyboardInput;
     Colour m_foreground;
     Colour m_background;
     bool m_inputMirroring;
+
+    mutable spinlock_t m_lock;
+    mutable bool m_locked;
 };
 
 extern TTY* g_CurrentTTY;

@@ -50,7 +50,7 @@ size_t UpdateMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCoun
 
     for (size_t i = EntryCount; i > 0; i--) {
         const MemoryMapEntry* entry = MemoryMap[i-1];
-        if (entry->type == WORLDOS_MEMORY_FREE || entry->type == WORLDOS_MEMORY_KERNEL_AND_MODULES) {
+        if (entry->type == WORLDOS_MEMORY_FREE) {
             g_memorySizeBytes = (uint64_t)(entry->Address) + entry->length;
             NewEntryCount = i;
             break;
