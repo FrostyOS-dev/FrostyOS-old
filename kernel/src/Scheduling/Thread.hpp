@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_THREAD_HPP
-#define _KERNEL_THREAD_HPP
+#ifndef _THREAD_HPP
+#define _THREAD_HPP
 
 #include "Process.hpp"
 
@@ -28,6 +28,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <file.h>
 
 namespace Scheduling {
+
+    class Semaphore;
 
     typedef void (*ThreadEntry_t)(void*);
     struct ThreadCleanup_t {
@@ -66,26 +68,26 @@ namespace Scheduling {
 
         void Start();
 
-        fd_t sys$open(const char* path, unsigned long flags, unsigned short mode);
-        long sys$read(fd_t file, void* buf, unsigned long count);
-        long sys$write(fd_t file, const void* buf, unsigned long count);
-        int sys$close(fd_t file);
-        long sys$seek(fd_t file, long offset, long whence);
+        fd_t sys_open(const char* path, unsigned long flags, unsigned short mode);
+        long sys_read(fd_t file, void* buf, unsigned long count);
+        long sys_write(fd_t file, const void* buf, unsigned long count);
+        int sys_close(fd_t file);
+        long sys_seek(fd_t file, long offset, long whence);
 
-        int sys$stat(const char* path, struct stat_buf* buf);
-        int sys$fstat(fd_t file, struct stat_buf* buf);
-        int sys$chown(const char* path, unsigned int uid, unsigned int gid);
-        int sys$fchown(fd_t file, unsigned int uid, unsigned int gid);
-        int sys$chmod(const char* path, unsigned short mode);
-        int sys$fchmod(fd_t file, unsigned short mode);
+        int sys_stat(const char* path, struct stat_buf* buf);
+        int sys_fstat(fd_t file, struct stat_buf* buf);
+        int sys_chown(const char* path, unsigned int uid, unsigned int gid);
+        int sys_fchown(fd_t file, unsigned int uid, unsigned int gid);
+        int sys_chmod(const char* path, unsigned short mode);
+        int sys_fchmod(fd_t file, unsigned short mode);
 
-        void sys$sleep(unsigned long s);
-        void sys$msleep(unsigned long ms);
+        void sys_sleep(unsigned long s);
+        void sys_msleep(unsigned long ms);
 
-        int sys$getdirents(fd_t file, struct dirent* dirp, unsigned long count);
+        int sys_getdirents(fd_t file, struct dirent* dirp, unsigned long count);
 
-        int sys$chdir(const char* path);
-        int sys$fchdir(fd_t file);
+        int sys_chdir(const char* path);
+        int sys_fchdir(fd_t file);
 
         void PrintInfo(fd_t file) const;
 
@@ -98,8 +100,19 @@ namespace Scheduling {
         uint64_t GetRemainingSleepTime() const;
         void SetRemainingSleepTime(uint64_t time);
 
+        bool IsIdle() const;
+        void SetIdle(bool idle);
+
+        bool IsBlocked() const;
+        void SetBlocked(bool blocked);
+
         VFS_WorkingDirectory* GetWorkingDirectory() const;
         void SetWorkingDirectory(VFS_WorkingDirectory* working_directory);
+
+        Thread* GetNextThread();
+        Thread* GetPreviousThread();
+        void SetNextThread(Thread* next_thread);
+        void SetPreviousThread(Thread* previous_thread);
 
     private:
         Process* m_Parent;
@@ -117,7 +130,14 @@ namespace Scheduling {
         bool m_sleeping;
         uint64_t m_remaining_sleep_time;
 
+        bool m_idle;
+
+        bool m_blocked;
+
         VFS_WorkingDirectory* m_working_directory;
+
+        Thread* m_next_thread;
+        Thread* m_previous_thread;
     };
 }
 

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023-2024  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,15 +15,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _EXEC_HPP
-#define _EXEC_HPP
+#ifndef _SYNCHRONISATION_HPP
+#define _SYNCHRONISATION_HPP
 
-#include <Scheduling/Process.hpp>
+int sys_createSemaphore(int value);
+int sys_acquireSemaphore(int ID);
+int sys_releaseSemaphore(int ID);
+int sys_destroySemaphore(int ID);
 
-// Userland wrapper around exec
-int sys_exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]);
+int sys_createMutex();
+int sys_acquireMutex(int ID);
+int sys_releaseMutex(int ID);
+int sys_destroyMutex(int ID);
 
-// Execute a program. No memory checks are performed on any arguments, as they are assumed to be valid.
-int Execute(Scheduling::Process* parent, const char *path, int argc, char *const argv[], int envc, char *const envv[], Scheduling::Priority priority = Scheduling::Priority::NORMAL);
-
-#endif /* _EXEC_HPP */
+#endif /* _SYNCHRONISATION_HPP */

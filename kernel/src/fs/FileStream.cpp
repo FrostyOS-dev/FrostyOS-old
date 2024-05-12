@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "FileStream.hpp"
 
 #include "TempFS/TempFSInode.hpp"
+#include "spinlock.h"
 
 #include <errno.h>
 
@@ -50,7 +51,8 @@ int FileStream::Open() {
                 }
                 inode->Lock();
                 inode->SetCurrentHead({0, false, nullptr, 0, 0});
-                if (!inode->Open()) {
+                int rc = inode->Open();
+                if (rc < 0) {
                     inode->Unlock();
                     spinlock_release(&m_lock);
                     return -ENOSYS;
@@ -65,89 +67,118 @@ int FileStream::Open() {
             }
             break;
         default:
+            spinlock_release(&m_lock);
             return -ENODEV;
             break;
     }
     m_open = true;
+    spinlock_release(&m_lock);
     return ESUCCESS;
 }
 
 int FileStream::Close() {
-    if (!m_open)
+    spinlock_acquire(&m_lock);
+    if (!m_open) {
+        spinlock_release(&m_lock);
         return ESUCCESS;
-    if (m_mountPoint == nullptr)
+    }
+    if (m_mountPoint == nullptr) {
+        spinlock_release(&m_lock);
         return -ENODEV;
+    }
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS:
             {
                 using namespace TempFS;
                 TempFSInode* inode = (TempFSInode*)m_inode;
                 if (inode == nullptr || inode->GetType() != InodeType::File) {
+                    spinlock_release(&m_lock);
                     return -EISDIR;
                 }
+                inode->Lock();
                 inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
                 m_open = false;
-                if (!inode->Close()) {
-                    delete (TempFSInode::Head*)m_inode_state;
-                    return -ENOSYS;
-                }
+                int rc = inode->Close();
+                inode->Unlock();
                 delete (TempFSInode::Head*)m_inode_state;
+                spinlock_release(&m_lock);
+                return rc;
             }
             break;
         default:
+            spinlock_release(&m_lock);
             return -ENODEV;
             break;
     }
-    return ESUCCESS;
+    spinlock_release(&m_lock);
+    return -ENOSYS;
 }
 
 int64_t FileStream::ReadStream(uint8_t* bytes, int64_t count, int* status) {
     if (count < 0)
         return -EINVAL;
 
-    if (m_mountPoint == nullptr)
+    spinlock_acquire(&m_lock);
+    if (m_mountPoint == nullptr) {
+        spinlock_release(&m_lock);
         return -ENODEV;
+    }
 
-    if (!(m_modes & VFS_READ))
+    if (!(m_modes & VFS_READ)) {
+        spinlock_release(&m_lock);
         return -EACCES;
+    }
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS:
             {
                 using namespace TempFS;
                 TempFSInode* inode = (TempFSInode*)m_inode;
                 if (inode == nullptr || inode->GetType() != InodeType::File) {
+                    spinlock_release(&m_lock);
                     return -EISDIR;
                 }
+                inode->Lock();
                 inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
                 int i_status;
                 int64_t rc = inode->ReadStream(m_privilege, bytes, count, &i_status);
-                if (rc >= 0 && status != nullptr)
+                if (status != nullptr)
                     *status = i_status;
                 *(TempFSInode::Head*)m_inode_state = inode->GetCurrentHead();
+                inode->Unlock();
+                spinlock_release(&m_lock);
                 return rc;
             }
             break;
         default:
+            spinlock_release(&m_lock);
             return -ENODEV;
             break;
     }
+    spinlock_release(&m_lock);
     return -ENOSYS;
 }
 
 int64_t FileStream::WriteStream(const uint8_t* bytes, int64_t count, int* status) {
     if (count < 0)
         return -EINVAL;
-    if (m_mountPoint == nullptr)
+    spinlock_acquire(&m_lock);
+    if (m_mountPoint == nullptr) {
+        spinlock_release(&m_lock);
         return -ENODEV;
-    if (!(m_modes & VFS_WRITE))
+    }
+    if (!(m_modes & VFS_WRITE)) {
+        spinlock_release(&m_lock);
         return -EACCES;
+    }
     switch (m_mountPoint->type) {
         case FileSystemType::TMPFS:
             {
                 using namespace TempFS;
                 TempFSInode* inode = (TempFSInode*)m_inode;
-                if (inode == nullptr || inode->GetType() != InodeType::File)
+                if (inode == nullptr || inode->GetType() != InodeType::File) {
+                    spinlock_release(&m_lock);
                     return -EISDIR;
+                }
                 inode->Lock();
                 inode->SetCurrentHead(*(TempFSInode::Head*)m_inode_state);
                 int i_status;
@@ -156,13 +187,16 @@ int64_t FileStream::WriteStream(const uint8_t* bytes, int64_t count, int* status
                 inode->Unlock();
                 if (rc >= 0 && status != nullptr)
                     *status = i_status;
+                spinlock_release(&m_lock);
                 return rc;
             }
             break;
         default:
+            spinlock_release(&m_lock);
             return -ENODEV;
             break;
     }
+    spinlock_release(&m_lock);
     return -ENOSYS;
 }
 

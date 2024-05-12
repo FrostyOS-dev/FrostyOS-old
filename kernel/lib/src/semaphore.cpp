@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023-2024  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,15 +15,24 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _EXEC_HPP
-#define _EXEC_HPP
+#include <semaphore.h>
 
-#include <Scheduling/Process.hpp>
+#include <SystemCalls/Synchronisation.hpp>
 
-// Userland wrapper around exec
-int sys_exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]);
+// For all of these, we can actually just use the system calls directly, as they are already implemented in the kernel.
 
-// Execute a program. No memory checks are performed on any arguments, as they are assumed to be valid.
-int Execute(Scheduling::Process* parent, const char *path, int argc, char *const argv[], int envc, char *const envv[], Scheduling::Priority priority = Scheduling::Priority::NORMAL);
+extern "C" int createSemaphore(int value) {
+    return sys_createSemaphore(value);
+}
 
-#endif /* _EXEC_HPP */
+extern "C" int acquireSemaphore(int ID) {
+    return sys_acquireSemaphore(ID);
+}
+
+extern "C" int releaseSemaphore(int ID) {
+    return sys_releaseSemaphore(ID);
+}
+
+extern "C" int destroySemaphore(int ID) {
+    return sys_destroySemaphore(ID);
+}

@@ -274,6 +274,7 @@ namespace TempFS {
     }
 
     int TempFileSystem::DestroyFileSystem() {
+        m_rootInodes.lock();
         for (uint64_t i = 0; i < m_rootInodes.getCount(); i++) {
             TempFSInode* inode = m_rootInodes.get(0);
             if (inode != nullptr) {
@@ -281,31 +282,42 @@ namespace TempFS {
                 delete inode;
             }
         }
+        m_rootInodes.unlock();
         return ESUCCESS;
     }
 
     void TempFileSystem::CreateNewRootInode(TempFSInode* inode) {
+        m_rootInodes.lock();
         m_rootInodes.insert(inode);
+        m_rootInodes.unlock();
     }
 
     void TempFileSystem::DeleteRootInode(TempFSInode* inode) {
+        m_rootInodes.lock();
         m_rootInodes.remove(inode);
+        m_rootInodes.unlock();
     }
 
     Inode* TempFileSystem::GetRootInode(uint64_t index, int* status) const {
+        m_rootInodes.lock();
         if (index >= m_rootInodes.getCount()) {
+            m_rootInodes.unlock();
             if (status != nullptr)
                 *status = -EINVAL;
             return nullptr;
         }
         Inode* inode = m_rootInodes.get(index);
+        m_rootInodes.unlock();
         if (inode == nullptr && status != nullptr)
             *status = -ENOSYS;
         return inode;
     }
 
     uint64_t TempFileSystem::GetRootInodeCount() const {
-        return m_rootInodes.getCount();
+        m_rootInodes.lock();
+        uint64_t count = m_rootInodes.getCount();
+        m_rootInodes.unlock();
+        return count;
     }
 
     TempFSInode* TempFileSystem::GetSubInode(TempFSInode* parent, const char* path, TempFSInode** lastInode, int64_t* end_index, int* status) {
@@ -374,10 +386,12 @@ namespace TempFS {
                                 return nullptr;
                             }
                             else {
+                                m_rootInodes.lock();
                                 for (uint64_t j = 0; j < m_rootInodes.getCount(); j++) {
                                     TempFSInode* inode = m_rootInodes.get(j);
                                     if (inode == nullptr) {
                                         kfree(name);
+                                        m_rootInodes.unlock();
                                         if (status != nullptr)
                                             *status = -ENOSYS;
                                         if (lastInode != nullptr)
@@ -388,9 +402,11 @@ namespace TempFS {
                                     }
                                     if (strcmp(name, inode->GetName()) == 0) {
                                         last_inode = inode;
+                                        m_rootInodes.unlock();
                                         break;
                                     }
                                 }
+                                m_rootInodes.unlock();
                             }
                         }
                     }

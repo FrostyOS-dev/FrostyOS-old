@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -178,7 +178,7 @@ namespace LinkedList {
 		bool m_eternal; // for a linked list that will never have nodes deleted
 	};
 
-	template <typename T> class LockableLinkedList { // has a internal simplelinkedlist and a spinlock. we do not lock automatically, so the user must lock the list before using it.
+	template <typename T> class LockableLinkedList { // has a internal SimpleLinkedList and a spinlock. We do not lock automatically, so the user must lock the list before using it.
 	public:
 		LockableLinkedList(bool eternal = false) : m_list(eternal), m_lock() {}
 		~LockableLinkedList() {
@@ -218,15 +218,15 @@ namespace LinkedList {
 			return m_list.getCount();
 		}
 
-		void lock() {
+		void lock() const {
 			spinlock_acquire(&m_lock);
 		}
-		void unlock() {
+		void unlock() const {
 			spinlock_release(&m_lock);
 		}
 	private:
 		SimpleLinkedList<T> m_list;
-		spinlock_t m_lock;
+		mutable spinlock_t m_lock;
 	};
 
 }

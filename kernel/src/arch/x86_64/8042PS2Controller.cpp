@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "io.h"
 
 #include "interrupts/IRQ.hpp"
-#include "interrupts/pic.hpp"
 
 #include "interrupts/APIC/IOAPIC.hpp"
 

@@ -23,7 +23,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "interrupts/isr.hpp"
 #include "interrupts/IRQ.hpp"
 #include "interrupts/NMI.hpp"
-#include "interrupts/pic.hpp"
 
 #include "Memory/PagingInit.hpp"
 
@@ -33,12 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Scheduling/Scheduler.hpp>
 
-void __attribute__((noreturn)) x86_64_StopRequestHandler() {
-    Processor* proc = GetCurrentProcessor();
-    proc->StopThis();
-}
-
-Processor::Processor(bool BSP) : m_BSP(BSP), m_kernel_stack(nullptr), m_kernel_stack_size(0), m_LocalAPIC(nullptr) {
+Processor::Processor(bool BSP) : m_BSP(BSP), m_kernel_stack(nullptr), m_kernel_stack_size(0), m_LocalAPIC(nullptr), m_IPIList() {
 
 }
 
@@ -73,6 +67,8 @@ void Processor::Init(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t
 
     assert(x86_64_IsSystemCallSupported());
     assert(x86_64_EnableSystemCalls(0x8, 0x18, x86_64_HandleSystemCall));
+
+    m_IPIList = x86_64_IPI_List();
 
     InitialiseLocalAPIC();
 }
@@ -111,4 +107,8 @@ void __attribute__((noreturn)) Processor::StopThis() {
     __asm__ volatile("cli");
     while (true)
         __asm__ volatile("hlt");
+}
+
+x86_64_IPI_List& Processor::GetIPIList() {
+    return m_IPIList;
 }

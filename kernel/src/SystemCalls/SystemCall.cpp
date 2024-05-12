@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "memory.hpp"
 #include "exec.hpp"
 #include "mount.hpp"
+#include "Synchronisation.hpp"
 
 #include <stdio.h>
 #include <errno.h>
@@ -44,24 +45,24 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
 #endif
     switch (num) {
     case SC_EXIT:
-        sys$exit(current_thread, (int)arg1);
+        sys_exit(current_thread, (int)arg1);
         return 0;
     case SC_READ:
-        return (uint64_t)(current_thread->sys$read((fd_t)arg1, (void*)arg2, arg3));
+        return (uint64_t)(current_thread->sys_read((fd_t)arg1, (void*)arg2, arg3));
     case SC_WRITE:
-        return (uint64_t)(current_thread->sys$write((fd_t)arg1, (const void*)arg2, arg3));
+        return (uint64_t)(current_thread->sys_write((fd_t)arg1, (const void*)arg2, arg3));
     case SC_OPEN:
-        return (uint64_t)(current_thread->sys$open((const char*)arg1, arg2, (unsigned short)arg3));
+        return (uint64_t)(current_thread->sys_open((const char*)arg1, arg2, (unsigned short)arg3));
     case SC_CLOSE:
-        return (uint64_t)(current_thread->sys$close((fd_t)arg1));
+        return (uint64_t)(current_thread->sys_close((fd_t)arg1));
     case SC_SEEK:
-        return (uint64_t)(current_thread->sys$seek((fd_t)arg1, (long)arg2, (long)arg3));
+        return (uint64_t)(current_thread->sys_seek((fd_t)arg1, (long)arg2, (long)arg3));
     case SC_MMAP:
-        return (uint64_t)sys$mmap(arg1, arg2, (void*)arg3);
+        return (uint64_t)sys_mmap(arg1, arg2, (void*)arg3);
     case SC_MUNMAP:
-        return (uint64_t)sys$munmap((void*)arg1, arg2);
+        return (uint64_t)sys_munmap((void*)arg1, arg2);
     case SC_MPROTECT:
-        return (uint64_t)sys$mprotect((void*)arg1, arg2, arg3);
+        return (uint64_t)sys_mprotect((void*)arg1, arg2, arg3);
     case SC_GETUID: {
         Scheduling::Process* parent = current_thread->GetParent();
         if (parent == nullptr)
@@ -87,17 +88,17 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
         return (uint64_t)(parent->GetEGID());
     }
     case SC_STAT:
-        return (uint64_t)(current_thread->sys$stat((const char*)arg1, (struct stat_buf*)arg2));
+        return (uint64_t)(current_thread->sys_stat((const char*)arg1, (struct stat_buf*)arg2));
     case SC_FSTAT:
-        return (uint64_t)(current_thread->sys$fstat((fd_t)arg1, (struct stat_buf*)arg2));
+        return (uint64_t)(current_thread->sys_fstat((fd_t)arg1, (struct stat_buf*)arg2));
     case SC_CHOWN:
-        return (uint64_t)(current_thread->sys$chown((const char*)arg1, (unsigned int)arg2, (unsigned int)arg3));
+        return (uint64_t)(current_thread->sys_chown((const char*)arg1, (unsigned int)arg2, (unsigned int)arg3));
     case SC_FCHOWN:
-        return (uint64_t)(current_thread->sys$fchown((fd_t)arg1, (unsigned int)arg2, (unsigned int)arg3));
+        return (uint64_t)(current_thread->sys_fchown((fd_t)arg1, (unsigned int)arg2, (unsigned int)arg3));
     case SC_CHMOD:
-        return (uint64_t)(current_thread->sys$chmod((const char*)arg1, (unsigned short)arg2));
+        return (uint64_t)(current_thread->sys_chmod((const char*)arg1, (unsigned short)arg2));
     case SC_FCHMOD:
-        return (uint64_t)(current_thread->sys$fchmod((fd_t)arg1, (unsigned short)arg2));
+        return (uint64_t)(current_thread->sys_fchmod((fd_t)arg1, (unsigned short)arg2));
     case SC_GETPID: {
         Scheduling::Process* parent = current_thread->GetParent();
         if (parent == nullptr)
@@ -107,30 +108,30 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
     case SC_GETTID:
         return (uint64_t)(current_thread->GetTID());
     case SC_EXEC:
-        return sys$exec(current_thread->GetParent(), (const char*)arg1, (char* const*)arg2, (char* const*)arg3);
+        return sys_exec(current_thread->GetParent(), (const char*)arg1, (char* const*)arg2, (char* const*)arg3);
     case SC_SLEEP:
-        current_thread->sys$sleep(arg1);
+        current_thread->sys_sleep(arg1);
         return 0;
     case SC_MSLEEP:
-        current_thread->sys$msleep(arg1);
+        current_thread->sys_msleep(arg1);
         return 0;
     case SC_GETDIRENTS:
-        return (uint64_t)(current_thread->sys$getdirents((fd_t)arg1, (struct dirent*)arg2, (size_t)arg3));
+        return (uint64_t)(current_thread->sys_getdirents((fd_t)arg1, (struct dirent*)arg2, (size_t)arg3));
     case SC_CHDIR:
-        return (uint64_t)(current_thread->sys$chdir((const char*)arg1));
+        return (uint64_t)(current_thread->sys_chdir((const char*)arg1));
     case SC_FCHDIR:
-        return (uint64_t)(current_thread->sys$fchdir((fd_t)arg1));
+        return (uint64_t)(current_thread->sys_fchdir((fd_t)arg1));
     case SC_ONSIGNAL: {
         Scheduling::Process* parent = current_thread->GetParent();
         if (parent == nullptr)
             return (uint64_t)-EFAULT;
-        return (uint64_t)(parent->sys$onsignal((int)arg1, (const signal_action*)arg2, (signal_action*)arg3));
+        return (uint64_t)(parent->sys_onsignal((int)arg1, (const signal_action*)arg2, (signal_action*)arg3));
     }
     case SC_SENDSIG: {
         Scheduling::Process* parent = current_thread->GetParent();
         if (parent == nullptr)
             return (uint64_t)-EFAULT;
-        return (uint64_t)(parent->sys$sendsig((pid_t)arg1, (int)arg2));
+        return (uint64_t)(parent->sys_sendsig((pid_t)arg1, (int)arg2));
     }
     case SC_SIGRETURN: {
         Scheduling::Process* parent = current_thread->GetParent();
@@ -138,13 +139,29 @@ extern "C" uint64_t SystemCallHandler(uint64_t num, uint64_t arg1, uint64_t arg2
             // there is nothing we can do here. We got a noreturn syscall with a parent-less thread.
             PANIC("sigreturn from thread with no parent");
         }
-        parent->sys$sigreturn((int)arg1);
-        PANIC("sys$sigreturn returned.");
+        parent->sys_sigreturn((int)arg1);
+        PANIC("sys_sigreturn returned.");
     }
     case SC_MOUNT:
-        return (uint64_t)(sys$mount(current_thread, (const char*)arg1, (const char*)arg2, (const char*)arg3));
+        return (uint64_t)(sys_mount(current_thread, (const char*)arg1, (const char*)arg2, (const char*)arg3));
     case SC_UNMOUNT:
-        return (uint64_t)(sys$unmount(current_thread, (const char*)arg1));
+        return (uint64_t)(sys_unmount(current_thread, (const char*)arg1));
+    case SC_CREATE_SEMAPHORE:
+        return (uint64_t)(sys_createSemaphore((int)arg1));
+    case SC_DESTROY_SEMAPHORE:
+        return (uint64_t)(sys_destroySemaphore((int)arg1));
+    case SC_ACQUIRE_SEMAPHORE:
+        return (uint64_t)(sys_acquireSemaphore((int)arg1));
+    case SC_RELEASE_SEMAPHORE:
+        return (uint64_t)(sys_releaseSemaphore((int)arg1));
+    case SC_CREATE_MUTEX:
+        return (uint64_t)(sys_createMutex());
+    case SC_DESTROY_MUTEX:
+        return (uint64_t)(sys_destroyMutex((int)arg1));
+    case SC_ACQUIRE_MUTEX:
+        return (uint64_t)(sys_acquireMutex((int)arg1));
+    case SC_RELEASE_MUTEX:
+        return (uint64_t)(sys_releaseMutex((int)arg1));
     default:
         dbgprintf("Unknown system call. number = %lu, arg1 = %lx, arg2 = %lx, arg3 = %lx.\n", num, arg1, arg2, arg3);
         return -1;

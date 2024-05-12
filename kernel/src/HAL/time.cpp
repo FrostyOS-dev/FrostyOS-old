@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <util.h>
 #include <stdio.h>
-#include <spinlock.h>
 
 #include "drivers/HPET.hpp"
 
@@ -60,26 +59,13 @@ extern "C" void sleep(uint64_t ms) {
         __asm__ volatile ("" ::: "memory");
 }
 
-spinlock_new(g_timerLock);
-
 void TimerCallback(void*) {
-/*#ifdef __x86_64__
-    uint64_t flags = 0;
-    __asm__ volatile ("pushfq; pop %0; cli" : "=r"(flags) : : "memory");
-#endif
-    spinlock_acquire(&g_timerLock);*/
     if (g_allowTimer == 0) {
         g_timerRunning = 0;
         return;
     }
     __atomic_add_fetch(&g_timerTicks, 1, __ATOMIC_SEQ_CST);
-    //dbgprintf("Timer tick %llu\n", g_timerTicks);
     g_HPET->StartTimer(1'000'000'000'000, TimerCallback, nullptr);
-    /*spinlock_release(&g_timerLock);
-#ifdef __x86_64__
-    if (flags & 0x200) // if interrupts were enabled before we disabled them
-        __asm__ volatile ("sti");
-#endif*/
 }
 
 

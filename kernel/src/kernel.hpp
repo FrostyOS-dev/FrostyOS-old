@@ -45,4 +45,10 @@ struct KernelParams {
 extern "C" void StartKernel(KernelParams* params);
 void Kernel_Stage2(void*);
 
+namespace Scheduling {
+    class Process;
+}
+
+extern Scheduling::Process* KProcess;
+
 #endif /* _KERNEL_HPP */

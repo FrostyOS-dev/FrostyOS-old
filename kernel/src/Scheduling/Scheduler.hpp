@@ -42,6 +42,38 @@ namespace Scheduling {
 
     namespace Scheduler {
 
+        class ThreadList {
+        public:
+            ThreadList();
+            ~ThreadList();
+
+            void PushBack(Thread* thread);
+            void PushFront(Thread* thread);
+
+            Thread* PopBack();
+            Thread* PopFront();
+
+            bool RemoveThread(Thread* thread);
+
+            Thread* Get(uint64_t index);
+
+            bool Contains(Thread* thread);
+
+            void EnumerateThreads(void (*callback)(Thread* thread, void* data), void* data);
+
+            uint64_t GetCount() const;
+
+            void Lock() const;
+            void Unlock() const;
+
+        private:
+            Thread* m_start;
+            Thread* m_end;
+            uint64_t m_count;
+
+            mutable spinlock_t m_lock;
+        };
+
         struct ProcessorInfo {
             Processor* processor;
             uint64_t id;
@@ -67,7 +99,10 @@ namespace Scheduling {
         void AddProcessor(Processor* processor);
         Processor* GetProcessor(uint8_t ID);
         ProcessorInfo* GetProcessorInfo(Processor* processor);
+        ProcessorInfo* GetProcessorInfo(uint8_t ID);
         void RemoveProcessor(Processor* processor);
+        uint8_t GetProcessorCount();
+        void EnumerateProcessors(void (*callback)(ProcessorInfo* info, void* data), void* data);
 
         void SetThreadFrame(ProcessorInfo* info, Thread::Register_Frame* frame);
 
@@ -107,6 +142,15 @@ namespace Scheduling {
         int SendSignal(Process* sender, pid_t PID, int signum);
 
         void PrintThreads(fd_t file);
+
+        void ForceUnlockEverything(); // Forces all scheduler data structures to be unlocked immediately. Should only be used for emergency resource access in a kernel panic.
+    
+        void AddIdleThread(Thread* thread);
+
+        int RegisterSemaphore(Semaphore* semaphore);
+        Semaphore* GetSemaphore(int ID);
+        int UnregisterSemaphore(int ID);
+        int UnregisterSemaphore(Semaphore* semaphore);
     }
 
 }

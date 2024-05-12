@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023-2024  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,15 +15,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _EXEC_HPP
-#define _EXEC_HPP
+#ifndef _MUTEX_H
+#define _MUTEX_H
 
-#include <Scheduling/Process.hpp>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-// Userland wrapper around exec
-int sys_exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]);
+int createMutex();
+int acquireMutex(int ID);
+int releaseMutex(int ID);
+int destroyMutex(int ID);
 
-// Execute a program. No memory checks are performed on any arguments, as they are assumed to be valid.
-int Execute(Scheduling::Process* parent, const char *path, int argc, char *const argv[], int envc, char *const envv[], Scheduling::Priority priority = Scheduling::Priority::NORMAL);
+#ifdef __cplusplus
+}
+#endif
 
-#endif /* _EXEC_HPP */
+#endif /* _MUTEX_H */

@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Graphics/VGA.hpp>
 
+#include "interrupts/APIC/IPI.hpp"
 #include "interrupts/APIC/LocalAPIC.hpp"
 
 namespace Scheduling::Scheduler {
@@ -52,6 +53,8 @@ public:
 
     void __attribute__((noreturn)) StopThis(); // Stops the current processor
 
+    x86_64_IPI_List& GetIPIList();
+
 private:
     bool m_BSP;
 
@@ -63,13 +66,13 @@ private:
     x86_64_GDTEntry __attribute__((aligned(0x8))) m_GDT[7];
 
     x86_64_LocalAPIC* m_LocalAPIC;
+
+    x86_64_IPI_List m_IPIList;
 };
 
 Processor* GetCurrentProcessor();
 Scheduling::Scheduler::ProcessorInfo* GetCurrentProcessorInfo();
 
 uint8_t GetCurrentProcessorID();
-
-void __attribute__((noreturn)) x86_64_StopRequestHandler();
 
 #endif /* _X86_64_PROCESSOR_HPP */

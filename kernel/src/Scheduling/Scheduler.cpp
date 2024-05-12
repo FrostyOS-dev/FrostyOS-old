@@ -16,6 +16,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "Scheduler.hpp"
+#include "Data-structures/LinkedList.hpp"
+#include "Semaphore.hpp"
+#include "arch/x86_64/interrupts/APIC/IPI.hpp"
 
 #include <assert.h>
 #include <stdio.h>
@@ -31,8 +34,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/Processor.hpp>
 #include <arch/x86_64/Stack.hpp>
 
-#include <arch/x86_64/interrupts/pic.hpp>
-
 #include <arch/x86_64/interrupts/APIC/IOAPIC.hpp>
 
 #include <arch/x86_64/Memory/PagingUtil.hpp>
@@ -41,37 +42,171 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #endif
 
 namespace Scheduling {
-    
+
     namespace Scheduler {
+
+        ThreadList::ThreadList() : m_start(nullptr), m_end(nullptr), m_count(0), m_lock(0) {
+
+        }
+
+        ThreadList::~ThreadList() {
+
+        }
+
+        void ThreadList::PushBack(Thread* thread) {
+            if (m_end != nullptr)
+                m_end->SetNextThread(thread);
+            thread->SetPreviousThread(m_end);
+            m_end = thread;
+            if (m_start == nullptr)
+                m_start = thread;
+            m_count++;
+        }
+
+        void ThreadList::PushFront(Thread* thread) {
+            thread->SetNextThread(m_start);
+            if (m_start != nullptr)
+                m_start->SetPreviousThread(thread);
+            m_start = thread;
+            if (m_end == nullptr)
+                m_end = thread;
+            m_count++;
+        }
+
+        Thread* ThreadList::PopBack() {
+            if (m_count == 0)
+                return nullptr;
+            if (m_count == 1) {
+                Thread* thread = m_end;
+                m_start = nullptr;
+                m_end = nullptr;
+                m_count = 0;
+                return thread;
+            }
+            Thread* thread = m_end;
+            m_end = m_end->GetPreviousThread();
+            m_end->SetNextThread(nullptr);
+            thread->SetPreviousThread(nullptr);
+            m_count--;
+            return thread;
+        }
+
+        Thread* ThreadList::PopFront() {
+            if (m_count == 0)
+                return nullptr;
+            if (m_count == 1) {
+                Thread* thread = m_start;
+                m_start = nullptr;
+                m_end = nullptr;
+                m_count = 0;
+                return thread;
+            }
+            Thread* thread = m_start;
+            m_start = thread->GetNextThread();
+            m_start->SetPreviousThread(nullptr);
+            thread->SetNextThread(nullptr);
+            m_count--;
+            return thread;
+        }
+
+        bool ThreadList::RemoveThread(Thread* thread) {
+            Thread* current = m_start;
+            while (current != nullptr) {
+                if (current == thread) {
+                    if (current == m_start) {
+                        m_start = current->GetNextThread();
+                        if (m_start != nullptr)
+                            m_start->SetPreviousThread(nullptr);
+                    }
+                    else if (current == m_end) {
+                        m_end = current->GetPreviousThread();
+                        if (m_end != nullptr)
+                            m_end->SetNextThread(nullptr);
+                    }
+                    else {
+                        current->GetPreviousThread()->SetNextThread(current->GetNextThread());
+                        current->GetNextThread()->SetPreviousThread(current->GetPreviousThread());
+                    }
+                    current->SetNextThread(nullptr);
+                    current->SetPreviousThread(nullptr);
+                    return true;
+                }
+                current = current->GetNextThread();
+            }
+            return false;
+        }
+
+        Thread* ThreadList::Get(uint64_t index) {
+            if (index >= m_count)
+                return nullptr;
+            Thread* current = m_start;
+            for (uint64_t i = 0; i < index; i++)
+                current = current->GetNextThread();
+            return current;
+        }
+
+        bool ThreadList::Contains(Thread* thread) {
+            Thread* current = m_start;
+            while (current != nullptr) {
+                if (current == thread)
+                    return true;
+                current = current->GetNextThread();
+            }
+            return false;
+        }
+
+        void ThreadList::EnumerateThreads(void(*callback)(Thread* thread, void* data), void* data) {
+            Thread* current = m_start;
+            while (current != nullptr) {
+                callback(current, data);
+                current = current->GetNextThread();
+            }
+        }
+
+        uint64_t ThreadList::GetCount() const {
+            return m_count;
+        }
+
+        void ThreadList::Lock() const {
+            spinlock_acquire(&m_lock);
+        }
+
+        void ThreadList::Unlock() const {
+            spinlock_release(&m_lock);
+        }
+
 
         ProcessorInfo g_BSPInfo;
 
         LinkedList::LockableLinkedList<ProcessorInfo> g_processors;
         LinkedList::LockableLinkedList<Process> g_processes;
-        LinkedList::LockableLinkedList<Thread> g_kernel_threads;
-        LinkedList::LockableLinkedList<Thread> g_high_threads;
-        LinkedList::LockableLinkedList<Thread> g_normal_threads;
-        LinkedList::LockableLinkedList<Thread> g_low_threads;
-        LinkedList::LockableLinkedList<Thread> g_sleeping_threads;
-        LinkedList::LockableLinkedList<Thread> g_blocked_threads;
+        LinkedList::LockableLinkedList<Semaphore> g_semaphores;
+        ThreadList g_kernel_threads;
+        ThreadList g_high_threads;
+        ThreadList g_normal_threads;
+        ThreadList g_low_threads;
+        ThreadList g_idle_threads;
+        ThreadList g_sleeping_threads;
         uint64_t g_total_threads = 0;
         pid_t g_NextPID = 0;
+        int g_NextSemaphoreID = 0;
         bool g_scheduler_running = false;
         spinlock_new(g_global_lock);
 
         void ClearGlobalData() {
             g_processors.unlock();
             g_processes.unlock();
-            g_kernel_threads.unlock();
-            g_high_threads.unlock();
-            g_normal_threads.unlock();
-            g_low_threads.unlock();
-            g_sleeping_threads.unlock();
-            g_blocked_threads.unlock();
             g_total_threads = 0;
             g_NextPID = 0;
+            g_NextSemaphoreID = 0;
             g_scheduler_running = false;
             spinlock_init(&g_global_lock);
+
+            g_kernel_threads = ThreadList();
+            g_high_threads = ThreadList();
+            g_normal_threads = ThreadList();
+            g_low_threads = ThreadList();
+            g_sleeping_threads = ThreadList();
         }
 
         void InitBSPInfo() {
@@ -108,7 +243,7 @@ namespace Scheduling {
 
         void ScheduleThread(Thread* thread) {
             assert(thread != nullptr);
-            g_processes.lock(); // must be locked while accessing key information, so we know it is correct
+            g_processes.lock();
             Priority thread_priority = thread->GetParent()->GetPriority();
             if (g_processes.getIndex(thread->GetParent()) == UINT64_MAX)
                 AddProcess(thread->GetParent());
@@ -139,9 +274,9 @@ namespace Scheduling {
 #else
 #error Unkown Architecture
 #endif
-                g_kernel_threads.lock();
-                g_kernel_threads.insert(thread);
-                g_kernel_threads.unlock();
+                g_kernel_threads.Lock();
+                g_kernel_threads.PushBack(thread);
+                g_kernel_threads.Unlock();
             }
             else {
 #ifdef __x86_64__
@@ -150,19 +285,19 @@ namespace Scheduling {
 #endif
                 switch (thread_priority) {
                     case Priority::HIGH:
-                        g_high_threads.lock();
-                        g_high_threads.insert(thread);
-                        g_high_threads.unlock();
+                        g_high_threads.Lock();
+                        g_high_threads.PushBack(thread);
+                        g_high_threads.Unlock();
                         break;
                     case Priority::NORMAL:
-                        g_normal_threads.lock();
-                        g_normal_threads.insert(thread);
-                        g_normal_threads.unlock();
+                        g_normal_threads.Lock();
+                        g_normal_threads.PushBack(thread);
+                        g_normal_threads.Unlock();
                         break;
                     case Priority::LOW:
-                        g_low_threads.lock();
-                        g_low_threads.insert(thread);
-                        g_low_threads.unlock();
+                        g_low_threads.Lock();
+                        g_low_threads.PushBack(thread);
+                        g_low_threads.Unlock();
                         break;
                     default:
                         assert(false);
@@ -180,43 +315,27 @@ namespace Scheduling {
             bool success = false;
             switch (thread->GetParent()->GetPriority()) {
                 case Priority::KERNEL: {
-                    g_kernel_threads.lock();
-                    uint64_t i = g_kernel_threads.getIndex(thread);
-                    if (i != UINT64_MAX) {
-                        g_kernel_threads.remove(i);
-                        success = true;
-                    }
-                    g_kernel_threads.unlock();
+                    g_kernel_threads.Lock();
+                    success = g_kernel_threads.RemoveThread(thread);
+                    g_kernel_threads.Unlock();
                     break;
                 }
                 case Priority::HIGH: {
-                    g_high_threads.lock();
-                    uint64_t i = g_high_threads.getIndex(thread);
-                    if (i != UINT64_MAX) {
-                        g_high_threads.remove(i);
-                        success = true;
-                    }
-                    g_high_threads.unlock();
+                    g_high_threads.Lock();
+                    success = g_high_threads.RemoveThread(thread);
+                    g_high_threads.Unlock();
                     break;
                 }
                 case Priority::NORMAL: {
-                    g_normal_threads.lock();
-                    uint64_t i = g_normal_threads.getIndex(thread);
-                    if (i != UINT64_MAX) {
-                        g_normal_threads.remove(i);
-                        success = true;
-                    }
-                    g_normal_threads.unlock();
+                    g_normal_threads.Lock();
+                    success = g_normal_threads.RemoveThread(thread);
+                    g_normal_threads.Unlock();
                     break;
                 }
                 case Priority::LOW: {
-                    g_low_threads.lock();
-                    uint64_t i = g_low_threads.getIndex(thread);
-                    if (i != UINT64_MAX) {
-                        g_low_threads.remove(i);
-                        success = true;
-                    }
-                    g_low_threads.unlock();
+                    g_low_threads.Lock();
+                    success = g_low_threads.RemoveThread(thread);
+                    g_low_threads.Unlock();
                     break;
                 }
                 default:
@@ -232,7 +351,7 @@ namespace Scheduling {
                         spinlock_acquire(&g_global_lock);
                         g_total_threads--;
                         spinlock_release(&g_global_lock);
-                        PickNext();
+                        PickNext(proc);
                         break;
                     }
                 }
@@ -277,10 +396,7 @@ namespace Scheduling {
 #endif
             SetThreadFrame(info, info->current_thread->GetStackRegisterFrame());
 #ifdef __x86_64__
-            if (info->current_thread->GetParent()->GetPriority() == Priority::KERNEL) // NOTE: we do not lock the parent process here, as we are the only ones with access to it at this stage.
-                x86_64_kernel_switch(info->current_thread->GetCPURegisters());
-            else
-                x86_64_enter_user(info->current_thread->GetCPURegisters());
+            x86_64_context_switch(info->current_thread->GetCPURegisters());
 #endif
             PANIC("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
@@ -316,6 +432,24 @@ namespace Scheduling {
             return nullptr;
         }
 
+        ProcessorInfo* GetProcessorInfo(uint8_t ID) {
+            g_processors.lock();
+            for (uint64_t i = 0; i < g_processors.getCount(); i++) {
+                ProcessorInfo* info = g_processors.get(i);
+#ifdef __x86_64__
+                x86_64_LocalAPIC* LAPIC = info->processor->GetLocalAPIC();
+                if (LAPIC == nullptr)
+                    continue;
+                if (LAPIC->GetID() == ID) {
+                    g_processors.unlock();
+                    return info;
+                }
+#endif
+            }
+            g_processors.unlock();
+            return nullptr;
+        }
+
         void RemoveProcessor(Processor* processor) {
             g_processors.lock();
             for (uint64_t i = 0; i < g_processors.getCount(); i++) {
@@ -325,6 +459,22 @@ namespace Scheduling {
                     g_processors.unlock();
                     return;
                 }
+            }
+            g_processors.unlock();
+        }
+
+        uint8_t GetProcessorCount() {
+            g_processors.lock();
+            uint8_t count = g_processors.getCount();
+            g_processors.unlock();
+            return count;
+        }
+
+        void EnumerateProcessors(void(*callback)(ProcessorInfo* info, void* data), void* data) {
+            g_processors.lock();
+            for (uint64_t i = 0; i < g_processors.getCount(); i++) {
+                ProcessorInfo* info = g_processors.get(i);
+                callback(info, data);
             }
             g_processors.unlock();
         }
@@ -350,6 +500,9 @@ namespace Scheduling {
         }
 
         void __attribute__((noreturn)) Start() {
+#ifdef __x86_64__
+            x86_64_DisableInterrupts(); // task switch code re-enables them
+#endif
             g_processors.lock();
             for (uint64_t i = 0; i < g_processors.getCount(); i++) {
                 ProcessorInfo* info = g_processors.get(i);
@@ -357,9 +510,6 @@ namespace Scheduling {
                 info->current_thread = nullptr;
                 info->ticks = 0;
             }
-#ifdef __x86_64__
-            x86_64_DisableInterrupts(); // task switch code re-enables them
-#endif
             g_scheduler_running = true; // this means that the scheduler is actually running
             ProcessorInfo* current_processor = nullptr;
             for (uint64_t i = 0; i < g_processors.getCount(); i++) {
@@ -386,17 +536,15 @@ namespace Scheduling {
             assert(current_processor->current_thread->GetCPURegisters() != nullptr);
 #ifdef __x86_64__
             SetThreadFrame(current_processor, current_processor->current_thread->GetStackRegisterFrame());
-            if (current_processor->current_thread->GetParent()->GetPriority() == Priority::KERNEL)
-                x86_64_kernel_switch(current_processor->current_thread->GetCPURegisters());
-            else
-                x86_64_enter_user(current_processor->current_thread->GetCPURegisters());
+            x86_64_context_switch(current_processor->current_thread->GetCPURegisters());
 #endif
             PANIC("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
 
         void __attribute__((noreturn)) Next() {
-            if (!g_scheduler_running)
+            if (!g_scheduler_running) {
                 PANIC("Scheduler: Scheduler is not running. This should not be possible.");
+            }
             ProcessorInfo* info = GetCurrentProcessorInfo();
             if (info->current_thread == nullptr) {
                 PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
@@ -405,10 +553,7 @@ namespace Scheduling {
             info->ticks = 0;
 #ifdef __x86_64__
             SetThreadFrame(info, info->current_thread->GetStackRegisterFrame());
-            if (info->current_thread->GetParent()->GetPriority() == Priority::KERNEL)
-                x86_64_kernel_switch(info->current_thread->GetCPURegisters());
-            else
-                x86_64_enter_user(info->current_thread->GetCPURegisters());
+            x86_64_context_switch(info->current_thread->GetCPURegisters());
 #endif
             PANIC("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
@@ -425,12 +570,8 @@ namespace Scheduling {
             info->ticks = 0;
 #ifdef __x86_64__
             SetThreadFrame(info, info->current_thread->GetStackRegisterFrame());
-            if (info->current_thread->GetParent()->GetPriority() == Priority::KERNEL)
-                x86_64_kernel_switch(info->current_thread->GetCPURegisters());
-            else {
-                x86_64_PrepareNewRegisters((x86_64_Interrupt_Registers*)iregs, info->current_thread->GetCPURegisters());
-                return;
-            }
+            x86_64_PrepareNewRegisters((x86_64_Interrupt_Registers*)iregs, info->current_thread->GetCPURegisters());
+            return;
 #endif
             PANIC("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
@@ -447,10 +588,7 @@ namespace Scheduling {
             info->ticks = 0;
 #ifdef __x86_64__
             SetThreadFrame(info, thread->GetStackRegisterFrame());
-            if (thread->GetParent()->GetPriority() == Priority::KERNEL)
-                x86_64_kernel_switch(thread->GetCPURegisters());
-            else
-                x86_64_enter_user(thread->GetCPURegisters());
+            x86_64_context_switch(thread->GetCPURegisters());
 #endif
             PANIC("Failed to switch to new thread. This should never happen and most likely means the task switch code for the relevant architecture returned.");
         }
@@ -487,78 +625,88 @@ namespace Scheduling {
             }
             spinlock_release(&g_global_lock);
             if (info->current_thread != nullptr) {
-                switch (info->current_thread->GetParent()->GetPriority()) {
-                    case Priority::KERNEL:
-                        g_kernel_threads.lock();
-                        g_kernel_threads.insert(info->current_thread);
-                        g_kernel_threads.unlock();
-                        info->kernel_run_count++;
-                        break;
-                    case Priority::HIGH:
-                        g_high_threads.lock();
-                        g_high_threads.insert(info->current_thread);
-                        g_high_threads.unlock();
-                        info->high_run_count++;
-                        break;
-                    case Priority::NORMAL:
-                        g_normal_threads.lock();
-                        g_normal_threads.insert(info->current_thread);
-                        g_normal_threads.unlock();
-                        info->normal_run_count++;
-                        break;
-                    case Priority::LOW:
-                        g_low_threads.lock();
-                        g_low_threads.insert(info->current_thread);
-                        g_low_threads.unlock();
-                        break;
-                    default:
-                        PANIC("Scheduler: A thread has run with an unknown priority.");
-                        return; // unnecessary, but only here to remove compiler warnings
+                if (info->current_thread->IsIdle()) {
+                    g_idle_threads.Lock();
+                    g_idle_threads.PushBack(info->current_thread);
+                    g_idle_threads.Unlock();
+                }
+                else {
+                    switch (info->current_thread->GetParent()->GetPriority()) {
+                        case Priority::KERNEL:
+                            g_kernel_threads.Lock();
+                            g_kernel_threads.PushBack(info->current_thread);
+                            g_kernel_threads.Unlock();
+                            info->kernel_run_count++;
+                            break;
+                        case Priority::HIGH:
+                            g_high_threads.Lock();
+                            g_high_threads.PushBack(info->current_thread);
+                            g_high_threads.Unlock();
+                            info->high_run_count++;
+                            break;
+                        case Priority::NORMAL:
+                            g_normal_threads.Lock();
+                            g_normal_threads.PushBack(info->current_thread);
+                            g_normal_threads.Unlock();
+                            info->normal_run_count++;
+                            break;
+                        case Priority::LOW:
+                            g_low_threads.Lock();
+                            g_low_threads.PushBack(info->current_thread);
+                            g_low_threads.Unlock();
+                            break;
+                        default:
+                            PANIC("Scheduler: A thread has run with an unknown priority.");
+                            return; // unnecessary, but only here to remove compiler warnings
+                    }
                 }
             }
-            g_kernel_threads.lock();
-            g_high_threads.lock();
-            g_normal_threads.lock();
-            g_low_threads.lock();
-            if ((info->kernel_run_count >= 4 || g_kernel_threads.getCount() == 0) && (g_high_threads.getCount() > 0 || g_normal_threads.getCount() > 0 || g_low_threads.getCount() > 0)) { // time to select a high thread
-                g_kernel_threads.unlock(); // we must unlock as soon as possible
-                if ((info->high_run_count >= 4 || g_high_threads.getCount() == 0) && (g_normal_threads.getCount() > 0 || g_low_threads.getCount() > 0)) { // time to select a normal thread
-                    g_high_threads.unlock();
-                    if ((info->normal_run_count >= 4 || g_normal_threads.getCount() == 0) && g_low_threads.getCount() > 0) { // time to select a low thread
-                        g_normal_threads.unlock();
-                        info->current_thread = g_low_threads.get(0);
-                        g_low_threads.remove(UINT64_C(0));
-                        g_low_threads.unlock();
+            g_kernel_threads.Lock();
+            g_high_threads.Lock();
+            g_normal_threads.Lock();
+            g_low_threads.Lock();
+            if ((info->kernel_run_count >= 4 || g_kernel_threads.GetCount() == 0) && (g_high_threads.GetCount() > 0 || g_normal_threads.GetCount() > 0 || g_low_threads.GetCount() > 0)) { // time to select a high thread
+                g_kernel_threads.Unlock(); // we must unlock as soon as possible
+                if ((info->high_run_count >= 4 || g_high_threads.GetCount() == 0) && (g_normal_threads.GetCount() > 0 || g_low_threads.GetCount() > 0)) { // time to select a normal thread
+                    g_high_threads.Unlock();
+                    if ((info->normal_run_count >= 4 || g_normal_threads.GetCount() == 0) && g_low_threads.GetCount() > 0) { // time to select a low thread
+                        g_normal_threads.Unlock();
+                        info->current_thread = g_low_threads.PopFront();
+                        g_low_threads.Unlock();
                         info->normal_run_count = 0;
                     }
                     else {
-                        info->current_thread = g_normal_threads.get(0);
-                        g_normal_threads.remove(UINT64_C(0));
-                        g_normal_threads.unlock();
-                        g_low_threads.unlock();
+                        g_low_threads.Unlock();
+                        info->current_thread = g_normal_threads.PopFront();
+                        g_normal_threads.Unlock();
                     }
                     info->high_run_count = 0;
                 }
                 else {
-                    info->current_thread = g_high_threads.get(0);
-                    g_high_threads.remove(UINT64_C(0));
-                    g_high_threads.unlock();
-                    g_normal_threads.unlock();
-                    g_low_threads.unlock();
+                    g_normal_threads.Unlock();
+                    g_low_threads.Unlock();
+                    info->current_thread = g_high_threads.PopFront();
+                    g_high_threads.Unlock();
                 }
                 info->kernel_run_count = 0;
             }
             else {
-                if (g_kernel_threads.getCount() == 0)
-                    info->current_thread = nullptr;
-                else {
-                    info->current_thread = g_kernel_threads.get(0);
-                    g_kernel_threads.remove(UINT64_C(0));
+                g_high_threads.Unlock();
+                g_normal_threads.Unlock();
+                g_low_threads.Unlock();
+                if (g_kernel_threads.GetCount() == 0) {
+                    g_kernel_threads.Unlock();
+                    g_idle_threads.Lock();
+                    if (g_idle_threads.GetCount() > 0)
+                        info->current_thread = g_idle_threads.PopFront();
+                    else
+                        info->current_thread = nullptr;
+                    g_idle_threads.Unlock();
                 }
-                g_kernel_threads.unlock();
-                g_high_threads.unlock();
-                g_normal_threads.unlock();
-                g_low_threads.unlock();
+                else {
+                    info->current_thread = g_kernel_threads.PopFront();
+                    g_kernel_threads.Unlock();
+                }
             }
         }
 
@@ -566,18 +714,18 @@ namespace Scheduling {
         void TimerTick(void* iregs) {
             ProcessorInfo* info = GetCurrentProcessorInfo();
             info->ticks++;
-            for (uint64_t i = 0; i < g_sleeping_threads.getCount(); i++) {
-                Thread* thread = g_sleeping_threads.get(i);
+            g_sleeping_threads.Lock();
+            for (uint64_t i = 0; i < g_sleeping_threads.GetCount(); i++) { // can't use EnumerateThreads here, as we need to modify the list
+                Thread* thread = g_sleeping_threads.Get(i);
                 thread->SetRemainingSleepTime(thread->GetRemainingSleepTime() - MS_PER_TICK);
                 if (thread->GetRemainingSleepTime() == 0) {
                     thread->SetSleeping(false);
-                    g_sleeping_threads.lock();
-                    g_sleeping_threads.remove(i);
-                    g_sleeping_threads.unlock();
+                    g_sleeping_threads.RemoveThread(thread);
                     ReaddThread(thread);
                     i--;
                 }
             }
+            g_sleeping_threads.Unlock();
             if (info->ticks == TICKS_PER_SCHEDULER_CYCLE) {
                 info->ticks = 0;
                 if (!info->running)
@@ -630,47 +778,39 @@ namespace Scheduling {
         }
 
         void SleepThread(Thread* thread, uint64_t ms) {
-            PANIC("Scheduler: sleeping not supported.");
             assert(thread != nullptr);
             // Remove the thread
             bool found = false;
             switch (thread->GetParent()->GetPriority()) {
             case Priority::KERNEL: {
-                uint64_t i = g_kernel_threads.getIndex(thread);
-                if (i != UINT64_MAX) {
-                    g_kernel_threads.remove(i);
-                    found = true;
-                }
+                g_kernel_threads.Lock();
+                found = g_kernel_threads.RemoveThread(thread);
+                g_kernel_threads.Unlock();
                 break;
             }
             case Priority::HIGH: {
-                uint64_t i = g_high_threads.getIndex(thread);
-                if (i != UINT64_MAX) {
-                    g_high_threads.remove(i);
-                    found = true;
-                }
+                g_high_threads.Lock();
+                found = g_high_threads.RemoveThread(thread);
+                g_high_threads.Unlock();
                 break;
             }
             case Priority::NORMAL: {
-                uint64_t i = g_normal_threads.getIndex(thread);
-                if (i != UINT64_MAX) {
-                    g_normal_threads.remove(i);
-                    found = true;
-                }
+                g_normal_threads.Lock();
+                found = g_normal_threads.RemoveThread(thread);
+                g_normal_threads.Unlock();
                 break;
             }
             case Priority::LOW: {
-                uint64_t i = g_low_threads.getIndex(thread);
-                if (i != UINT64_MAX) {
-                    g_low_threads.remove(i);
-                    found = true;
-                }
+                g_low_threads.Lock();
+                found = g_low_threads.RemoveThread(thread);
+                g_low_threads.Unlock();
                 break;
             }
             default:
                 return;
             }
             if (!found) {
+                ProcessorInfo* current = GetCurrentProcessorInfo();
                 g_processors.lock();
                 for (uint64_t i = 0; i < g_processors.getCount(); i++) {
                     ProcessorInfo* info = g_processors.get(i);
@@ -678,45 +818,63 @@ namespace Scheduling {
                         info->current_thread = nullptr;
                         found = true;
                         g_total_threads--;
-                        PickNext();
+                        thread->SetSleeping(true);
+                        thread->SetRemainingSleepTime(ALIGN_UP(ms, MS_PER_TICK));
+                        assert(thread->GetCPURegisters() != nullptr);
+                        //thread->GetCPURegisters()->RIP = (uint64_t)return_address;
+                        g_sleeping_threads.Lock();
+                        g_sleeping_threads.PushBack(thread);
+                        g_sleeping_threads.Unlock();
+                        PickNext(info);
+                        g_processors.unlock();
+
+                        if (info->id == current->id) {
+                            Next();
+                        }
+                        else {
+#ifdef __x86_64__
+                            x86_64_LocalAPIC* LAPIC = info->processor->GetLocalAPIC();
+                            x86_64_IssueIPI(x86_64_IPI_DestinationShorthand::NoShorthand, LAPIC->GetID(), x86_64_IPI_Type::NextThread, 0, true);
+#endif
+                        }
                         break;
                     }
                 }
                 g_processors.unlock();
             }
-            else
-                return;
-
-            thread->SetSleeping(true);
-            thread->SetRemainingSleepTime(ALIGN_UP(ms, MS_PER_TICK));
-            assert(thread->GetCPURegisters() != nullptr);
-            //thread->GetCPURegisters()->RIP = (uint64_t)return_address;
-            g_sleeping_threads.insert(thread);
-            Next();
+            else {
+                thread->SetSleeping(true);
+                thread->SetRemainingSleepTime(ALIGN_UP(ms, MS_PER_TICK));
+                assert(thread->GetCPURegisters() != nullptr);
+                //thread->GetCPURegisters()->RIP = (uint64_t)return_address;
+                g_sleeping_threads.Lock();
+                g_sleeping_threads.PushBack(thread);
+                g_sleeping_threads.Unlock();
+            }
         }
 
         void ReaddThread(Thread* thread) {
             assert(thread != nullptr);
             switch (thread->GetParent()->GetPriority()) {
             case Priority::KERNEL:
-                g_kernel_threads.lock();
-                g_kernel_threads.insert(thread);
-                g_kernel_threads.unlock();
+                g_kernel_threads.Lock();
+                g_kernel_threads.PushBack(thread);
+                g_kernel_threads.Unlock();
                 break;
             case Priority::HIGH:
-                g_high_threads.lock();
-                g_high_threads.insert(thread);
-                g_high_threads.unlock();
+                g_high_threads.Lock();
+                g_high_threads.PushBack(thread);
+                g_high_threads.Unlock();
                 break;
             case Priority::NORMAL:
-                g_normal_threads.lock();
-                g_normal_threads.insert(thread);
-                g_normal_threads.unlock();
+                g_normal_threads.Lock();
+                g_normal_threads.PushBack(thread);
+                g_normal_threads.Unlock();
                 break;
             case Priority::LOW:
-                g_low_threads.lock();
-                g_low_threads.insert(thread);
-                g_low_threads.unlock();
+                g_low_threads.Lock();
+                g_low_threads.PushBack(thread);
+                g_low_threads.Unlock();
                 break;
             default:
                 return;
@@ -727,12 +885,14 @@ namespace Scheduling {
             if (sender == nullptr)
                 return -EFAULT;
             Process* receiver = nullptr;
+            g_processes.lock();
             for (uint64_t i = 0; i < g_processes.getCount(); i++) {
                 if (g_processes.get(i)->GetPID() == PID) {
                     receiver = g_processes.get(i);
                     break;
                 }
             }
+            g_processes.unlock();
             if (receiver == nullptr)
                 return -EINVAL;
             if (PriorityGreaterThan(receiver->GetPriority(), sender->GetPriority()))
@@ -744,41 +904,57 @@ namespace Scheduling {
         }
 
         void PrintThreads(fd_t file) {
-            if (g_kernel_threads.getCount() > 0) {
+            g_kernel_threads.Lock();
+            if (g_kernel_threads.GetCount() > 0) {
                 fprintf(file, "Kernel Threads:\n");
-                for (uint64_t i = 0; i < g_kernel_threads.getCount(); i++) {
-                    g_kernel_threads.get(i)->PrintInfo(file);
+                g_kernel_threads.EnumerateThreads([](Thread* thread, void* raw_file) {
+                    fd_t file = *reinterpret_cast<fd_t*>(raw_file);
+                    thread->PrintInfo(file);
                     fputc(file, '\n');
-                }
+                }, &file);
             }
-            if (g_high_threads.getCount() > 0) {
+            g_kernel_threads.Unlock();
+            g_high_threads.Lock();
+            if (g_high_threads.GetCount() > 0) {
                 fprintf(file, "High Threads:\n");
-                for (uint64_t i = 0; i < g_high_threads.getCount(); i++) {
-                    g_high_threads.get(i)->PrintInfo(file);
+                g_high_threads.EnumerateThreads([](Thread* thread, void* raw_file) {
+                    fd_t file = *reinterpret_cast<fd_t*>(raw_file);
+                    thread->PrintInfo(file);
                     fputc(file, '\n');
-                }
+                }, &file);
             }
-            if (g_normal_threads.getCount() > 0) {
+            g_high_threads.Unlock();
+            g_normal_threads.Lock();
+            if (g_normal_threads.GetCount() > 0) {
                 fprintf(file, "Normal Threads:\n");
-                for (uint64_t i = 0; i < g_normal_threads.getCount(); i++) {
-                    g_normal_threads.get(i)->PrintInfo(file);
+                g_normal_threads.EnumerateThreads([](Thread* thread, void* raw_file) {
+                    fd_t file = *reinterpret_cast<fd_t*>(raw_file);
+                    thread->PrintInfo(file);
                     fputc(file, '\n');
-                }
+                }, &file);
             }
-            if (g_low_threads.getCount() > 0) {
+            g_normal_threads.Unlock();
+            g_low_threads.Lock();
+            if (g_low_threads.GetCount() > 0) {
                 fprintf(file, "Low Threads:\n");
-                for (uint64_t i = 0; i < g_low_threads.getCount(); i++) {
-                    g_low_threads.get(i)->PrintInfo(file);
+                g_low_threads.EnumerateThreads([](Thread* thread, void* raw_file) {
+                    fd_t file = *reinterpret_cast<fd_t*>(raw_file);
+                    thread->PrintInfo(file);
                     fputc(file, '\n');
-                }
+                }, &file);
             }
-            if (g_sleeping_threads.getCount() > 0) {
+            g_low_threads.Unlock();
+            g_sleeping_threads.Lock();
+            if (g_sleeping_threads.GetCount() > 0) {
                 fprintf(file, "Sleeping Threads:\n");
-                for (uint64_t i = 0; i < g_sleeping_threads.getCount(); i++) {
-                    g_sleeping_threads.get(i)->PrintInfo(file);
+                g_sleeping_threads.EnumerateThreads([](Thread* thread, void* raw_file) {
+                    fd_t file = *reinterpret_cast<fd_t*>(raw_file);
+                    thread->PrintInfo(file);
                     fputc(file, '\n');
-                }
+                }, &file);
             }
+            g_sleeping_threads.Unlock();
+            g_processors.lock();
             for (uint64_t i = 0; i < g_processors.getCount(); i++) {
                 ProcessorInfo* info = g_processors.get(i);
                 fprintf(file, "Processor %d:\n", info->id);
@@ -788,6 +964,124 @@ namespace Scheduling {
                     fputc(file, '\n');
                 }
             }
+            g_processors.unlock();
+        }
+
+        void ForceUnlockEverything() {
+            g_kernel_threads.Unlock();
+            g_high_threads.Unlock();
+            g_normal_threads.Unlock();
+            g_low_threads.Unlock();
+            g_sleeping_threads.Unlock();
+            g_processors.unlock();
+            g_processes.unlock();
+        }
+
+        void AddIdleThread(Thread* thread) {
+            /*
+            Idle thread properties:
+            - No entry point
+            - Always in kernel mode
+            - Don't end
+            - Only run if nothing else can be run on that CPU
+            */
+            assert(thread != nullptr);
+            g_processes.lock();
+            if (g_processes.getIndex(thread->GetParent()) == UINT64_MAX)
+                AddProcess(thread->GetParent());
+            g_processes.unlock();
+            CPU_Registers* regs = thread->GetCPURegisters();
+            fast_memset(regs, 0, DIV_ROUNDUP(sizeof(CPU_Registers), 8));
+#ifdef __x86_64__
+            if ((thread->GetFlags() & CREATE_STACK)) {
+                x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64));
+                thread->GetParent()->SyncRegion();
+            }
+            else
+                regs->RSP = (uint64_t)x86_64_get_stack_ptr();
+            thread->SetStack(regs->RSP);
+            regs->RIP = (uint64_t)x86_64_idle_loop;
+            regs->RFLAGS = (1 << 9) | (1 << 1); // IF Flag and Reserved (always 1)
+            regs->CR3 = (uint64_t)(thread->GetParent()->GetPageManager()->GetPageTable().GetRootTablePhysical()) & 0x000FFFFFFFFFF000;
+            regs->CS = 0x08; // Kernel Code Segment
+            regs->DS = 0x10; // Kernel Data Segment
+#else
+#error Unkown Architecture
+#endif
+            thread->SetIdle(true);
+            g_idle_threads.Lock();
+            g_idle_threads.PushBack(thread);
+            g_idle_threads.Unlock();
+            spinlock_acquire(&g_global_lock);
+            g_total_threads++;
+            spinlock_release(&g_global_lock);
+        }
+
+        int RegisterSemaphore(Semaphore* semaphore) {
+            if (semaphore == nullptr)
+                return -EINVAL;
+
+            g_semaphores.lock();
+            g_semaphores.insert(semaphore);
+            g_semaphores.unlock();
+
+            spinlock_acquire(&g_global_lock);
+            int ID = g_NextSemaphoreID;
+            semaphore->SetID(ID);
+            g_NextSemaphoreID++;
+            spinlock_release(&g_global_lock);
+
+            return ID;
+        }
+
+        Semaphore* GetSemaphore(int ID) {
+            if (ID < 0)
+                return nullptr;
+
+            g_semaphores.lock();
+            for (uint64_t i = 0; i < g_semaphores.getCount(); i++) {
+                Semaphore* semaphore = g_semaphores.get(i);
+                if (semaphore->GetID() == ID) {
+                    g_semaphores.unlock();
+                    return semaphore;
+                }
+            }
+            g_semaphores.unlock();
+
+            return nullptr;
+        }
+
+        int UnregisterSemaphore(int ID) {
+            if (ID < 0)
+                return -EINVAL;
+
+            g_semaphores.lock();
+            for (uint64_t i = 0; i < g_semaphores.getCount(); i++) {
+                Semaphore* semaphore = g_semaphores.get(i);
+                if (semaphore->GetID() == ID) {
+                    g_semaphores.remove(i);
+                    g_semaphores.unlock();
+                    return ESUCCESS;
+                }
+            }
+            g_semaphores.unlock();
+            return -EINVAL;
+        }
+
+        int UnregisterSemaphore(Semaphore* semaphore) {
+            if (semaphore == nullptr)
+                return -EINVAL;
+            
+            g_semaphores.lock();
+            uint64_t index = g_semaphores.getIndex(semaphore);
+            if (index == UINT64_MAX) {
+                g_semaphores.unlock();
+                return -EINVAL;
+            }
+            g_semaphores.remove(index);
+            g_semaphores.unlock();
+
+            return ESUCCESS;
         }
     }
 }

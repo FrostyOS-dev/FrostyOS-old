@@ -18,16 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "LocalAPIC.hpp"
 #include "IPI.hpp"
 
-#include "../pic.hpp"
-
-#include "../../cpuid.hpp"
 #include "../../io.h"
-#include "../../PIT.hpp"
 #include "../../Processor.hpp"
 
 #include "../../Memory/PageMapIndexer.hpp"
 
 #include "../../Scheduling/taskutil.hpp"
+#include "arch/x86_64/Memory/PagingUtil.hpp"
 
 #include <math.h>
 #include <string.h>
@@ -56,15 +53,24 @@ x86_64_LocalAPIC::x86_64_LocalAPIC(void* baseAddress, bool BSP, uint8_t ID) : m_
 
 }
 
+void InitProcessor(void* obj) {
+    Processor* proc = (Processor*)obj;
+    proc->Init(nullptr, 0, 0, 0, 0, 0, FrameBuffer());
+}
+
 void x86_64_LocalAPIC::SendEOI() {
     volatile_write32(m_registers->EOI, 0);
 }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 
 void x86_64_LocalAPIC::StartCPU() {
     if (!m_BSP) {
         x86_64_DisableInterrupts();
         //x86_64_PIC_Disable();
-        x86_64_map_page(&K_PML4_Array, (void*)0x0000, (void*)0x0000, 0x3); // Present, Read/Write, Execute
+        x86_64_map_page_noflush(&K_PML4_Array, (void*)0x0000, (void*)0x0000, 0x3); // Present, Read/Write, Execute
+        x86_64_InvalidatePage(0);
         // copy the ap trampoline to 0x0000
         memcpy((void*)0x0000, &ap_trampoline, 0x1000);
         uint32_t* CR3_value = (uint32_t*)0xFFC;
@@ -100,13 +106,16 @@ void x86_64_LocalAPIC::StartCPU() {
         }
         Processor* proc = new Processor(false);
         proc->SetLocalAPIC(this);
-        *jump_addr = (uint64_t)(void*)&Processor::Init;
+        *jump_addr = (uint64_t)InitProcessor;
         *jmp_arg = (uint64_t)proc;
         *stack = (uint64_t)g_KPM->AllocatePages(KERNEL_STACK_SIZE / PAGE_SIZE);
         *kernel_stack_offset = Processor::get_kernel_stack_offset();
         *start_lock = 0;
+        x86_64_EnableInterrupts();
     }
 }
+
+#pragma GCC diagnostic pop
 
 void x86_64_LocalAPIC::Init() {
     if (!m_BSP) // unmap first page
@@ -162,7 +171,6 @@ void x86_64_LocalAPIC::InitTimer() {
     volatile_write32(m_registers->InitialCount, 0);
     
     uint64_t freq = ticksIn1ms * 100;
-    dbgprintf("LAPIC %hu timer run as %luHz. There are %lu ticks in 10ms.\n", m_ID, freq, ticksIn1ms);
     // align freq to nearest 100kHz
     freq = (freq + 50'000) / 100'000 * 100'000;
     m_timer_base_freq = freq;
@@ -212,7 +220,7 @@ uint8_t x86_64_LocalAPIC::GetID() const {
 }
 
 void x86_64_LocalAPIC::LAPICTimerCallback(x86_64_Interrupt_Registers* regs) {
-    if (!Scheduling::Scheduler::isRunning()) {
+    if (!(Scheduling::Scheduler::isRunning() && Scheduling::Scheduler::GlobalIsRunning())) {
         SendEOI();
         return;
     }

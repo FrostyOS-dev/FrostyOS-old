@@ -158,8 +158,8 @@ namespace TempFS {
             if (!((m_privilegeLevel.ACL & ACL_OTHER_READ) > 0))
                 return -EACCES;
         }
-        uint16_t bytes_read = 0;
-        for (uint64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
+        int64_t bytes_read = 0;
+        for (int64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
             if ((p_CurrentOffset + bytes_read) >= m_size) {
                 if (status != nullptr)
                     *status = -EINVAL;
@@ -172,7 +172,7 @@ namespace TempFS {
                     *status = -ENOSYS;
                 return bytes_read;
             }
-            if ((m_currentBlock->size - m_currentBlockOffset + currentCount) > count) {
+            if ((m_currentBlock->size - m_currentBlockOffset + currentCount) > (uint64_t)count) {
                 memcpy((void*)((uint64_t)bytes + currentCount), (void*)((uint64_t)(m_currentBlock->address) + m_currentBlockOffset), count - currentCount);
                 m_currentBlockOffset += count - currentCount;
                 bytes_read += count - currentCount;
@@ -215,7 +215,7 @@ namespace TempFS {
                 return -EACCES;
         }
         uint64_t bytes_written = 0;
-        for (uint64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
+        for (int64_t currentCount = 0; currentCount < count; m_currentBlockIndex++) {
             m_currentBlock = m_data.get(m_currentBlockIndex);
             if (m_currentBlock == nullptr) {
                 int rc = Expand(count);
@@ -232,7 +232,7 @@ namespace TempFS {
                     return bytes_written;
                 }
             }
-            if ((m_currentBlock->size - m_currentBlockOffset + currentCount) > count) {
+            if ((m_currentBlock->size - m_currentBlockOffset + currentCount) > (uint64_t)count) {
                 memcpy((void*)((uint64_t)(m_currentBlock->address) + m_currentBlockOffset), (void*)((uint64_t)bytes + currentCount), count - currentCount);
                 m_currentBlockOffset += count - currentCount;
                 bytes_written += count - currentCount;
@@ -264,11 +264,11 @@ namespace TempFS {
             return -EINVAL;
         offset = ALIGN_UP(offset, 8);
         p_CurrentOffset = 0;
-        for (; m_currentBlockIndex < m_data.getCount(); m_currentBlockIndex++) {
+        for (; (uint64_t)m_currentBlockIndex < m_data.getCount(); m_currentBlockIndex++) {
             m_currentBlock = m_data.get(m_currentBlockIndex);
             if (m_currentBlock == nullptr)
                 return -ENOSYS;
-            if ((m_currentBlock->size + p_CurrentOffset) > offset) {
+            if ((m_currentBlock->size + p_CurrentOffset) > (size_t)offset) {
                 m_currentBlockOffset = offset - p_CurrentOffset;
                 p_CurrentOffset += m_currentBlockOffset;
                 break;
@@ -417,7 +417,9 @@ namespace TempFS {
             return -EFAULT;
         if (p_type != InodeType::Folder)
             return -ENOTDIR;
+        m_children.lock();
         m_children.insert(child);
+        m_children.unlock();
         return ESUCCESS;
     }
 
@@ -436,16 +438,21 @@ namespace TempFS {
                 *status = -ENOTDIR;
             return nullptr;
         }
+        m_children.lock();
         for (uint64_t i = 0; i < m_children.getCount(); i++) {
             TempFSInode* inode = m_children.get(i);
             if (inode == nullptr) {
+                m_children.unlock();
                 if (status != nullptr)
                     *status = -ENOSYS;
                 return nullptr;
             }
-            if (inode->p_ID == ID)
+            if (inode->p_ID == ID) {
+                m_children.unlock();
                 return inode;
+            }
         }
+        m_children.unlock();
         if (status != nullptr)
             *status = -ENOENT;
         return nullptr;
@@ -471,16 +478,21 @@ namespace TempFS {
                 *status = -EFAULT;
             return nullptr;
         }
+        m_children.lock();
         for (uint64_t i = 0; i < m_children.getCount(); i++) {
             TempFSInode* inode = m_children.get(i);
             if (inode == nullptr) {
+                m_children.unlock();
                 if (status != nullptr)
                     *status = -ENOSYS;
                 return nullptr;
             }
-            if (strcmp(name, inode->p_name) == 0)
+            if (strcmp(name, inode->p_name) == 0) {
+                m_children.unlock();
                 return inode;
+            }
         }
+        m_children.unlock();
         if (status != nullptr)
             *status = -ENOENT;
         return nullptr;
@@ -506,16 +518,21 @@ namespace TempFS {
                 *status = -EFAULT;
             return nullptr;
         }
+        m_children.lock();
         for (uint64_t i = 0; i < m_children.getCount(); i++) {
             TempFSInode* inode = m_children.get(i);
             if (inode == nullptr) {
+                m_children.unlock();
                 if (status != nullptr)
                     *status = -ENOSYS;
                 return nullptr;
             }
-            if (strcmp(name, inode->p_name) == 0)
+            if (strcmp(name, inode->p_name) == 0) {
+                m_children.unlock();
                 return (Inode*)inode;
+            }
         }
+        m_children.unlock();
         if (status != nullptr)
             *status = -ENOENT;
         return nullptr;
@@ -536,12 +553,15 @@ namespace TempFS {
                 *status = -ENOTDIR;
             return nullptr;
         }
+        m_children.lock();
         if (index >= m_children.getCount()) {
+            m_children.unlock();
             if (status != nullptr)
                 *status = -EINVAL;
             return nullptr;
         }
         TempFSInode* inode = m_children.get(index);
+        m_children.unlock();
         if (inode == nullptr) {
             if (status != nullptr)
                 *status = -ENOSYS;
@@ -557,7 +577,10 @@ namespace TempFS {
                 return 0;
             return target->GetChildCount();
         }
-        return m_children.getCount();
+        m_children.lock();
+        uint64_t count = m_children.getCount();
+        m_children.unlock();
+        return count;
     }
 
     int TempFSInode::RemoveChild(TempFSInode* child) {
@@ -571,10 +594,14 @@ namespace TempFS {
             return -ENOTDIR;
         if (child == nullptr)
             return -EFAULT;
+        m_children.lock();
         uint64_t index = m_children.getIndex(child);
-        if (index == UINT64_MAX)
+        if (index == UINT64_MAX) {
+            m_children.unlock();
             return -ENOENT;
+        }
         m_children.remove(index); // Index-based removal is used to ensure that removal is successful, and correct error reporting occurs
+        m_children.unlock();
         return ESUCCESS;
     }
 

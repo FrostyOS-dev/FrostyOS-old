@@ -112,7 +112,10 @@ HPET::~HPET() {
 
 }
 
-void HPET::Init(HPETRegisters* regs) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+
+void __attribute__((no_sanitize("undefined"))) HPET::Init(HPETRegisters* regs) {
     m_regs = regs;
     uint64_t GeneralCAPID = volatile_read64(regs->GeneralCAPID);
     uint32_t CounterClockPeriod = GeneralCAPID >> 32;
@@ -120,22 +123,12 @@ void HPET::Init(HPETRegisters* regs) {
     bool LegacyReplacementSupport = (GeneralCAPID & (1 << 13)) >> 13;
     uint8_t MaxTimers = (GeneralCAPID & (0x1F << 8)) >> 8;
     bool CounterSize = (GeneralCAPID & (1 << 13)) >> 13;
-    uint8_t RevisionID = GeneralCAPID & 0xFF;
-    dbgprintf("HPET: Address = %lp, Counter clock period = %u, Vendor ID = %hx, Legacy Replacement = %s, Max Timers = %hhu, Counter Size = %s, Revision ID = %hhu\n",
-              m_regs,
-              CounterClockPeriod,
-              VendorID,
-              LegacyReplacementSupport ? "true" : "false",
-              MaxTimers,
-              CounterSize ? "64-bit" : "32-bit",
-              RevisionID);
     
     assert(LegacyReplacementSupport && CounterSize); // don't have the support yet to choose an INT line or 32-bit timers.
 
     uint64_t GeneralConfig = volatile_read64(regs->GeneralConfig);
     GeneralConfig &= ~3; // Disable the timer
     //GeneralConfig |= 2; // Legacy Replacement
-    volatile_write64(regs->GeneralConfig, GeneralConfig);
 
     volatile_write64(regs->MainCounterValue, 0);
 
@@ -165,6 +158,7 @@ void HPET::Init(HPETRegisters* regs) {
     m_VendorID = VendorID;
     m_CounterClockPeriod = CounterClockPeriod;
 }
+
 
 bool HPET::StartTimer(uint64_t femtoSec, HPETCallback callback, void* data) {
     uint8_t timer = 0;
@@ -209,7 +203,6 @@ bool HPET::StartTimer(uint64_t femtoSec, HPETCallback callback, void* data) {
 
     // Calculate the comparator value
     uint64_t ticks = femtoSec / m_CounterClockPeriod;
-    //dbgprintf("HPET: Timer %hhu, ticks = %lu, femtoSec = %lu\n", timer, ticks, femtoSec);
     volatile_write64(timerRegs->ConfigCAP, ConfigCAP);
     volatile_write64(timerRegs->ComparatorValue, volatile_read64(m_regs->MainCounterValue) + ticks);
 
@@ -232,6 +225,8 @@ uint64_t HPET::GetMainCounter() const {
 uint64_t* HPET::GetMainCounterAddress() const {
     return &m_regs->MainCounterValue;
 }
+
+#pragma GCC diagnostic pop
 
 uint64_t HPET::GetClockPeriod() const {
     return m_CounterClockPeriod;

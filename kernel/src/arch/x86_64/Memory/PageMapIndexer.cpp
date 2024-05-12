@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,7 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "PageMapIndexer.hpp"
 #include "PagingUtil.hpp"
 
+#include "../interrupts/APIC/IPI.hpp"
+
+#include <Scheduling/Scheduler.hpp>
+
 Level4Group __attribute__((aligned(0x1000))) K_PML4_Array;
+void* g_KPML4_physical;
 
 void* g_kernel_physical = nullptr;
 void* g_kernel_virtual  = nullptr;
@@ -83,57 +88,57 @@ void __attribute__((no_sanitize("undefined"))) x86_64_map_page_noflush(Level4Gro
     uint64_t physical_addr = (uint64_t)physaddr & ~0xFFF;
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
 
-    const uint16_t pt    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
-    const uint16_t pd    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
-    const uint16_t pdptr = (uint16_t)((virtual_addr & 0x007FC0000000) >> 30);
-    const uint16_t pml4  = (uint16_t)((virtual_addr & 0xFF8000000000) >> 39);
+    const uint16_t PT_i    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
+    const uint16_t PD_i    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
+    const uint16_t PDP_i   = (uint16_t)((virtual_addr & 0x007FC0000000) >> 30);
+    const uint16_t PML4_i  = (uint16_t)((virtual_addr & 0xFF8000000000) >> 39);
 
-    PageMapLevel4Entry PML4 = PML4Array->entries[pml4];
+    PageMapLevel4Entry PML4 = PML4Array->entries[PML4_i];
     if (PML4.Present == 0) {
         uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML4 = *(PageMapLevel4Entry*)(&temp);
         PML4.Present = 1;
         PML4.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
         memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 4096);
-        PML4Array->entries[pml4] = PML4;
+        PML4Array->entries[PML4_i] = PML4;
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML4);
         temp |= flags & 0xFFF;
         temp |= (uint64_t)(flags & 0x7FF0000) << 36;
-        PML4Array->entries[pml4] = *(PageMapLevel4Entry*)&temp;
+        PML4Array->entries[PML4_i] = *(PageMapLevel4Entry*)&temp;
     }
 
-    PageMapLevel3Entry PML3 = ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr];
+    PageMapLevel3Entry PML3 = ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[PDP_i];
     if (PML3.Present == 0) {
         uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML3 = *(PageMapLevel3Entry*)(&temp);
         PML3.Present = 1;
         PML3.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
         memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 4096);
-        ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = PML3;
+        ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[PDP_i] = PML3;
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML3);
         temp |= flags & 0xFFF;
         temp |= (uint64_t)(flags & 0x7FF0000) << 36;
-        ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = *(PageMapLevel3Entry*)&temp;
+        ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[PDP_i] = *(PageMapLevel3Entry*)&temp;
     }
 
-    PageMapLevel2Entry PML2 = ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd];
+    PageMapLevel2Entry PML2 = ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[PD_i];
     if (PML2.Present == 0) {
         uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML2 = *(PageMapLevel2Entry*)(&temp);
         PML2.Present = 1;
         PML2.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
         memset(x86_64_to_HHDM((void*)(PML2.Address << 12)), 0, 4096);
-        ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = PML2;
+        ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[PD_i] = PML2;
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML2);
         temp |= flags & 0xFFF;
         temp |= (uint64_t)(flags & 0x7FF0000) << 36;
-       ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = *(PageMapLevel2Entry*)&temp;
+       ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[PD_i] = *(PageMapLevel2Entry*)&temp;
     }
     if (PML2.PageSize)
         return; // Using 2MiB pages, stop
@@ -142,7 +147,7 @@ void __attribute__((no_sanitize("undefined"))) x86_64_map_page_noflush(Level4Gro
     PageMapLevel1Entry PML1 = *(PageMapLevel1Entry*)(&temp);
     PML1.Address = (physical_addr >> 12);
 
-    ((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2.Address) << 12)))[pt] = PML1;
+    ((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2.Address) << 12)))[PT_i] = PML1;
 }
 
 
@@ -439,4 +444,11 @@ void x86_64_SetHHDMStart(void* virtualaddr) {
 
 void* x86_64_GetHHDMStart() {
     return g_HHDM_start;
+}
+
+void x86_64_TLBShootdown(void *address, uint64_t length, bool wait) {
+    if (!Scheduling::Scheduler::GlobalIsRunning())
+        return x86_64_InvalidatePages((uint64_t)address, length);
+    x86_64_IPI_TLBShootdown shootdown = {(uint64_t)address, length};
+    x86_64_IssueIPI(x86_64_IPI_DestinationShorthand::AllIncludingSelf, 0, x86_64_IPI_Type::TLBShootdown, (uint64_t)&shootdown, wait);
 }

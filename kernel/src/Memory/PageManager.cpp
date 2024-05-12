@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "newdelete.hpp"
 #include "PhysicalPageFrameAllocator.hpp"
 #include "VirtualPageManager.hpp"
-#include "PagingUtil.hpp"
 
 #include <HAL/hal.hpp>
 
@@ -295,7 +294,8 @@ void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* ad
                 PageObject_SetFlag(object, PO_INUSE);
                 
                 for (uint64_t j = 0; j < count; j++)
-                    m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + j * 0x1000), perms);
+                    m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + j * 0x1000), perms, false);
+                m_PT.Flush(addr, count * PAGE_SIZE, true);
                 spinlock_release(&m_lock);
                 return addr;
             }
@@ -382,7 +382,8 @@ void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* ad
     m_allocated_object_count++;
     po->perms = perms;
     for (uint64_t i = 0; i < count; i++)
-        m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * 0x1000), perms);
+        m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * 0x1000), perms, false);
+    m_PT.Flush(virt_addr, count * PAGE_SIZE, true);
     spinlock_release(&m_lock);
     return virt_addr;
 }
@@ -586,8 +587,9 @@ void PageManager::FreePages(void* addr) {
             m_VPM->UnallocatePages(addr, po->page_count);
             for (uint64_t i = 0; i < po->page_count; i++) {
                 g_PPFA->FreePage(m_PT.GetPhysicalAddress((void*)((uint64_t)addr + i * 0x1000)));
-                m_PT.UnmapPage((void*)((uint64_t)addr + i * 0x1000));
+                m_PT.UnmapPage((void*)((uint64_t)addr + i * 0x1000), false);
             }
+            m_PT.Flush(addr, po->page_count * PAGE_SIZE, true);
             PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
             if (previous != nullptr)
                 previous->next = po->next;
@@ -613,7 +615,8 @@ void PageManager::Remap(void* addr, PagePermissions perms) {
         if (po->virtual_address == addr) {
             po->perms = perms;
             for (uint64_t i = 0; i < po->page_count; i++)
-                m_PT.RemapPage((void*)((uint64_t)addr + i * 0x1000), perms);
+                m_PT.RemapPage((void*)((uint64_t)addr + i * 0x1000), perms, false);
+            m_PT.Flush(addr, po->page_count * PAGE_SIZE, true);
             spinlock_release(&m_lock);
             return;
         }

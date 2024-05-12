@@ -97,7 +97,7 @@ namespace TempFS {
         TempFileSystem* m_fileSystem;
         FilePrivilegeLevel m_privilegeLevel;
 
-        LinkedList::SimpleLinkedList<TempFSInode> m_children;
+        LinkedList::LockableLinkedList<TempFSInode> m_children;
 
         /* Only for files */
 
@@ -107,9 +107,9 @@ namespace TempFS {
         };
 
         LinkedList::SimpleLinkedList<MemBlock> m_data;
-        size_t m_size;
+        int64_t m_size;
         MemBlock* m_currentBlock;
-        uint64_t m_currentBlockIndex;
+        int64_t m_currentBlockIndex;
         size_t m_currentBlockOffset; // offset within a block
 
         mutable spinlock_t m_lock;

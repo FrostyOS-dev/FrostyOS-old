@@ -65,7 +65,7 @@ void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running)
         Scheduler::Resume();
 }
 
-void sys$exit(Scheduling::Thread* thread, int status) {
+void sys_exit(Scheduling::Thread* thread, int status) {
     using namespace Scheduling;
     Thread* current_thread = Scheduler::GetCurrent();
     bool was_running = Scheduler::isRunning();

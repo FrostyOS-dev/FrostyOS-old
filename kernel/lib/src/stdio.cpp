@@ -41,21 +41,16 @@ int64_t internal_read(fd_t file, void* data, size_t size) {
     FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
     if (descriptor == nullptr)
         return -EBADF;
-    size_t status = descriptor->Read((uint8_t*)data, size);
-    if (status == 0) {
-        switch (descriptor->GetLastError()) {
-        case FileDescriptorError::INVALID_ARGUMENTS:
+    int status = 0;
+    int64_t rc = descriptor->Read((uint8_t*)data, size, &status);
+    if (rc == 0) {
+        if (status == -EINVAL)
             return EOF;
-        case FileDescriptorError::INVALID_MODE:
-        case FileDescriptorError::STREAM_ERROR:
-            return -EBADF;
-        default: {
-            PANIC("File descriptor internal error in kernel stdio.");
-        }
-        }
+        else
+            return status;
     }
     else
-        return status;
+        return rc;
 }
 
 int64_t internal_write(fd_t file, const void* data, size_t size) {
@@ -66,37 +61,16 @@ int64_t internal_write(fd_t file, const void* data, size_t size) {
     FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
     if (descriptor == nullptr)
         return -EBADF;
-    size_t status = descriptor->Write((const uint8_t*)data, size);
-    if (status == 0) {
-        switch (descriptor->GetLastError()) {
-        case FileDescriptorError::INVALID_ARGUMENTS:
+    int status = 0;
+    int64_t rc = descriptor->Write((const uint8_t*)data, size, &status);
+    if (rc == 0) {
+        if (status == -EINVAL)
             return EOF;
-        case FileDescriptorError::INVALID_MODE:
-        case FileDescriptorError::STREAM_ERROR: {
-            /* This gets complicated because we have no simple way to know if it is a allocation failure or a bad file descriptor.
-            We must check if the descriptor is a FileStream, and if it is, check if an allocation failure occurred.
-            If not, we can assume it is a bad file descriptor.
-            */
-            if (descriptor->GetType() == FileDescriptorType::FILE_STREAM) {
-                FileStream* stream = (FileStream*)descriptor->GetData();
-                if (stream != nullptr) {
-                    switch (stream->GetLastError()) {
-                    case FileStreamError::ALLOCATION_FAILED:
-                        return -ENOMEM;
-                    default:
-                        return -EBADF;
-                    }
-                }
-            }
-            return -EBADF;
-        }
-        default: {
-            PANIC("File descriptor internal error in kernel stdio.");
-        }
-        }
+        else
+            return status;
     }
     else
-        return status;
+        return rc;
 }
 
 fd_t internal_open(const char* path, unsigned long mode) {
@@ -144,33 +118,20 @@ fd_t internal_open(const char* path, unsigned long mode) {
             }
             else
                 parent = "/";
-            bool successful = g_VFS->CreateFile({0, 0, 07777}, parent, end == nullptr ? path : child_start, 0, false, {0, 0, 00644});
+            int rc = g_VFS->CreateFile({0, 0, 07777}, parent, end == nullptr ? path : child_start, 0, false, {0, 0, 00644});
             if (end != nullptr)
                 delete[] parent;
-            if (!successful) {
-                switch (g_VFS->GetLastError()) {
-                case FileSystemError::INVALID_ARGUMENTS:
-                    return -ENOTDIR;
-                case FileSystemError::ALLOCATION_FAILED:
-                    return -ENOMEM;
-                default:
-                    assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
-                }
-            }
+            if (rc != ESUCCESS)
+                return rc;
         }
     }
     else if (!valid_path)
         return -ENOENT;
     
-    FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, path, vfs_modes);
-    if (stream == nullptr) {
-        switch (g_VFS->GetLastError()) {
-        case FileSystemError::ALLOCATION_FAILED:
-            return -ENOMEM;
-        default:
-            assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
-        }
-    }
+    int status = 0;
+    FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, path, vfs_modes, nullptr, &status);
+    if (stream == nullptr)
+        return status;
 
     fd_t fd = g_KFDManager->AllocateFileDescriptor(FileDescriptorType::FILE_STREAM, stream, new_mode);
     if (fd < 0) {
@@ -216,17 +177,9 @@ long internal_seek(fd_t file, long offset) {
     if (offset < 0)
         return -EINVAL;
 
-    if (!descriptor->Seek((uint64_t)offset)) {
-        switch (descriptor->GetLastError()) {
-        case FileDescriptorError::INVALID_ARGUMENTS:
-            return -EINVAL;
-        case FileDescriptorError::INVALID_MODE:
-        case FileDescriptorError::STREAM_ERROR:
-            return -EBADF;
-        default:
-            assert(false); // something has gone seriously wrong. just crash. FIXME: handle this case better
-        }
-    }
+    int rc = descriptor->Seek((uint64_t)offset);
+    if (rc != ESUCCESS)
+        return rc;
 
     return offset;
 }
@@ -234,6 +187,7 @@ long internal_seek(fd_t file, long offset) {
 extern "C" int getc() {
     int c = EOF;
     long rc = internal_read(stdin, &c, 1);
+    dbgprintf("getc() -> %c, rc = %ld", c, rc);
     return rc == EOF ? EOF : c;
 }
 

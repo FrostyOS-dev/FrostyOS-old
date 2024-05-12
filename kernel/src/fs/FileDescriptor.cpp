@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,19 +21,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "TempFS/TempFSInode.hpp"
 
+#include <cstdint>
+#include <errno.h>
 #include <math.h>
+#include <spinlock.h>
 
 #include <file.h>
+
+#include <HAL/hal.hpp>
 
 #ifdef __x86_64__
 #include <arch/x86_64/E9.h>
 #endif
 
-FileDescriptor::FileDescriptor() : m_TTY(nullptr), m_Stream(nullptr), m_is_open(false), m_type(FileDescriptorType::UNKNOWN), m_mode(FileDescriptorMode::READ), m_ID(-1) {
+FileDescriptor::FileDescriptor() : m_TTY(nullptr), m_Stream(nullptr), m_is_open(false), m_type(FileDescriptorType::UNKNOWN), m_mode(FileDescriptorMode::READ), m_ID(-1), m_init_successful(false), m_lock(0) {
 
 }
 
-FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode, fd_t ID) : m_TTY(nullptr), m_Stream(nullptr), m_is_open(false), m_type(type), m_mode(mode), m_ID(ID) {
+FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode, fd_t ID) : m_TTY(nullptr), m_Stream(nullptr), m_is_open(false), m_type(type), m_mode(mode), m_ID(ID), m_init_successful(false), m_lock(0) {
+    spinlock_acquire(&m_lock);
     switch (m_type) {
     case FileDescriptorType::FILE_STREAM:
         m_Stream = data;
@@ -46,7 +52,7 @@ FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescript
         case FileDescriptorMode::WRITE:
         case FileDescriptorMode::APPEND:
         case FileDescriptorMode::READ_WRITE:
-            SetLastError(FileDescriptorError::INVALID_ARGUMENTS); // writing is not supported on directory streams
+            spinlock_release(&m_lock);
             return;
         }
         break;
@@ -62,7 +68,7 @@ FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescript
             m_TTY = (TTY*)data;
             break;
         default:
-            SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
+            spinlock_release(&m_lock);
             return;
         }
         m_is_open = true;
@@ -71,22 +77,22 @@ FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescript
         switch (m_mode) {
         case FileDescriptorMode::READ:
         case FileDescriptorMode::READ_WRITE:
-            SetLastError(FileDescriptorError::INVALID_ARGUMENTS); // read is not supported by debug
             return;
         case FileDescriptorMode::WRITE:
         case FileDescriptorMode::APPEND:
             break;
         default:
-            SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
+            spinlock_release(&m_lock);
             return;
         }
         m_is_open = true;
         break;
     default:
-        SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
+        spinlock_release(&m_lock);
         return;
     }
-    SetLastError(FileDescriptorError::SUCCESS);
+    m_init_successful = true;
+    spinlock_release(&m_lock);
 }
 
 FileDescriptor::~FileDescriptor() {
@@ -94,89 +100,95 @@ FileDescriptor::~FileDescriptor() {
         (void)Close(); // return value is irrelevant
 }
 
-bool FileDescriptor::Open() {
+int FileDescriptor::Open() {
+    spinlock_acquire(&m_lock);
     switch (m_type) {
     case FileDescriptorType::DEBUG:
     case FileDescriptorType::TTY:
-        SetLastError(FileDescriptorError::SUCCESS); // already open
-        return true;
+        spinlock_release(&m_lock);
+        m_is_open = true;
+        return ESUCCESS; // already open
     case FileDescriptorType::FILE_STREAM: {
         FileStream* fileStream = (FileStream*)m_Stream;
-        if (!fileStream->Open()) {
-            SetLastError(FileDescriptorError::INTERNAL_ERROR); // if open fails, something is most likely wrong with the VFS
-            return false;
+        int rc = fileStream->Open();
+        if (rc != ESUCCESS) {
+            spinlock_release(&m_lock);
+            return rc;
         }
         if (m_mode == FileDescriptorMode::APPEND) {
-            if (!fileStream->Seek(fileStream->GetSize() - 1)) { // seek to end
-                SetLastError(FileDescriptorError::INTERNAL_ERROR); // if seeking to a known value fails, something is most likely wrong with the VFS
-                return false;
+            if (fileStream->Seek(fileStream->GetSize() - 1) != ESUCCESS) { // seek to end
+                spinlock_release(&m_lock);
+                return -ENOSYS; // should NEVER happen
             }
         }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        m_is_open = true;
+        spinlock_release(&m_lock);
+        return ESUCCESS;
     }
     case FileDescriptorType::DIRECTORY_STREAM: {
         DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
-        if (!directoryStream->Open()) {
-            if (directoryStream->GetLastError() == DirectoryStreamError::NO_PERMISSION)
-                SetLastError(FileDescriptorError::NO_PERMISSION);
-            else
-                SetLastError(FileDescriptorError::INTERNAL_ERROR); // if open fails, something is most likely wrong with the VFS
-            return false;
+        int rc = directoryStream->Open();
+        if (rc != ESUCCESS) {
+            spinlock_release(&m_lock);
+            return rc;
         }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        m_is_open = true;
+        spinlock_release(&m_lock);
+        return ESUCCESS;
     }
     default:
-        SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return false;
+        return -ENOSYS; // should NEVER happen
     }
 }
 
-bool FileDescriptor::Close() {
+int FileDescriptor::Close() {
+    spinlock_acquire(&m_lock);
     switch (m_type) {
     case FileDescriptorType::DEBUG:
     case FileDescriptorType::TTY:
-        SetLastError(FileDescriptorError::SUCCESS); // cannot be closed
-        return true;
+        m_is_open = false;
+        spinlock_release(&m_lock);
+        return ESUCCESS; // cannot be closed
     case FileDescriptorType::FILE_STREAM: {
         FileStream* fileStream = (FileStream*)m_Stream;
-        if (!fileStream->Close()) {
-            SetLastError(FileDescriptorError::INTERNAL_ERROR); // if close fails, something is most likely wrong with the VFS
-            return false;
+        if (fileStream->Close() != ESUCCESS) {
+            spinlock_release(&m_lock);
+            return -ENOSYS; // should NEVER happen
         }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        m_is_open = false;
+        spinlock_release(&m_lock);
+        return ESUCCESS;
     }
     case FileDescriptorType::DIRECTORY_STREAM: {
         DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
-        if (!directoryStream->Close()) {
-            SetLastError(FileDescriptorError::INTERNAL_ERROR); // if close fails, something is most likely wrong with the VFS
-            return false;
+        if (directoryStream->Close() != ESUCCESS) {
+            spinlock_release(&m_lock);
+            return -ENOSYS; // should NEVER happen
         }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        m_is_open = false;
+        spinlock_release(&m_lock);
+        return ESUCCESS;
     }
     default:
-        SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return false;
+        spinlock_release(&m_lock);
+        return -ENOSYS; // should NEVER happen
     }
 }
 
-#include <HAL/hal.hpp>
 
-size_t FileDescriptor::Read(uint8_t* buffer, size_t count) {
+int64_t FileDescriptor::Read(uint8_t* buffer, int64_t count, int* status) {
+    spinlock_acquire(&m_lock);
     switch (m_mode) {
     case FileDescriptorMode::READ:
     case FileDescriptorMode::READ_WRITE:
         break;
     default:
-        SetLastError(FileDescriptorError::INVALID_MODE);
-        return 0;
+        spinlock_release(&m_lock);
+        return -EBADF;
     }
     switch (m_type) {
     case FileDescriptorType::TTY: {
-        uint64_t i = 0;
+        int64_t i = 0;
         while (i < count) {
             int c = m_TTY->getc();
             if (c == EOF)
@@ -184,57 +196,33 @@ size_t FileDescriptor::Read(uint8_t* buffer, size_t count) {
             buffer[i] = (uint8_t)c;
             i++;
         }
-        if (i < count)
-            SetLastError(FileDescriptorError::STREAM_ERROR);
-        else
-            SetLastError(FileDescriptorError::SUCCESS);
+        spinlock_release(&m_lock);
+        if (status != nullptr) {
+            if (i < count)
+                *status = -EAGAIN;
+            else
+                *status = ESUCCESS;
+        }
         return i; // NOTE: partial reads from TTYs mean the keyboard device had an error or was disconnected.
     }
     case FileDescriptorType::DEBUG:
-        SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return 0;
+        spinlock_release(&m_lock);
+        return -ENOSYS;
     case FileDescriptorType::FILE_STREAM: {
         FileStream* fileStream = (FileStream*)m_Stream;
-        size_t status = fileStream->ReadStream(buffer, count);
-        if (status != count) {
-            switch (fileStream->GetLastError()) {
-            case FileStreamError::INVALID_ARGUMENTS:
-                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
-                break;
-            case FileStreamError::STREAM_CLOSED:
-                SetLastError(FileDescriptorError::STREAM_ERROR);
-                break;
-            case FileStreamError::NO_PERMISSION:
-                SetLastError(FileDescriptorError::NO_PERMISSION);
-                break;
-            default:
-                SetLastError(FileDescriptorError::INTERNAL_ERROR);
-                break;
-            }
-        }
-        else
-            SetLastError(FileDescriptorError::SUCCESS);
-        return status;
+        int i_status = 0;
+        int64_t rc = fileStream->ReadStream(buffer, count, &i_status);
+        if (rc >= 0 && status != nullptr)
+            *status = i_status;
+        return rc;
     }
     case FileDescriptorType::DIRECTORY_STREAM: {
         DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
-        Inode* inode = directoryStream->GetNextInode();
+        int i_status = 0;
+        Inode* inode = directoryStream->GetNextInode(&i_status);
         if (inode == nullptr) {
-            switch (directoryStream->GetLastError()) {
-            case DirectoryStreamError::INVALID_ARGUMENTS:
-                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
-                break;
-            case DirectoryStreamError::STREAM_CLOSED:
-                SetLastError(FileDescriptorError::STREAM_ERROR);
-                break;
-            case DirectoryStreamError::NO_PERMISSION:
-                SetLastError(FileDescriptorError::NO_PERMISSION);
-                break;
-            default:
-                SetLastError(FileDescriptorError::INTERNAL_ERROR);
-                break;
-            }
-            return 0;
+            spinlock_release(&m_lock);
+            return (int64_t)i_status;
         }
         size_t inode_size = 0;
         // switch for the file system type
@@ -243,73 +231,66 @@ size_t FileDescriptor::Read(uint8_t* buffer, size_t count) {
             inode_size = sizeof(TempFS::TempFSInode);
             break;
         default:
-            SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-            return 0;
+            spinlock_release(&m_lock);
+            return -ENOSYS;
         }
-        if (count != inode_size) {
-            SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
-            return 0;
+        if ((size_t)count != inode_size) {
+            spinlock_release(&m_lock);
+            return -EINVAL;
         }
-        memcpy(buffer, inode, inode_size);
-        SetLastError(FileDescriptorError::SUCCESS);
+        memcpy(buffer, (void*)inode, inode_size);
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = ESUCCESS;
         return inode_size;
     }
     default:
-        SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return 0;
+        return -ENOSYS;
     }
 }
 
-size_t FileDescriptor::Write(const uint8_t* buffer, size_t count) {
+int64_t FileDescriptor::Write(const uint8_t* buffer, int64_t count, int* status) {
+    spinlock_acquire(&m_lock);
     switch (m_mode) {
     case FileDescriptorMode::APPEND:
     case FileDescriptorMode::WRITE:
     case FileDescriptorMode::READ_WRITE:
         break;
     default:
-        SetLastError(FileDescriptorError::INVALID_MODE);
-        return 0;
+        spinlock_release(&m_lock);
+        return -EBADF;
     }
     switch (m_type) {
     case FileDescriptorType::TTY: {
-        uint64_t i = 0;
+        int64_t i = 0;
         while (i < count) {
             m_TTY->putc(buffer[i]);
             i++;
         }
         //m_TTY->GetVGADevice()->SwapBuffers();
-        SetLastError(FileDescriptorError::SUCCESS);
-        return count; // partial writes to TTYs are not supported
+        spinlock_release(&m_lock);
+        if (status != nullptr) {
+            if (i < count)
+                *status = -EAGAIN;
+            else
+                *status = ESUCCESS;
+        }
+        return count;
     }
     case FileDescriptorType::FILE_STREAM: {
         FileStream* fileStream = (FileStream*)m_Stream;
-        uint64_t status = fileStream->WriteStream(buffer, count);
-        if (status != count) {
-            switch (fileStream->GetLastError()) {
-            case FileStreamError::INVALID_ARGUMENTS:
-                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
-                break;
-            case FileStreamError::ALLOCATION_FAILED:
-            case FileStreamError::STREAM_CLOSED:
-                SetLastError(FileDescriptorError::STREAM_ERROR);
-                break;
-            case FileStreamError::NO_PERMISSION:
-                SetLastError(FileDescriptorError::NO_PERMISSION);
-                break;
-            default:
-                SetLastError(FileDescriptorError::INTERNAL_ERROR);
-                break;
-            }
-        }
-        else
-            SetLastError(FileDescriptorError::SUCCESS);
-        return status;
+        int i_status = 0;
+        int64_t rc = fileStream->WriteStream(buffer, count, &i_status);
+        spinlock_release(&m_lock);
+        if (rc >= 0 && status != nullptr)
+            *status = i_status;
+        return rc;
     }
     case FileDescriptorType::DIRECTORY_STREAM:
-        SetLastError(FileDescriptorError::STREAM_ERROR); // writing is not supported on directory streams
-        return 0;
+        spinlock_release(&m_lock);
+        return -EACCES;
     case FileDescriptorType::DEBUG: {
-        uint64_t i = 0;
+        int64_t i = 0;
 #ifndef NDEBUG
         while (i < count) {
 #ifdef __x86_64__
@@ -318,145 +299,103 @@ size_t FileDescriptor::Write(const uint8_t* buffer, size_t count) {
             i++;
         }
 #endif
-        SetLastError(FileDescriptorError::SUCCESS);
+        spinlock_release(&m_lock);
+        if (status != nullptr) {
+            if (i < count)
+                *status = -EAGAIN;
+            else
+                *status = ESUCCESS;
+        }
         return i;
     }
     default:
-        SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return 0;
+        spinlock_release(&m_lock);
+        return -ENOSYS;
     }
 }
 
-bool FileDescriptor::Seek(uint64_t offset) {
+int FileDescriptor::Seek(int64_t offset) {
+    if (offset < 0)
+        return -EINVAL;
+    spinlock_acquire(&m_lock);
     switch (m_mode) {
     case FileDescriptorMode::READ:
     case FileDescriptorMode::WRITE:
     case FileDescriptorMode::READ_WRITE:
         break;
     default:
-        SetLastError(FileDescriptorError::INVALID_MODE);
-        return false;
+        spinlock_release(&m_lock);
+        return -EBADF;
     }
     switch (m_type) {
     case FileDescriptorType::DEBUG:
-        SetLastError(FileDescriptorError::STREAM_ERROR); // unsupported
-        return false;
+        spinlock_release(&m_lock);
+        return -ENOSYS;
     case FileDescriptorType::TTY: {
         uldiv_t out = uldiv(offset, m_TTY->GetVGADevice()->GetAmountOfTextRows());
         m_TTY->GetVGADevice()->SetCursorPosition({out.rem * 10, out.quot * 16});
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        spinlock_release(&m_lock);
+        return ESUCCESS;
     }
     case FileDescriptorType::FILE_STREAM: {
         FileStream* fileStream = (FileStream*)m_Stream;
-        if (!fileStream->Seek(offset)) {
-            switch (fileStream->GetLastError()) {
-            case FileStreamError::INVALID_ARGUMENTS:
-                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
-                break;
-            case FileStreamError::STREAM_CLOSED:
-                SetLastError(FileDescriptorError::STREAM_ERROR);
-                break;
-            default:
-                SetLastError(FileDescriptorError::INTERNAL_ERROR);
-                break;
-            }
-            return false;
-        }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        int rc = fileStream->Seek(offset);
+        spinlock_release(&m_lock);
+        return rc;
     }
     case FileDescriptorType::DIRECTORY_STREAM: {
         DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
-        if (!directoryStream->Seek(offset)) {
-            switch (directoryStream->GetLastError()) {
-            case DirectoryStreamError::INVALID_ARGUMENTS:
-                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
-                break;
-            case DirectoryStreamError::STREAM_CLOSED:
-                SetLastError(FileDescriptorError::STREAM_ERROR);
-                break;
-            default:
-                SetLastError(FileDescriptorError::INTERNAL_ERROR);
-                break;
-            }
-            return false;
-        }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        int rc = directoryStream->Seek(offset);
+        spinlock_release(&m_lock);
+        return rc;
     }
     default:
-        SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return false;
+        return -ENOSYS;
     }
 }
 
-bool FileDescriptor::Rewind() {
+int FileDescriptor::Rewind() {
+    spinlock_acquire(&m_lock);
     switch (m_mode) {
     case FileDescriptorMode::READ:
     case FileDescriptorMode::WRITE:
     case FileDescriptorMode::READ_WRITE:
         break;
     default:
-        SetLastError(FileDescriptorError::INVALID_MODE);
-        return false;
+        spinlock_release(&m_lock);
+        return -EBADF;
     }
     switch (m_type) {
     case FileDescriptorType::DEBUG:
-        SetLastError(FileDescriptorError::STREAM_ERROR); // unsupported
-        return false;
+        spinlock_release(&m_lock);
+        return -ENOSYS;
     case FileDescriptorType::TTY:
         m_TTY->putc('\f'); // clear the screen
-        SetLastError(FileDescriptorError::SUCCESS); // this case should have already been caught by the constructor
-        return true;
+        spinlock_release(&m_lock);
+        return ESUCCESS;
     case FileDescriptorType::FILE_STREAM: {
         FileStream* fileStream = (FileStream*)m_Stream;
-        if (!fileStream->Rewind()) {
-            switch (fileStream->GetLastError()) {
-            case FileStreamError::STREAM_CLOSED:
-                SetLastError(FileDescriptorError::STREAM_ERROR);
-                break;
-            default:
-                SetLastError(FileDescriptorError::INTERNAL_ERROR);
-                break;
-            }
-            return false;
-        }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        int rc = fileStream->Rewind();
+        spinlock_release(&m_lock);
+        return rc;
     }
     case FileDescriptorType::DIRECTORY_STREAM: {
         DirectoryStream* directoryStream = (DirectoryStream*)m_Stream;
-        if (!directoryStream->Seek(0)) {
-            switch (directoryStream->GetLastError()) {
-            case DirectoryStreamError::INVALID_ARGUMENTS:
-                SetLastError(FileDescriptorError::INVALID_ARGUMENTS);
-                break;
-            case DirectoryStreamError::STREAM_CLOSED:
-                SetLastError(FileDescriptorError::STREAM_ERROR);
-                break;
-            default:
-                SetLastError(FileDescriptorError::INTERNAL_ERROR);
-                break;
-            }
-            return false;
-        }
-        SetLastError(FileDescriptorError::SUCCESS);
-        return true;
+        int rc = directoryStream->Seek(0);
+        spinlock_release(&m_lock);
+        return rc;
     }
     default:
-        SetLastError(FileDescriptorError::INTERNAL_ERROR); // this case should have already been caught by the constructor
-        return false;
+        spinlock_release(&m_lock);
+        return -ENOSYS;
     }
 }
 
 fd_t FileDescriptor::GetID() const {
-    SetLastError(FileDescriptorError::SUCCESS);
     return m_ID;
 }
 
 void* FileDescriptor::GetData() const {
-    SetLastError(FileDescriptorError::SUCCESS);
     switch (m_type) {
     case FileDescriptorType::FILE_STREAM:
     case FileDescriptorType::DIRECTORY_STREAM:
@@ -464,22 +403,21 @@ void* FileDescriptor::GetData() const {
     case FileDescriptorType::TTY:
         return m_TTY;
     case FileDescriptorType::DEBUG:
-        return nullptr; // has no data
     default:
-        SetLastError(FileDescriptorError::INTERNAL_ERROR);
         return nullptr;
     }
 }
 
 FileDescriptorType FileDescriptor::GetType() const {
-    SetLastError(FileDescriptorError::SUCCESS);
     return m_type;
 }
 
-FileDescriptorError FileDescriptor::GetLastError() const {
-    return p_lastError;
+bool FileDescriptor::WasInitSuccessful() const {
+    return m_init_successful;
 }
 
-void FileDescriptor::SetLastError(FileDescriptorError error) const {
-    p_lastError = error;
+void FileDescriptor::ForceUnlock() {
+    spinlock_release(&m_lock);
+    if (m_type == FileDescriptorType::TTY)
+        m_TTY->Unlock();
 }

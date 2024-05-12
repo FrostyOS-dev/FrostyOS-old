@@ -1,6 +1,29 @@
 # Changes
 
-## Latest Changes - 03/05/2024
+## Latest Changes - 12/05/2024
+
+- Implemented LAPIC support (including multicore start-up support)
+- Implemented I/O APIC support. This changed the whole IRQ system.
+- Implemented HPET support. This is now the main kernel timer.
+- Updated the scheduler to utilise multiple cores.
+- Switched scheduler over to using the HPET for timing.
+- Scheduler now used intrusive thread lists to prevent heap allocation on task switching.
+- Implemented idle threads. These threads always run in kernel mode and are used to keep the CPU busy when no other threads are running.
+- Converted all of the VFS to use errno values instead of error enums.
+- Implemented spinlocks in the VFS, PMM, VMM, PM, scheduler, and TTYs.
+- Implemented `invlpg` instruction in the VMM. This is used where possible instead of reloading the whole page table.
+- Changed system call names in the kernel to not use the $ sign in there names.
+- Add pragmas for GCC and Clang to silence certain warnings which are valid.
+- Implemented IPI support. This is used to send inter-processor interrupts to other cores.
+- On panic, a stop IPI is sent to all other cores to stop them from running.
+- Implemented TLB shootdowns. This is used to invalidate the TLB on all cores when a page table is changed.
+- Added IPI for the scheduler to send to other cores to tell them to reschedule.
+- Implemented semaphores and mutexes in the kernel. This required thread blocking in the scheduler. There are also some new system calls for these.
+- Various other bug fixes and improvements to the kernel.
+- Updated the README to mention multicore support.
+- Updated QEMU run command to run with 2 cores by default.
+
+## 03/05/2024
 
 - Cleaned up page mapping/unmapping functions to not map freshly allocated tables as they are in the HHDM and remove usage of the old deprecated `fast_memset` function.
 - Removed all of the page tables included in the kernel other than the kernel PML4 array.

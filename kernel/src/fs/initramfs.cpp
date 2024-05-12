@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "FileStream.hpp"
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <util.h>
@@ -61,31 +62,31 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
         switch (header->TypeFlag - '0') {
         case 0: // File
             {
-            assert(g_VFS->CreateFile({0, 0, 07777}, parent, name, size, false, privilege));
+            assert(g_VFS->CreateFile({0, 0, 07777}, parent, name, size, false, privilege) == ESUCCESS);
             if (size == 0)
                 break;
-            FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, header->filepath, VFS_READ | VFS_WRITE);
+            FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, header->filepath, VFS_READ | VFS_WRITE, nullptr);
             assert(stream != nullptr);
-            assert(stream->Open());
-            assert(stream->WriteStream((const uint8_t*)((uint64_t)header + 512), size));
+            assert(stream->Open() == ESUCCESS);
+            assert(stream->WriteStream((const uint8_t*)((uint64_t)header + 512), size) == (int64_t)size);
 
             // Validate the data. can be excluded
 
             uint8_t* buffer = new uint8_t[size];
-            assert(stream->Rewind());
-            assert(stream->ReadStream(buffer, size));
+            assert(stream->Rewind() == ESUCCESS);
+            assert(stream->ReadStream(buffer, size) == (int64_t)size);
             assert(memcmp(buffer, (const void*)((uint64_t)header + 512), size) == 0);
+            delete[] buffer;
 
-
-            assert(stream->Close());
-            assert(g_VFS->CloseStream(stream));
+            assert(stream->Close() == ESUCCESS);
+            assert(g_VFS->CloseStream(stream) == ESUCCESS);
             }
             break;
         case 2: // Symbolic Link
-            assert(g_VFS->CreateSymLink({0, 0, 07777}, parent, name, header->filename, false, privilege));
+            assert(g_VFS->CreateSymLink({0, 0, 07777}, parent, name, header->filename, false, privilege) == ESUCCESS);
             break;
         case 5: // Folder
-            assert(g_VFS->CreateFolder({0, 0, 07777}, parent, name, false, privilege));
+            assert(g_VFS->CreateFolder({0, 0, 07777}, parent, name, false, privilege) == ESUCCESS);
             break;
         default:
             assert(false);

@@ -109,10 +109,10 @@ namespace Scheduling {
         void SetDefaultWorkingDirectory(VFS_WorkingDirectory* wd);
         VFS_WorkingDirectory* GetDefaultWorkingDirectory() const;
 
-        int sys$onsignal(int signum, const struct signal_action* new_action, struct signal_action* old_action);
-        int sys$sendsig(pid_t pid, int signum);
+        int sys_onsignal(int signum, const struct signal_action* new_action, struct signal_action* old_action);
+        int sys_sendsig(pid_t pid, int signum);
 
-        void sys$sigreturn(int signum);
+        void sys_sigreturn(int signum);
 
         void ReceiveSignal(int signum);
 

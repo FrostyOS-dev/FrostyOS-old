@@ -20,14 +20,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <util.h>
 
-#include "../../Processor.hpp"
-
 LinkedList::SimpleLinkedList<x86_64_IOAPIC> g_IOAPICs;
 
 x86_64_IOAPIC::x86_64_IOAPIC(void* baseAddress, uint8_t IRQBase) : m_registers((x86_64_IOAPICRegisters*)baseAddress), m_IRQBase(IRQBase), m_IRQEnd(0), m_INTStart(0) {
 
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
 void x86_64_IOAPIC::WriteRegister(uint32_t reg, uint32_t value) {
     volatile_write32(m_registers->IOREGSEL, reg);
@@ -54,6 +54,8 @@ x86_64_IOAPIC_RedirectionEntry x86_64_IOAPIC::GetRedirectionEntry(uint8_t index)
     return entry;
 }
 
+#pragma GCC diagnostic pop
+
 uint8_t x86_64_IOAPIC::GetIRQBase() const {
     return m_IRQBase;
 }
@@ -66,7 +68,7 @@ uint8_t x86_64_IOAPIC::GetIRQEnd() {
 
 void x86_64_IOAPIC::SetINTStart(uint8_t INTStart) {
     m_INTStart = INTStart;
-    for (uint64_t i = 0; i < (GetIRQEnd() - GetIRQBase()); i++) {
+    for (uint8_t i = 0; i < (GetIRQEnd() - GetIRQBase()); i++) {
         x86_64_IOAPIC_RedirectionEntry entry = GetRedirectionEntry(i);
         entry.Vector = INTStart + i;
         SetRedirectionEntry(i, entry);

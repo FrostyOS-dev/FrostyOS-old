@@ -1,4 +1,4 @@
-; Copyright (©) 2022-2023  Frosty515
+; Copyright (©) 2022-2024  Frosty515
 ; 
 ; This program is free software: you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -44,6 +44,11 @@ x86_64_SwapCR3:
 global x86_64_GetCR2
 x86_64_GetCR2:
     mov rax, cr2
+    ret
+
+global x86_64_InvalidatePage
+x86_64_InvalidatePage:
+    invlpg [rdi]
     ret
 
 global x86_64_EnsureNX

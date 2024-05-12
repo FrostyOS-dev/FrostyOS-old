@@ -32,6 +32,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../hal.hpp"
 
+//#define MADT_DEBUG
+
 ACPISDTHeader* g_MADT;
 
 bool InitAndValidateMADT(ACPISDTHeader* MADT) {
@@ -52,7 +54,6 @@ void EnumerateMADTEntries() {
 #ifdef __x86_64__
     __asm__ volatile ("mov $1, %%eax; cpuid; shr $24, %%ebx;" : "=b"(APIC_ID) : : "eax", "ecx", "edx");
 #endif
-    dbgprintf("BSP APIC ID = %d\n", APIC_ID);
 
     LinkedList::SimpleLinkedList<MADT_LocalAPIC> LAPICs;
     LinkedList::SimpleLinkedList<MADT_IOAPIC> IOAPICs;
@@ -65,21 +66,29 @@ void EnumerateMADTEntries() {
         switch (entry->Type) {
             case 0: {
                 MADT_LocalAPIC* localAPIC = (MADT_LocalAPIC*)entry;
+#ifdef MADT_DEBUG
                 dbgprintf("Local APIC: ACPI Processor ID: %d, APIC ID: %d, Flags: %d\n", localAPIC->ACPIProcessorID, localAPIC->APICID, localAPIC->Flags);
+#endif
                 LAPICs.insert(localAPIC);
                 break;
             }
             case 1: {
                 MADT_IOAPIC* ioAPIC = (MADT_IOAPIC*)entry;
+#ifdef MADT_DEBUG
                 dbgprintf("IO APIC: ID: %d, Address: %x, Global System Interrupt Base: %d\n", ioAPIC->IOAPICID, ioAPIC->IOAPICAddress, ioAPIC->GlobalSystemInterruptBase);
+#endif
                 IOAPICs.insert(ioAPIC);
                 break;
             }
             case 2: {
                 MADT_InterruptSourceOverride* interruptSourceOverride = (MADT_InterruptSourceOverride*)entry;
+#ifdef MADT_DEBUG
                 dbgprintf("Interrupt Source Override: Bus: %d, Source: %d, Global System Interrupt: %d, Flags: %d\n", interruptSourceOverride->Bus, interruptSourceOverride->Source, interruptSourceOverride->GlobalSystemInterrupt, interruptSourceOverride->Flags);
+#endif
+                InterruptSourceOverrides.insert(interruptSourceOverride);
                 break;
             }
+#ifdef MADT_DEBUG
             case 3: {
                 MADT_IOAPICNMISource* ioAPICNMISource = (MADT_IOAPICNMISource*)entry;
                 dbgprintf("IO APIC NMI Source: Flags: %d, Global System Interrupt: %d\n", ioAPICNMISource->Flags, ioAPICNMISource->GlobalSystemInterrupt);
@@ -90,12 +99,16 @@ void EnumerateMADTEntries() {
                 dbgprintf("Local APIC NMI Source: ACPI Processor ID: %d, Flags: %d, Local APIC LINT: %d\n", localAPICNMISource->ACPIProcessorID, localAPICNMISource->Flags, localAPICNMISource->LocalAPICLint);
                 break;
             }
+#endif
             case 5: {
                 MADT_LocalAPICAddressOverride* localAPICAddressOverride = (MADT_LocalAPICAddressOverride*)entry;
+#ifdef MADT_DEBUG
                 dbgprintf("Local APIC Address Override: Address: %x\n", localAPICAddressOverride->LocalAPICAddress);
+#endif
                 LAPIC_address = (void*)(localAPICAddressOverride->LocalAPICAddress);
                 break;
             }
+#ifdef MADT_DEBUG
             case 9: {
                 MADT_Localx2APIC* localx2APIC = (MADT_Localx2APIC*)entry;
                 dbgprintf("Local x2APIC: ACPI Processor ID: %u, Local APIC ID: %u, Flags: %u\n", localx2APIC->ACPIProcessorUID, localx2APIC->x2APICID, localx2APIC->Flags);
@@ -104,6 +117,7 @@ void EnumerateMADTEntries() {
             default:
                 dbgprintf("Unknown MADT entry type: %d\n", entry->Type);
                 break;
+#endif
         }
         entry = (MADTEntryHeader*)((uint64_t)entry + entry->Length);
     }

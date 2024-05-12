@@ -58,7 +58,7 @@ namespace TempFS {
 
     private:
         FilePrivilegeLevel m_rootPrivilege;
-        LinkedList::SimpleLinkedList<TempFSInode> m_rootInodes;
+        LinkedList::LockableLinkedList<TempFSInode> m_rootInodes;
     };
 }
 

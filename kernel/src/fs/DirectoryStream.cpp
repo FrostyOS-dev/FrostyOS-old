@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,8 +16,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "DirectoryStream.hpp"
+#include "spinlock.h"
+#include <errno.h>
 
-DirectoryStream::DirectoryStream(Inode* inode, FilePrivilegeLevel privilege, FileSystemType fs_type, FileSystem* fs) : m_inode(inode), m_privilege(privilege), m_fs_type(fs_type), m_fs(fs), m_index(0), m_isOpen(false), m_last_error(DirectoryStreamError::SUCCESS) {
+DirectoryStream::DirectoryStream(Inode* inode, FilePrivilegeLevel privilege, FileSystemType fs_type, FileSystem* fs) : m_inode(inode), m_privilege(privilege), m_fs_type(fs_type), m_fs(fs), m_index(0), m_isOpen(false), m_lock(0) {
 
 }
 
@@ -25,18 +27,19 @@ DirectoryStream::~DirectoryStream() {
 
 }
 
-bool DirectoryStream::Open() {
+int DirectoryStream::Open() {
+    spinlock_acquire(&m_lock);
     if (m_isOpen) {
-        SetLastError(DirectoryStreamError::SUCCESS); // already open
-        return true;
+        spinlock_release(&m_lock);
+        return ESUCCESS;
     }
     if (m_inode == nullptr && m_fs == nullptr) { // nothing to fetch child inodes from
-        SetLastError(DirectoryStreamError::INVALID_INODE);
-        return false;
+        spinlock_release(&m_lock);
+        return -ENOSYS;
     }
     if (m_inode != nullptr && m_inode->GetType() != InodeType::Folder) {
-        SetLastError(DirectoryStreamError::INVALID_INODE);
-        return false;
+        spinlock_release(&m_lock);
+        return -ENOTDIR;
     }
     FilePrivilegeLevel privilege;
     if (m_inode != nullptr)
@@ -45,78 +48,92 @@ bool DirectoryStream::Open() {
         privilege = m_fs->GetRootPrivilege();
     if (privilege.UID == m_privilege.UID || privilege.UID == 0) {
         if (!((privilege.ACL & ACL_USER_READ) > 0)) {
-            SetLastError(DirectoryStreamError::NO_PERMISSION);
-            return false;
+            spinlock_release(&m_lock);
+            return -EACCES;
         }
     }
     else if (privilege.GID == m_privilege.GID) {
         if (!((privilege.ACL & ACL_GROUP_READ) > 0)) {
-            SetLastError(DirectoryStreamError::NO_PERMISSION);
-            return false;
+            spinlock_release(&m_lock);
+            return -EACCES;
         }
     }
     else {
         if (!((privilege.ACL & ACL_OTHER_READ) > 0)) {
-            SetLastError(DirectoryStreamError::NO_PERMISSION);
-            return false;
+            spinlock_release(&m_lock);
+            return -EACCES;
         }
     }
     m_index = 0;
     m_isOpen = true;
-    SetLastError(DirectoryStreamError::SUCCESS);
-    return true;
+    spinlock_release(&m_lock);
+    return ESUCCESS;
 }
 
-bool DirectoryStream::Close() {
+int DirectoryStream::Close() {
+    spinlock_acquire(&m_lock);
     m_isOpen = false;
-    SetLastError(DirectoryStreamError::SUCCESS);
-    return true;
+    spinlock_release(&m_lock);
+    return ESUCCESS;
 }
 
-bool DirectoryStream::Seek(uint64_t index) {
+int DirectoryStream::Seek(int64_t index) {
+    if (index < 0)
+        return -EINVAL;
+    spinlock_acquire(&m_lock);
     if (!m_isOpen) {
-        SetLastError(DirectoryStreamError::STREAM_CLOSED);
-        return false;
+        spinlock_release(&m_lock);
+        return -EBADF;
     }
-    if (index >= m_inode->GetChildCount()) {
-        SetLastError(DirectoryStreamError::INVALID_ARGUMENTS);
-        return false;
+    if ((uint64_t)index >= m_inode->GetChildCount()) {
+        spinlock_release(&m_lock);
+        return -EINVAL;
     }
     m_index = index;
-    SetLastError(DirectoryStreamError::SUCCESS);
-    return true;
+    return ESUCCESS;
 }
 
-uint64_t DirectoryStream::GetOffset() const {
+int64_t DirectoryStream::GetOffset() const {
     return m_index;
 }
 
-Inode* DirectoryStream::GetNextInode() {
+Inode* DirectoryStream::GetNextInode(int* status) {
+    spinlock_acquire(&m_lock);
     if (!m_isOpen) {
-        SetLastError(DirectoryStreamError::STREAM_CLOSED);
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = -EBADF;
         return nullptr;
     }
     Inode* inode = nullptr;
     if (m_inode != nullptr) {
-        if (m_index >= m_inode->GetChildCount()) {
-            SetLastError(DirectoryStreamError::INVALID_ARGUMENTS);
+        if ((uint64_t)m_index >= m_inode->GetChildCount()) {
+            spinlock_release(&m_lock);
+            if (status != nullptr)
+                *status = -EINVAL;
             return nullptr;
         }
         inode = m_inode->GetChild(m_index);
     }
     else if (m_fs != nullptr) {
-        if (m_index >= m_fs->GetRootInodeCount()) {
-            SetLastError(DirectoryStreamError::INVALID_ARGUMENTS);
+        if ((uint64_t)m_index >= m_fs->GetRootInodeCount()) {
+            spinlock_release(&m_lock);
+            if (status != nullptr)
+                *status = -EINVAL;
             return nullptr;
         }
         inode = m_fs->GetRootInode(m_index);
     }
     else {
-        SetLastError(DirectoryStreamError::INVALID_INODE);
+        spinlock_release(&m_lock);
+        if (status != nullptr)
+            *status = -ENOSYS;
         return nullptr;
     }
     m_index++;
-    SetLastError(DirectoryStreamError::SUCCESS);
+    spinlock_release(&m_lock);
+    if (status != nullptr)
+        *status = ESUCCESS;
     return inode;
 }
 
@@ -134,12 +151,4 @@ FileSystem* DirectoryStream::GetFileSystem() const {
 
 FileSystemType DirectoryStream::GetFileSystemType() const {
     return m_fs_type;
-}
-
-DirectoryStreamError DirectoryStream::GetLastError() const {
-    return m_last_error;
-}
-
-void DirectoryStream::SetLastError(DirectoryStreamError error) {
-    m_last_error = error;
 }

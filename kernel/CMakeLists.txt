@@ -107,12 +107,14 @@ set(kernel_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sanitiser/sanitiser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sanitiser/ubsan.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Scheduling/Process.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Scheduling/Semaphore.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Scheduling/Scheduler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Scheduling/Thread.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemCalls/exec.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemCalls/exit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemCalls/memory.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemCalls/mount.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemCalls/Synchronisation.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemCalls/SystemCall.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tty/KeyboardInput.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tty/TTY.cpp
@@ -122,6 +124,8 @@ set(kernel_lib_sources
     ${kernel_lib_sources}
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/assert.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/math.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/mutex.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/semaphore.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/stack_protector.c
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/stdio.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/stdlib.c

@@ -25,7 +25,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Inode.hpp"
 
 enum class FileSystemType {
-    TMPFS = 0
+    VFS = 0,
+    TMPFS = 1
 };
 
 constexpr char PATH_SEPARATOR = '/';
