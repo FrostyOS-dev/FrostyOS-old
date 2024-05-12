@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,14 +24,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 void x86_64_InitUserTable(void* PML4) {
     Level4Group* group = (Level4Group*)PML4;
 
-    fast_memset(group, 0, sizeof(Level4Group) >> 3);
+    memset(group, 0, sizeof(Level4Group) >> 3);
 
-    group->entries[511].Present = 1;
-    group->entries[511].ReadWrite = 1;
-    group->entries[511].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML3_KernelGroup) >> 12;
-
+    group->entries[511] = K_PML4_Array.entries[511];
     uint16_t HHDM_PML4_offset = ((uint64_t)x86_64_GetHHDMStart() & 0x0000ff8000000000) >> 39;
-    group->entries[HHDM_PML4_offset].Present = 1;
-    group->entries[HHDM_PML4_offset].ReadWrite = 1;
-    group->entries[HHDM_PML4_offset].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML3_LowestArray) >> 12;
+    group->entries[HHDM_PML4_offset] = K_PML4_Array.entries[HHDM_PML4_offset];
+}
+
+void x86_64_InvalidatePages(uint64_t address, uint64_t length) {
+    if (length >= FULL_FLUSH_THRESHOLD) {
+        x86_64_FlushTLB();
+        return;
+    }
+    for (uint64_t i = 0; i < length; i += 0x1000) {
+        x86_64_InvalidatePage(address + i);
+    }
 }

@@ -1,6 +1,73 @@
 # Changes
 
-## Latest Changes - 20/01/2024
+## Latest Changes - 12/05/2024
+
+- Implemented LAPIC support (including multicore start-up support)
+- Implemented I/O APIC support. This changed the whole IRQ system.
+- Implemented HPET support. This is now the main kernel timer.
+- Updated the scheduler to utilise multiple cores.
+- Switched scheduler over to using the HPET for timing.
+- Scheduler now used intrusive thread lists to prevent heap allocation on task switching.
+- Implemented idle threads. These threads always run in kernel mode and are used to keep the CPU busy when no other threads are running.
+- Converted all of the VFS to use errno values instead of error enums.
+- Implemented spinlocks in the VFS, PMM, VMM, PM, scheduler, and TTYs.
+- Implemented `invlpg` instruction in the VMM. This is used where possible instead of reloading the whole page table.
+- Changed system call names in the kernel to not use the $ sign in there names.
+- Add pragmas for GCC and Clang to silence certain warnings which are valid.
+- Implemented IPI support. This is used to send inter-processor interrupts to other cores.
+- On panic, a stop IPI is sent to all other cores to stop them from running.
+- Implemented TLB shootdowns. This is used to invalidate the TLB on all cores when a page table is changed.
+- Added IPI for the scheduler to send to other cores to tell them to reschedule.
+- Implemented semaphores and mutexes in the kernel. This required thread blocking in the scheduler. There are also some new system calls for these.
+- Various other bug fixes and improvements to the kernel.
+- Updated the README to mention multicore support.
+- Updated QEMU run command to run with 2 cores by default.
+
+## 03/05/2024
+
+- Cleaned up page mapping/unmapping functions to not map freshly allocated tables as they are in the HHDM and remove usage of the old deprecated `fast_memset` function.
+- Removed all of the page tables included in the kernel other than the kernel PML4 array.
+- Updated RTC GetWeekDay function to use the correct formula.
+- Updated RTC time printing to set a minimum width of 2 for the hour, minute and second fields.
+- Updated build and run scripts so that cmake generates a `compile_commands.json` for clangd. This included updating the gitignore to ignore the `compile_commands.json` file.
+- Added to `-Wno-packed-bitfield-compat` to the CMake flags to suppress a warning that is not relevant to this project.
+- Cleaned up includes in some files to remove unnecessary includes.
+- Updated new to just panic the kernel on failure instead of returning `nullptr`.
+
+## 29/04/2024
+
+- Added `ubsan` support.
+- The bitmap in the PhysicalPageFrameAllocator is now cleared to all 1s before usage to ensure all pages default to being used/reserved.
+- Added ubsan disabled attributes to page mapping functions, ELF Symbol table init and ACPI `getOtherSDT` to prevent false positives.
+- Updated image size to be 10MiB so larger builds of the kernel with ubsan enabled can fit.
+- Fixed a spelling mistake in change list for previous commit.
+
+## 08/04/2024
+
+- Update the initramfs initialisation to check if the file size of an item is zero.
+- Convert build system over to CMake. The old Makefile-based system will remain for now, but it is deprecated.
+- The toolchain and mkgpt are now built with shell scripts called from CMake.
+- OVMF_VARS is now updated using a shell script called from CMake.
+- Updated resources that are used.
+- Updated build/run instructions.
+- Updated various requirements to be less strict as it is unnecessary.
+
+## 21/02/2024
+
+- Fixed the toolchain build steps so it actually builds the toolchain.
+- Updated the `printf` family of functions to now support all flags and precision specifiers in the kernel and LibC. Still no floating point support yet.
+- Implemented the `sprintf` family of functions in the kernel and LibC. They have the same functionality as the `printf` family of functions.
+- Fixed `PageFaultHandler` to use the `snprintf` function to format the error message instead of an inlined weird kernel panic.
+- Implemented basic spinlock support. They currently aren't used anywhere.
+
+## 15/02/2024
+
+- Updated `PageFaultHandler` to actually display panic output instead of a simple page fault description.
+- Updated paging initialisation code to use 2MiB pages where possible when mapping memory map entries after 4GiB and actually check if it needs to be mapped or not properly.
+- Updated `UpdateMemorySize` function to include entry type `KERNEL_AND_MODULES` as a valid entry to actually map and include in the memory size.
+- Updated kernel heap to set the `next` parameter of the first block to `nullptr` when initialising the heap.
+
+## 20/01/2024
 
 - kmalloc improvements.
 - Userland thread exit improvements to prevent scheduling issues.

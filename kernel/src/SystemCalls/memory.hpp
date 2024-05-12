@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,12 +25,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define PROT_READ_EXECUTE  5UL
 
 // Request page aligned memory size bytes long, starting at addr (if null, any address) with perms. If returned address is between (void*)-1 and (void*)-100, then an error occurred and the address is the error code.
-void* sys$mmap(unsigned long size, unsigned long perms, void* addr);
+void* sys_mmap(unsigned long size, unsigned long perms, void* addr);
 
 // Unmap page aligned memory size bytes long, starting at addr.
-int sys$munmap(void* addr, unsigned long size);
+int sys_munmap(void* addr, unsigned long size);
 
 // Remap page aligned memory size bytes long, starting at addr with perms.
-int sys$mprotect(void* addr, unsigned long size, unsigned long perms);
+int sys_mprotect(void* addr, unsigned long size, unsigned long perms);
 
 #endif /* _SYS_MEMORY_HPP */

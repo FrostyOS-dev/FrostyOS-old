@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stddef.h>
 
 #include <util.h>
+#include <spinlock.h>
 
 #include <Memory/PageManager.hpp>
 
@@ -63,6 +64,9 @@ public:
     size_t getMetadataMem() const;
     size_t getTotalMem() const;
 
+    void lock();
+    void unlock();
+
 private:
     void AddToFreeList(BlockHeader* header);
     void CheckForDeletion(); // will check if any chunks in the free list can be deleted, and delete them if they can
@@ -72,13 +76,15 @@ private:
     size_t m_freeMem;
     size_t m_usedMem;
     size_t m_MetadataMem;
+    spinlock_t m_lock;
 };
 
 HeapAllocator::HeapAllocator() : m_freeList(nullptr), m_freeMem(0), m_usedMem(0), m_MetadataMem(0) {
-    
+    spinlock_init(&m_lock);
 }
 
 HeapAllocator::HeapAllocator(size_t size) : m_freeList(nullptr), m_freeMem(0), m_usedMem(0), m_MetadataMem(0) {
+    spinlock_init(&m_lock);
     size_t numPages = DIV_ROUNDUP((size + sizeof(BlockHeader)), PAGE_SIZE);
     size_t numBytes = numPages * PAGE_SIZE;
     void* ptr = g_KPM->AllocatePages(numPages);
@@ -150,6 +156,13 @@ size_t HeapAllocator::getMetadataMem() const {
 
 size_t HeapAllocator::getTotalMem() const {
     return m_usedMem + m_freeMem + m_MetadataMem;
+}
+
+void HeapAllocator::lock() {
+    spinlock_acquire(&m_lock);
+}
+void HeapAllocator::unlock() {
+    spinlock_release(&m_lock);
 }
 
 void HeapAllocator::AddToFreeList(BlockHeader* header) {
@@ -237,7 +250,9 @@ extern "C" void* kcalloc(size_t num, size_t size) {
     if (!g_kmalloc_initialised)
         return nullptr;
     size = ALIGN_UP((size * num), MIN_SIZE);
+    g_heapAllocator.lock();
     void* mem = g_heapAllocator.allocate(size);
+    g_heapAllocator.unlock();
     if (mem == nullptr)
         return nullptr;
     fast_memset(mem, 0, size / 8);
@@ -245,13 +260,18 @@ extern "C" void* kcalloc(size_t num, size_t size) {
 }
 
 extern "C" void kfree(void* addr) {
-    return g_heapAllocator.free(addr);
+    g_heapAllocator.lock();
+    g_heapAllocator.free(addr);
+    g_heapAllocator.unlock();
 }
 
 extern "C" void* kmalloc(size_t size) {
     if (size == 0 || !g_kmalloc_initialised)
         return nullptr;
-    return g_heapAllocator.allocate(ALIGN_UP(size, MIN_SIZE));
+    g_heapAllocator.lock();
+    void* mem = g_heapAllocator.allocate(ALIGN_UP(size, MIN_SIZE));
+    g_heapAllocator.unlock();
+    return mem;
 }
 
 extern "C" void* krealloc(void* ptr, size_t size) {
@@ -264,13 +284,15 @@ extern "C" void* krealloc(void* ptr, size_t size) {
     /*if (ptr < g_mem_start || ptr > g_mem_end)
         return nullptr;
     size = ALIGN_UP(size, MIN_SIZE);*/
+    g_heapAllocator.lock();
     BlockHeader* header = (BlockHeader*)((uint64_t)ptr - sizeof(BlockHeader));
     size_t old_size = header->size;
-    void* ptr2 = kmalloc(size);
+    void* ptr2 = g_heapAllocator.allocate(ALIGN_UP(size, MIN_SIZE));
     if (ptr2 == nullptr)
         return nullptr;
     fast_memcpy(ptr2, ptr, old_size);
-    kfree(ptr);
+    g_heapAllocator.free(ptr);
+    g_heapAllocator.unlock();
     return ptr2;
 }
 
@@ -280,6 +302,8 @@ bool g_kmalloc_eternal_initialised = false;
 void* g_kmalloc_eternal_mem = nullptr;
 size_t g_kmalloc_eternal_free_mem = 0;
 size_t g_kmalloc_eternal_used_mem = 0;
+
+spinlock_new(g_kmalloc_eternal_lock);
 
 void kmalloc_eternal_init() {
     g_kmalloc_eternal_initialised = false;
@@ -291,11 +315,15 @@ void kmalloc_eternal_init() {
     g_kmalloc_eternal_free_mem = 512 * PAGE_SIZE;
     g_kmalloc_eternal_used_mem = 0;
 
+    spinlock_init(&g_kmalloc_eternal_lock);
+
     g_kmalloc_eternal_initialised = true;
 }
 
 extern "C" void* kmalloc_eternal(size_t size) {
     size = ALIGN_UP(size, 8);
+
+    spinlock_acquire(&g_kmalloc_eternal_lock);
 
     if (!g_kmalloc_eternal_initialised || size > g_kmalloc_eternal_free_mem)
         return nullptr;
@@ -304,6 +332,8 @@ extern "C" void* kmalloc_eternal(size_t size) {
     g_kmalloc_eternal_used_mem += size;
     g_kmalloc_eternal_free_mem -= size;
     g_kmalloc_eternal_mem = (void*)((uint64_t)g_kmalloc_eternal_mem + size);
+
+    spinlock_release(&g_kmalloc_eternal_lock);
 
     return mem;
 }
@@ -311,6 +341,8 @@ extern "C" void* kmalloc_eternal(size_t size) {
 extern "C" void* kcalloc_eternal(size_t num, size_t size) {
     size = ALIGN_UP(size * num, 8);
 
+    spinlock_acquire(&g_kmalloc_eternal_lock);
+
     if (!g_kmalloc_eternal_initialised || size > g_kmalloc_eternal_free_mem)
         return nullptr;
 
@@ -318,6 +350,8 @@ extern "C" void* kcalloc_eternal(size_t num, size_t size) {
     g_kmalloc_eternal_used_mem += size;
     g_kmalloc_eternal_free_mem -= size;
     g_kmalloc_eternal_mem = (void*)((uint64_t)g_kmalloc_eternal_mem + size);
+
+    spinlock_release(&g_kmalloc_eternal_lock);
 
     fast_memset(mem, 0, size / 8);
 

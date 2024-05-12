@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ ELFSymbols::ELFSymbols() : m_eternal(false) {
 
 }
 
-ELFSymbols::ELFSymbols(const void* data, size_t size, bool eternal) : m_eternal(eternal), m_symbols(eternal) {
+__attribute__((no_sanitize("undefined"))) ELFSymbols::ELFSymbols(const void* data, size_t size, bool eternal) : m_eternal(eternal), m_symbols(eternal) {
     if (size < 10)
         return; // too small
     if (data == nullptr)

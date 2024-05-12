@@ -75,9 +75,11 @@ struct x86_64_GDTSysEntry {
     uint32_t Reserved;
 } __attribute__((packed));
 
-void x86_64_GDT_SetTSS(x86_64_TSS* TSS);
+extern x86_64_GDTEntry __attribute__((aligned(0x1000))) g_GDT[7];
 
-void x86_64_GDTInit();
+void x86_64_GDT_SetTSS(x86_64_GDTEntry* GDT, x86_64_TSS* TSS);
+
+void x86_64_GDTInit(x86_64_GDTEntry* GDT);
 
 extern "C" void x86_64_LoadGDT(x86_64_GDTDescriptor* gdtDescriptor);
 

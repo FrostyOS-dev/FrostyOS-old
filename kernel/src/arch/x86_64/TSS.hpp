@@ -30,8 +30,6 @@ struct x86_64_TSS {
     uint16_t IOPB;
 } __attribute__((packed));
 
-void x86_64_TSS_Init();
-
 extern "C" void x86_64_TSS_Load(uint16_t GDTOffset);
 
 #endif /* X86_64_TSS_HPP */

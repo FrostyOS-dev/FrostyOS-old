@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Scheduling/Process.hpp>
 
 // Userland wrapper around exec
-int sys$exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]);
+int sys_exec(Scheduling::Process* parent, const char *path, char *const argv[], char *const envv[]);
 
 // Execute a program. No memory checks are performed on any arguments, as they are assumed to be valid.
 int Execute(Scheduling::Process* parent, const char *path, int argc, char *const argv[], int envc, char *const envv[], Scheduling::Priority priority = Scheduling::Priority::NORMAL);

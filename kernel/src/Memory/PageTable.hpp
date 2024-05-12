@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,6 +33,8 @@ public:
     void UnmapPage(void* virtual_addr, bool flush = true);
 
     void* GetPhysicalAddress(void* virtual_addr) const;
+
+    void Flush(void* addr, uint64_t length, bool wait = false);
 
     void* GetRootTable() const;
     void* GetRootTablePhysical() const;

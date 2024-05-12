@@ -6,10 +6,14 @@ dist/
 depend/
 .idea/
 toolchain/
+toolchain-old/
 root/data/lib/
 root/data/include/
 ovmf/
+build/
+.cache/
 
 # Files
 kernel/src/limine.h
 root/kernel.map
+compile_commands.json

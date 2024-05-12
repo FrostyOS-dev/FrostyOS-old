@@ -1,5 +1,9 @@
 # WorldOS
 
+## NOTE
+
+This is unstable code and does not boot successfully.
+
 ## COPYING
 
 Copyright (©) 2022-2024  Frosty515
@@ -17,18 +21,28 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Latest Changes - 20/01/2024
+## Latest Changes - 12/05/2024
 
-- kmalloc improvements.
-- Userland thread exit improvements to prevent scheduling issues.
-- Fixed `open` syscall and kernel lib function `internal_open` when creating a file.
-- Added a separate *head* system for TempFSInodes. This means that an Inode's stream state can be different for each file stream that might have it open.
-- Updated VFS to create the name for an Inode instead of just using the name provided to it as the name for the inode. This was a massive security flaw.
-- Moved `util.c` and `util.h` into kernel lib.
-- Implemented proper file system destruction.
-- Implemented multiple mount point support. This required a complete rewrite of the path resolution and file/folder/symlink creation code. Symlinks can still only point to something in the same mount point.
-- Implemented `mount` and `unmount` syscalls.
-- Various other minor code clean-up across the VFS.
+- Implemented LAPIC support (including multicore start-up support)
+- Implemented I/O APIC support. This changed the whole IRQ system.
+- Implemented HPET support. This is now the main kernel timer.
+- Updated the scheduler to utilise multiple cores.
+- Switched scheduler over to using the HPET for timing.
+- Scheduler now used intrusive thread lists to prevent heap allocation on task switching.
+- Implemented idle threads. These threads always run in kernel mode and are used to keep the CPU busy when no other threads are running.
+- Converted all of the VFS to use errno values instead of error enums.
+- Implemented spinlocks in the VFS, PMM, VMM, PM, scheduler, and TTYs.
+- Implemented `invlpg` instruction in the VMM. This is used where possible instead of reloading the whole page table.
+- Changed system call names in the kernel to not use the $ sign in there names.
+- Add pragmas for GCC and Clang to silence certain warnings which are valid.
+- Implemented IPI support. This is used to send inter-processor interrupts to other cores.
+- On panic, a stop IPI is sent to all other cores to stop them from running.
+- Implemented TLB shootdowns. This is used to invalidate the TLB on all cores when a page table is changed.
+- Added IPI for the scheduler to send to other cores to tell them to reschedule.
+- Implemented semaphores and mutexes in the kernel. This required thread blocking in the scheduler. There are also some new system calls for these.
+- Various other bug fixes and improvements to the kernel.
+- Updated the README to mention multicore support.
+- Updated QEMU run command to run with 2 cores by default.
 
 ## Resources used
 
@@ -37,7 +51,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - [nanobyte_os](https://github.com/nanobyte-dev/nanobyte_os) - inspired the file layout, panic system, interrupt system and printf
 - [TetrisOS by jdh](https://www.youtube.com/watch?v=FaILnmUYS_U) - inspired me to start this project. IDT code was helpful. `rand` function from this project
 - [Limine bootloader](https://github.com/limine-bootloader/limine) - bootloader being used
-- [SerenityOS](https://github.com/SerenityOS/serenity) - inspired system call entry, file descriptor management and directory layout
+- [SerenityOS](https://github.com/SerenityOS/serenity) - inspired system call entry, file descriptor management, directory layout and build system.
 
 ## Prerequisites
 
@@ -50,46 +64,42 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #### OS build/run
 
 - mtools
-- qemu version 4 or higher
+- recent QEMU
 - curl
-- make
+- make (only for using legacy build system)
 - git
 - nasm
-- ovmf
-- GNU tar
+- ovmf (assumed to be installed to /usr/share/edk2/x64)
+- POSIX-compatible tar
+- CMake
+- Ninja
 
 #### Toolchain build
 
-- gcc/g++ version 9 or higher
+- recent gcc/g++
 - make
 - bison
 - flex
 - gmp
 - libmpc
 - mpfr
-- binutils version 2 or higher (only for binutils builds)
+- recent binutils
 - libtool
-- patch
 - git
 
 #### mkgpt build
 
-- gcc/g++ version 9 or higher
-- m4
-- autoconf
-- automake 1.15 or newer
-- binutils version 2 or higher
+- recent gcc/g++
+- recent binutils
+- make
 
 See notes if your system cannot meet these requirements
 
 ### System Requirements
 
-- At least 256MiB able to be allocated to QEMU.
+- The default is for 256MiB to be allocated to QEMU, but all this isn't really needed.
 - Host that is capable of running x86_64 virtual machines in QEMU.
-- Host must be capable of allocating 1 core to a x86_64 QEMU virtual machine.
-- Host must have KVM support
-
-If you cannot meet these requirements, see notes
+- Default is to use KVM acceleration, but it can be disabled.
 
 ### **Windows**
 
@@ -115,29 +125,33 @@ If you cannot meet these requirements, see notes
 
 #### Debian
 
-- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git m4 automake autoconf bash nasm libtool patch ovmf`
+- run `sudo apt update && sudo apt install build-essential bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo mtools curl qemu git bash nasm libtool patch ovmf cmake ninja-build`
 
 #### Fedora/RHEL
 
-- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu git m4 automake autoconf binutils bash nasm libtool patch edk2-ovmf`
+- run `sudo dnf install gcc gcc-c++ make bison flex gmp-devel libmpc-devel mpfr-devel texinfo mtools curl qemu gitbinutils bash nasm libtool patch edk2-ovmf cmake ninja-build`
 
 #### Arch
 
-- run `sudo pacman -Syu base-devel gmp libmpc mpfr mtools curl qemu git bash nasm`
+- run `sudo pacman -Syu base-devel gmp libmpc mpfr mtools curl qemu git bash nasm cmake ninja`
 
 #### Gentoo
 
-- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/m4 sys-devel/automake sys-devel/autoconf sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch sys-firmware/edk2-ovmf`
+- run `sudo emerge --ask --verbose sys-devel/gcc sys-devel/make sys-devel/bison sys-devel/flex dev-libs/gmp dev-libs/mpc dev-libs/mpfr sys-apps/texinfo sys-fs/mtools net-misc/curl app-emulation/qemu dev-vcs/git sys-devel/binutils apps-shells/bash dev-lang/nasm sys-devel/libtool sys-devel/patch sys-firmware/edk2-ovmf dev-build/cmake dev-build/ninja`
 
 ---
 
 ## Building
 
-1. run `make -j<jobs>` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<jobs>` should be the amount of parallel threads to run. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed
+1. run `cd utils && mkdir build && cd build && cmake -GNinja .. && ninja && ninja install && cd .. && rm -fr build && cd ..` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). This will automatically build with the number of jobs that `nproc` reports are possible. This will build and install the host system utilities to `utils/bin`. **This only needs to be run for the first build.**
+2. run `build-scripts/enter-environment.sh`. This will drop you into a new shell with your `$PATH` updated to include the toolchain. **This only needs to be run once per terminal session.**
+3. run `WORLDOS_BUILD_CONFIG=<config> build-scripts/build.sh` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<config>` should be either `Debug` or `Release`. This will automatically build with the number of jobs that `nproc` reports are possible. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
 
 ## Build and Run - Unix like, Windows 11 and Windows 10 method 2
 
-1. run `make -j<jobs> config=<config>` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<jobs>` should be the amount of parallel threads to run. `<config>` should be either `debug` or `release`. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
+1. run `cd utils && mkdir build && cd build && cmake -GNinja .. && ninja && ninja install && cd .. && rm -fr build && cd ..` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). This will automatically build with the number of jobs that `nproc` reports are possible. This will build and install the host system utilities to `utils/bin`. **This only needs to be run for the first build.**
+2. run `build-scripts/enter-environment.sh`. This will drop you into a new shell with your `$PATH` updated to include the toolchain. **This only needs to be run once per terminal session.**
+3. run `WORLDOS_BUILD_CONFIG=<config> build-scripts/run.sh` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<config>` should be either `Debug` or `Release`. This will automatically build with the number of jobs that `nproc` reports are possible. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
 
 ## Running - Other
 
@@ -145,11 +159,11 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### Debug
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64`
+1. run `qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64 -smp 2`
 
 ### Release
 
-1. run `qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64`
+1. run `qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64 -smp 2`
 
 ---
 
@@ -157,18 +171,18 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### System Requirement info
 
-- You might be able to run WorldOS with less RAM (by changing the '256M' to the amount of RAM you want), but I cannot guarantee that it would run on any less than 256MiB.
-- You computer **must** be capable of virtualization to run WorldOS in a VM.
-- You can allocate more than 1 core, but only 1 will be used.
+- You should be able to run WorldOS with less RAM (by changing the '256M' to the amount of RAM you want), but I have not test it with less.
+- There is no point trying to allocate more than 1 core, as only the first core is used.
 - KVM can be disabled, you will just need to remove `-machine accel=kvm` from the QEMU command line. It doesn't make much of a performance boost by using it, so it doesn't *have* to be enabled.
 
 ### Program Requirement info
 
-- You can use alternatives to `curl` (such as `wget`), but you will have to modify the `Makefile`.
+- You can use alternatives to `curl` (such as `wget`), but you will have to modify the `build-scripts/utils.cmake`.
 
 ### Building and Running
 
 - Make sure to follow the setup steps before building and running.
+- By default the OS runs with 2 cores. This can be changed by modifying the `qemu-system-x86_64` command line.
 
 ### Other platforms
 

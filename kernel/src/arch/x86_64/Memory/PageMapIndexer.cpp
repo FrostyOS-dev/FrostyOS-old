@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -16,17 +16,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "PageMapIndexer.hpp"
+#include "PagingUtil.hpp"
+
+#include "../interrupts/APIC/IPI.hpp"
+
+#include <Scheduling/Scheduler.hpp>
 
 Level4Group __attribute__((aligned(0x1000))) K_PML4_Array;
-Level3Group __attribute__((aligned(0x1000))) PML3_LowestArray;
-Level2Group __attribute__((aligned(0x1000))) PML2_LowestArray;
-Level1Group __attribute__((aligned(0x1000))) PML1_LowestArray;
-Level3Group __attribute__((aligned(0x1000))) PML3_KernelGroup; // only highest 2 entries are used
-Level2Group __attribute__((aligned(0x1000))) PML2_KernelLower;
-Level1Group __attribute__((aligned(0x1000))) PML1_KernelLowest;
-//Level3Group __attribute__((aligned(0x1000))) PML3_HHDMLowest;
-//Level2Group __attribute__((aligned(0x1000))) PML2_HHDMLowest;
-
+void* g_KPML4_physical;
 
 void* g_kernel_physical = nullptr;
 void* g_kernel_virtual  = nullptr;
@@ -39,7 +36,7 @@ void* g_HHDM_start = nullptr;
 
 #include <Memory/PhysicalPageFrameAllocator.hpp>
 
-void* x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr) {
+void* __attribute__((no_sanitize("undefined"))) x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr) {
 
     // check if there is a simpler way
     if ((uint64_t)virtualaddr >= (uint64_t)g_kernel_virtual && ((uint64_t)g_kernel_virtual + g_kernel_length) > (uint64_t)virtualaddr) {
@@ -49,15 +46,11 @@ void* x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr) {
         return (void*)((uint64_t)virtualaddr - (uint64_t)g_HHDM_start);
 
     uint64_t virtualAddress = (uint64_t)virtualaddr;
-    uint16_t offset = virtualAddress & 0xFFF;
-    virtualAddress >>= 12;
-    uint16_t PT_i = virtualAddress & 0x1ff;
-    virtualAddress >>= 9;
-    uint16_t PD_i = virtualAddress & 0x1ff;
-    virtualAddress >>= 9;
-    uint16_t PDP_i = virtualAddress & 0x1ff;
-    virtualAddress >>= 9;
-    uint16_t PML4_i = virtualAddress & 0x1ff;
+    const uint16_t offset = (uint16_t)((virtualAddress & 0x000000000FFF) >>  0);
+    const uint16_t PT_i   = (uint16_t)((virtualAddress & 0x0000001FF000) >> 12);
+    const uint16_t PD_i   = (uint16_t)((virtualAddress & 0x00003FE00000) >> 21);
+    const uint16_t PDP_i  = (uint16_t)((virtualAddress & 0x007FC0000000) >> 30);
+    const uint16_t PML4_i = (uint16_t)((virtualAddress & 0xFF8000000000) >> 39);
 
     PageMapLevel4Entry PML4 = PML4Array->entries[PML4_i];
     if (PML4.Present == 0)
@@ -72,19 +65,18 @@ void* x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr) {
         return nullptr;
 
     if (PML2.PageSize == 1) {
-        return (void*)(((uint64_t)(PML2.Address) << 12) | PT_i | offset);
+        PageMapLevel2Entry_LargePages PML2_Large = *(PageMapLevel2Entry_LargePages*)(&PML2);
+        return (void*)(((uint64_t)(PML2_Large.Address) << 21) | (PT_i << 12) | offset);
     }
 
     PageMapLevel1Entry PML1 = (((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)PML2.Address << 12)))[PT_i]);
     if (PML1.Present == 0)
         return nullptr;
-
-    void* Page_addr = (void*)((uint64_t)PML1.Address << 12);
     
-    return (void*)((uint64_t)Page_addr | offset);
+    return (void*)(((uint64_t)PML1.Address << 12) | offset);
 }
 
-void* x86_64_to_HHDM(void* physaddr) {
+void* __attribute__((no_sanitize("undefined"))) x86_64_to_HHDM(void* physaddr) {
     if (((uint64_t)physaddr < 0x1000))
         return nullptr;
     else if ((uint64_t)physaddr > (GiB(512) - 1))
@@ -92,64 +84,61 @@ void* x86_64_to_HHDM(void* physaddr) {
     return (void*)((uint64_t)physaddr + (uint64_t)g_HHDM_start);
 }
 
-void x86_64_map_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_map_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
     uint64_t physical_addr = (uint64_t)physaddr & ~0xFFF;
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
 
-    const uint16_t pt    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
-    const uint16_t pd    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
-    const uint16_t pdptr = (uint16_t)((virtual_addr & 0x007FC0000000) >> 30);
-    const uint16_t pml4  = (uint16_t)((virtual_addr & 0xFF8000000000) >> 39);
+    const uint16_t PT_i    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
+    const uint16_t PD_i    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
+    const uint16_t PDP_i   = (uint16_t)((virtual_addr & 0x007FC0000000) >> 30);
+    const uint16_t PML4_i  = (uint16_t)((virtual_addr & 0xFF8000000000) >> 39);
 
-    PageMapLevel4Entry PML4 = PML4Array->entries[pml4];
+    PageMapLevel4Entry PML4 = PML4Array->entries[PML4_i];
     if (PML4.Present == 0) {
         uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML4 = *(PageMapLevel4Entry*)(&temp);
         PML4.Present = 1;
         PML4.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML4.Address << 12), x86_64_to_HHDM((void*)(PML4.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 512);
-        PML4Array->entries[pml4] = PML4;
+        memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 4096);
+        PML4Array->entries[PML4_i] = PML4;
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML4);
         temp |= flags & 0xFFF;
         temp |= (uint64_t)(flags & 0x7FF0000) << 36;
-        PML4Array->entries[pml4] = *(PageMapLevel4Entry*)&temp;
+        PML4Array->entries[PML4_i] = *(PageMapLevel4Entry*)&temp;
     }
 
-    PageMapLevel3Entry PML3 = ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr];
+    PageMapLevel3Entry PML3 = ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[PDP_i];
     if (PML3.Present == 0) {
         uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML3 = *(PageMapLevel3Entry*)(&temp);
         PML3.Present = 1;
         PML3.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML3.Address << 12), x86_64_to_HHDM((void*)(PML3.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 512);
-        ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = PML3;
+        memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 4096);
+        ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[PDP_i] = PML3;
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML3);
         temp |= flags & 0xFFF;
         temp |= (uint64_t)(flags & 0x7FF0000) << 36;
-        ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = *(PageMapLevel3Entry*)&temp;
+        ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[PDP_i] = *(PageMapLevel3Entry*)&temp;
     }
 
-    PageMapLevel2Entry PML2 = ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd];
+    PageMapLevel2Entry PML2 = ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[PD_i];
     if (PML2.Present == 0) {
         uint64_t temp = ((uint64_t)((flags & 0x0FFF) | ((uint64_t)(flags & 0x07FF0000) << 36)));
         PML2 = *(PageMapLevel2Entry*)(&temp);
         PML2.Present = 1;
         PML2.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML2.Address << 12), x86_64_to_HHDM((void*)(PML2.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML2.Address << 12)), 0, 512);
-        ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = PML2;
+        memset(x86_64_to_HHDM((void*)(PML2.Address << 12)), 0, 4096);
+        ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[PD_i] = PML2;
     }
     else {
         uint64_t temp = *(uint64_t*)(&PML2);
         temp |= flags & 0xFFF;
         temp |= (uint64_t)(flags & 0x7FF0000) << 36;
-       ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = *(PageMapLevel2Entry*)&temp;
+       ((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[PD_i] = *(PageMapLevel2Entry*)&temp;
     }
     if (PML2.PageSize)
         return; // Using 2MiB pages, stop
@@ -158,21 +147,21 @@ void x86_64_map_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtu
     PageMapLevel1Entry PML1 = *(PageMapLevel1Entry*)(&temp);
     PML1.Address = (physical_addr >> 12);
 
-    ((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2.Address) << 12)))[pt] = PML1;
+    ((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2.Address) << 12)))[PT_i] = PML1;
 }
 
 
-void x86_64_map_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_map_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
     x86_64_map_page_noflush(PML4Array, physaddr, virtualaddr, flags);
     x86_64_FlushTLB();
 }
 
-void x86_64_unmap_page(Level4Group* PML4Array, void* virtualaddr) {
+void __attribute__((no_sanitize("undefined"))) x86_64_unmap_page(Level4Group* PML4Array, void* virtualaddr) {
     x86_64_unmap_page_noflush(PML4Array, virtualaddr);
     x86_64_FlushTLB();
 }
 
-void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
+void __attribute__((no_sanitize("undefined"))) x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
 
     const uint16_t pt    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
@@ -192,7 +181,7 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
     if (PML2->Present == 0 || PML2->PageSize)
         return; // page isn't mapped or is a 2MiB page
 
-    fast_memset(&(((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2->Address) << 12)))[pt]), 0, (sizeof(PageMapLevel1Entry) >> 3));
+    memset(&(((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML2->Address) << 12)))[pt]), 0, sizeof(PageMapLevel1Entry));
 
     Level1Group* group = (Level1Group*)x86_64_to_HHDM((void*)((uint64_t)(PML2->Address) << 12));
     bool used = false;
@@ -203,7 +192,6 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group);
         g_PPFA->FreePage(group);
         PML2->Present = 0;
     }
@@ -216,7 +204,6 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group2);
         g_PPFA->FreePage(group2);
         PML3->Present = 0;
     }
@@ -229,20 +216,19 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group3);
         g_PPFA->FreePage(group3);
         PML4->Present = 0;
     }
 }
 
 // Update flags of page mapping
-void x86_64_remap_page(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_remap_page(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
     x86_64_remap_page_noflush(PML4Array, virtualaddr, flags);
     x86_64_FlushTLB();
 }
 
 // Update flags of page mapping with no TLB flush
-void x86_64_remap_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_remap_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0xFFF;
 
     const uint16_t pt    = (uint16_t)((virtual_addr & 0x0000001FF000) >> 12);
@@ -289,7 +275,7 @@ void x86_64_remap_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32
 }
 
 // Identity map memory. If length and/or start_phys aren't page aligned, the values used are rounded down to the nearest page boundary.
-void x86_64_identity_map(Level4Group* PML4Array, void* start_phys, uint64_t length, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_identity_map(Level4Group* PML4Array, void* start_phys, uint64_t length, uint32_t flags) {
 
     // ensure everything is page aligned
     length -= length % 4096;
@@ -305,7 +291,7 @@ void x86_64_identity_map(Level4Group* PML4Array, void* start_phys, uint64_t leng
     }
 }
 
-void x86_64_map_large_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_map_large_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
     uint64_t physical_addr = (uint64_t)physaddr & ~0x1FFFFF;
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0x1FFFFF;
 
@@ -319,8 +305,7 @@ void x86_64_map_large_page_noflush(Level4Group* PML4Array, void* physaddr, void*
         PML4 = *(PageMapLevel4Entry*)(&temp);
         PML4.Present = 1;
         PML4.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML4.Address << 12), x86_64_to_HHDM((void*)(PML4.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 512);
+        memset(x86_64_to_HHDM((void*)(PML4.Address << 12)), 0, 4096);
         PML4Array->entries[pml4] = PML4;
     }
     else {
@@ -336,8 +321,7 @@ void x86_64_map_large_page_noflush(Level4Group* PML4Array, void* physaddr, void*
         PML3 = *(PageMapLevel3Entry*)(&temp);
         PML3.Present = 1;
         PML3.Address = (uint64_t)g_PPFA->AllocatePage() >> 12;
-        x86_64_map_page_noflush(PML4Array, (void*)(PML3.Address << 12), x86_64_to_HHDM((void*)(PML3.Address << 12)), 0x8000003); // Present, Read/Write, No execute
-        fast_memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 512);
+        memset(x86_64_to_HHDM((void*)(PML3.Address << 12)), 0, 4096);
         ((PageMapLevel3Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML4.Address) << 12)))[pdptr] = PML3;
     }
     else {
@@ -355,12 +339,12 @@ void x86_64_map_large_page_noflush(Level4Group* PML4Array, void* physaddr, void*
     ((PageMapLevel2Entry_LargePages*)x86_64_to_HHDM((void*)((uint64_t)(PML3.Address) << 12)))[pd] = PML2;
 }
 
-void x86_64_map_large_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_map_large_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
     x86_64_map_large_page_noflush(PML4Array, physaddr, virtualaddr, flags);
     x86_64_FlushTLB();
 }
 
-void x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
+void __attribute__((no_sanitize("undefined"))) x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0x1FFFFF;
 
     const uint16_t pd    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
@@ -375,7 +359,7 @@ void x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) 
     if (PML3->Present == 0)
         return; // page isn't mapped
 
-    fast_memset(&(((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3->Address) << 12)))[pd]), 0, (sizeof(PageMapLevel2Entry) >> 3));
+    memset(&(((PageMapLevel2Entry*)x86_64_to_HHDM((void*)((uint64_t)(PML3->Address) << 12)))[pd]), 0, sizeof(PageMapLevel2Entry));
 
     Level2Group* group2 = (Level2Group*)x86_64_to_HHDM((void*)((uint64_t)(PML3->Address) << 12));
     bool used = false;
@@ -386,7 +370,6 @@ void x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) 
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group2);
         g_PPFA->FreePage(group2);
         PML3->Present = 0;
     }
@@ -399,25 +382,24 @@ void x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) 
         }
     }
     if (!used) {
-        x86_64_unmap_page_noflush(PML4Array, group3);
         g_PPFA->FreePage(group3);
         PML3->Present = 0;
     }
 }
 
-void x86_64_unmap_large_page(Level4Group* PML4Array, void* virtualaddr) {
+void __attribute__((no_sanitize("undefined"))) x86_64_unmap_large_page(Level4Group* PML4Array, void* virtualaddr) {
     x86_64_unmap_large_page_noflush(PML4Array, virtualaddr);
     x86_64_FlushTLB();
 }
 
 // Update flags of page mapping
-void x86_64_remap_large_page(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_remap_large_page(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
     x86_64_remap_page_noflush(PML4Array, virtualaddr, flags);
     x86_64_FlushTLB();
 }
 
 // Update flags of page mapping with no TLB flush
-void x86_64_remap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
+void __attribute__((no_sanitize("undefined"))) x86_64_remap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr, uint32_t flags) {
     uint64_t virtual_addr = (uint64_t)virtualaddr & ~0x1FFFFF;
 
     const uint16_t pd    = (uint16_t)((virtual_addr & 0x00003FE00000) >> 21);
@@ -462,4 +444,11 @@ void x86_64_SetHHDMStart(void* virtualaddr) {
 
 void* x86_64_GetHHDMStart() {
     return g_HHDM_start;
+}
+
+void x86_64_TLBShootdown(void *address, uint64_t length, bool wait) {
+    if (!Scheduling::Scheduler::GlobalIsRunning())
+        return x86_64_InvalidatePages((uint64_t)address, length);
+    x86_64_IPI_TLBShootdown shootdown = {(uint64_t)address, length};
+    x86_64_IssueIPI(x86_64_IPI_DestinationShorthand::AllIncludingSelf, 0, x86_64_IPI_Type::TLBShootdown, (uint64_t)&shootdown, wait);
 }

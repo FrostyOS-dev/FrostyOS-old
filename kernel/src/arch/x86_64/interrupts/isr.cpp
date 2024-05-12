@@ -140,7 +140,7 @@ extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
     memcpy(tempReason, g_Exceptions[regs->interrupt], strLength);
 
     in_interrupt = true;
-    Panic(tempReason, regs, true);
+    x86_64_Panic(tempReason, regs, true);
 
 
     while (true); // just hang

@@ -18,24 +18,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _KERNEL_HAL_HPP
 #define _KERNEL_HAL_HPP
 
+#ifdef __x86_64__
 #include <arch/x86_64/panic.hpp>
-
 #include <arch/x86_64/Scheduling/task.h>
+#include <arch/x86_64/Processor.hpp>
+
+typedef x86_64_Registers CPU_Registers;
+#endif
 
 #include <stdint.h>
 #include <Memory/Memory.hpp>
 
 #include <Graphics/Graphics.h>
 
-typedef x86_64_Registers CPU_Registers;
 
 // Get the essentials running. This is (in order): GDT, IDT, ISR, IRQ, PIT Timer, RTC clock, PMM, Kernel Paging maps, KVPM.
 void HAL_EarlyInit(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb);
 
-// Initialise basic less-essential drivers. This is (in order): RSDP, XSDT. MUST BE CALLED AFTER KPM AND HEAP ARE READY.
+// Initialise essential features that need to be enabled after the heap. This is (in order): RSDP, XSDT, SMP. MUST BE CALLED AFTER KPM AND HEAP ARE READY.
 void HAL_Stage2(void* RSDP);
 
-// reason = message to display, regs = registers at the time of error, type = the type of error (true for interrupt and false for other)
-inline void __attribute__((noreturn)) Panic(const char* reason, x86_64_Interrupt_Registers* regs, const bool type = false) { x86_64_Panic(reason, regs, type); }
+// Initials less-essential features. This is (in order): PCI/PCIe
+void HAL_FullInit();
+
+extern Processor g_BSP;
 
 #endif /* _KERNEL_HAL_HPP */

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _KERNEL_X86_64_PAGE_MAP_INDEXER_HPP
 
 #include "PageTables.hpp"
-#include "PagingUtil.hpp"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -78,12 +77,11 @@ void x86_64_SetHHDMStart(void* virtualaddr);
 // Get the HHDM start address
 void* x86_64_GetHHDMStart();
 
+// Issue a TLB shootdown
+void x86_64_TLBShootdown(void* address, uint64_t length, bool wait);
+
 extern Level4Group K_PML4_Array;
-extern Level3Group PML3_LowestArray;
-extern Level2Group PML2_LowestArray;
-extern Level1Group PML1_LowestArray;
-extern Level3Group PML3_KernelGroup; // only highest 2 entries are used
-extern Level2Group PML2_KernelLower;
-extern Level1Group PML1_KernelLowest;
+
+extern void* g_KPML4_physical;
 
 #endif /* _KERNEL_X86_64_PAGE_MAP_INDEXER_HPP */

@@ -39,11 +39,11 @@ uint64_t g_ticks = 0;
 #define BASE_FREQUENCY 1193182
 
 void x86_64_PIT_Handler(x86_64_Interrupt_Registers* iregs) {
-    g_ticks += 10;
-    if (!Scheduling::Scheduler::isRunning())
+    g_ticks += 5;
+    /*if (!Scheduling::Scheduler::isRunning())
         return;
     x86_64_SaveIRegistersToThread(Scheduling::Scheduler::GetCurrent(), iregs);
-    Scheduling::Scheduler::TimerTick(iregs);
+    Scheduling::Scheduler::TimerTick(iregs);*/
 }
 
 void x86_64_PIT_Init() {
@@ -52,7 +52,6 @@ void x86_64_PIT_Init() {
     x86_64_outb(DATA_0, g_Divisor & 0xFF);
     x86_64_outb(DATA_0, (g_Divisor >> 8) & 0xFF);
 
-    x86_64_PIC_Unmask(0);
     x86_64_IRQ_RegisterHandler(0, (x86_64_IRQHandler_t)x86_64_PIT_Handler);
 
     g_Divisor = 0;

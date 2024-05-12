@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@ int strncmp(const char* str1, const char* str2, size_t n);
 char* strchr(const char* str, int character);
 
 char* strrchr(const char* str, int character);
+
+char* strerror(int errnum);
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,33 +19,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _DIRECTORY_STREAM_HPP
 
 #include <stdint.h>
+#include <spinlock.h>
 
 #include "Inode.hpp"
 #include "FilePrivilegeLevel.hpp"
 #include "FileSystem.hpp"
-
-enum class DirectoryStreamError {
-    SUCCESS = 0,
-    INVALID_ARGUMENTS = 1,
-    STREAM_CLOSED = 2,
-    INVALID_INODE = 3,
-    NO_PERMISSION = 4,
-    INTERNAL_ERROR = 5
-};
 
 class DirectoryStream {
 public:
     DirectoryStream(Inode* inode, FilePrivilegeLevel privilege, FileSystemType fs_type, FileSystem* fs = nullptr); // fs must be parsed when inode is nullptr
     ~DirectoryStream();
 
-    bool Open();
-    bool Close();
+    int Open();
+    int Close();
 
-    bool Seek(uint64_t index);
+    int Seek(int64_t index);
 
-    uint64_t GetOffset() const;
+    int64_t GetOffset() const;
 
-    Inode* GetNextInode();
+    Inode* GetNextInode(int* status = nullptr); // status will be set if not nullptr.
 
     bool IsOpen() const;
 
@@ -55,21 +47,15 @@ public:
 
     FileSystemType GetFileSystemType() const;
 
-    DirectoryStreamError GetLastError() const;
-
-private:
-
-    void SetLastError(DirectoryStreamError error);
-
 private:
     Inode* m_inode;
     FilePrivilegeLevel m_privilege;
     FileSystemType m_fs_type;
     FileSystem* m_fs;
-    uint64_t m_index;
+    int64_t m_index;
     bool m_isOpen;
 
-    DirectoryStreamError m_last_error;
+    mutable spinlock_t m_lock;
 };
 
 #endif /* _DIRECTORY_STREAM_HPP */

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define PS2_KEYBOARD_RESPONSE_RESET 0xAA
 
 
-PS2Keyboard::PS2Keyboard(PS2Controller* controller, bool channel, char const* name) : m_Controller(controller), m_Channel(channel), m_Name(name), m_scancode({0}), m_scancode_offset(0), m_light_states(0) {
+PS2Keyboard::PS2Keyboard(PS2Controller* controller, bool channel, char const* name) : m_Controller(controller), m_Channel(channel), m_Name(name), m_scancode{0}, m_scancode_offset(0), m_light_states(0) {
     p_eventHandler = {nullptr, nullptr};
     p_eventStack = Stack<KeyboardEvent>(4096);
 }
@@ -98,9 +98,14 @@ void PS2Keyboard::HandleInterrupt() {
     }
 }
 
+void HandleKeyboardInterrupt(void* data) {
+    PS2Keyboard* keyboard = (PS2Keyboard*)data;
+    keyboard->HandleInterrupt();
+}
+
 void PS2Keyboard::Initialise() {
 #ifdef __x86_64__
-    x86_64_8042_RegisterIRQHandler((x86_64_8042_IRQHandler_t)&PS2Keyboard::HandleInterrupt, this, m_Channel);
+    x86_64_8042_RegisterIRQHandler(HandleKeyboardInterrupt, this, m_Channel);
 #endif
     m_Controller->EnableInterrupts(m_Channel);
 }

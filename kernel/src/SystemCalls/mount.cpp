@@ -23,44 +23,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Scheduling/Process.hpp>
 
 int Mount(const char* source, const char* target, FileSystemType type, FilePrivilegeLevel current_privilege) {
-    if (!g_VFS->Mount(current_privilege, target, type)) {
-        switch (g_VFS->GetLastError()) {
-        case FileSystemError::NO_PERMISSION:
-            return -EPERM;
-        case FileSystemError::INVALID_ARGUMENTS:
-            return -ENOENT;
-        case FileSystemError::INVALID_INODE_TYPE:
-            return -ENOTDIR;
-        case FileSystemError::DIRECTORY_NOT_EMPTY:
-            return -ENOTEMPTY;
-        case FileSystemError::INVALID_FS:
-            return -ENOSYS;
-        default:
-            assert(false); // this should never happen
-        }
-    }
-    return ESUCCESS;
+    (void)source;
+    if (!g_VFS->IsValidPath(target))
+        return -ENOENT;
+    return g_VFS->Mount(current_privilege, target, type);
 }
 
 int Unmount(const char* target, FilePrivilegeLevel current_privilege) {
     if (!g_VFS->IsValidPath(target))
         return -ENOENT;
-    if (!g_VFS->Unmount(current_privilege, target)) {
-        switch (g_VFS->GetLastError()) {
-        case FileSystemError::NO_PERMISSION:
-            return -EPERM;
-        case FileSystemError::INVALID_ARGUMENTS:
-            return -EINVAL;
-        case FileSystemError::FS_BUSY:
-            return -EBUSY;
-        default:
-            assert(false); // this should never happen
-        }
-    }
-    return ESUCCESS;
+    return g_VFS->Unmount(current_privilege, target);
 }
 
-int sys$mount(Scheduling::Thread* thread, const char* target, const char* type, const char* device) {
+int sys_mount(Scheduling::Thread* thread, const char* target, const char* type, const char* device) {
     Scheduling::Process* process = thread->GetParent();
     if (process == nullptr || !process->ValidateStringRead(target) || !process->ValidateStringRead(type) || !process->ValidateStringRead(device))
         return -EFAULT;
@@ -75,7 +50,7 @@ int sys$mount(Scheduling::Thread* thread, const char* target, const char* type, 
     return Mount(device, target, fsType, {process->GetEUID(), process->GetEGID(), 0});
 }
 
-int sys$unmount(Scheduling::Thread* thread, const char* target) {
+int sys_unmount(Scheduling::Thread* thread, const char* target) {
     Scheduling::Process* process = thread->GetParent();
     if (process == nullptr || !process->ValidateStringRead(target))
         return -EFAULT;

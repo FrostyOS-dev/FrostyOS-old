@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,11 +15,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP
-#define _KERNEL_PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP
+#ifndef _PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP
+#define _PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP
 
 #include <stddef.h>
 #include <stdint.h>
+#include <spinlock.h>
+
 #include <Data-structures/Bitmap.hpp>
 
 #include <Memory/Memory.hpp>
@@ -65,9 +67,14 @@ private:
     size_t m_UsedMem;
     size_t m_MemSize;
     uint64_t m_nextFree;
+
+    bool m_fullyInitialised;
+
+    spinlock_t m_BitmapLock;
+    spinlock_t m_globalLock;
 };
 
 extern PhysicalPageFrameAllocator* g_PPFA;
 extern uint8_t g_EarlyBitmap[128 * 1024];
 
-#endif /* _KERNEL_PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP */
+#endif /* _PHYSICAL_PAGE_FRAME_ALLOCATOR_HPP */

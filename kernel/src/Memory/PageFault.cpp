@@ -38,27 +38,12 @@ void __attribute__((noreturn)) PageFaultHandler(PageFaultErrorCode error_code, v
     
     Scheduling::Scheduler::Stop();
 
-    dbgprintf("Page fault in %s-mode at %lp while trying to %s a %s page at address %lp\n", error_code.user ? "user" : "kernel", current_address, error_code.writable ? "write" : (error_code.instruction_fetch ? "execute" : (error_code.reserved_write ? "write reserved metadata" : "read")), error_code.readable ? "present" : "non-present", faulting_address);
-    
+    char buffer[256]; // should never need a buffer this big, but just in case...
+    snprintf(buffer, 256, "Page fault in %s-mode at %lp while trying to %s a %s page at address %lp", error_code.user ? "user" : "kernel", current_address, error_code.writable ? "write" : (error_code.instruction_fetch ? "execute" : (error_code.reserved_write ? "write reserved metadata" : "read")), error_code.readable ? "present" : "non-present", faulting_address);
+
 #ifdef __x86_64__
-    dbgprintf("Stack trace:\n");
-    char const* name = nullptr;
-    if (g_KernelSymbols != nullptr)
-        name = g_KernelSymbols->LookupSymbol(regs->RIP);
-    dbgprintf("%016lx", regs->RIP);
-    if (name != nullptr)
-        dbgprintf(": %s\n", name);
-    else
-        dbgputc('\n');
-
-    x86_64_walk_stack_frames((void*)(regs->RBP));
+    x86_64_Panic(buffer, regs, false);
 #endif
-
-    dbgputs("\nThreads:\n");
-
-    Scheduling::Scheduler::PrintThreads(stddebug);
-
-    printf("Page fault in %s-mode at %lp while trying to %s a %s page at address %lp\n", error_code.user ? "user" : "kernel", current_address, error_code.writable ? "write" : (error_code.instruction_fetch ? "execute" : (error_code.reserved_write ? "write reserved metadata" : "read")), error_code.readable ? "present" : "non-present", faulting_address);
 
     while (true) {
 

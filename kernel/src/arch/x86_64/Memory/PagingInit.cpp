@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "PagingInit.hpp"
 #include "PageMapIndexer.hpp"
+#include "PagingUtil.hpp"
 
 #include <Memory/PhysicalPageFrameAllocator.hpp>
 #include <Memory/VirtualPageManager.hpp>
@@ -24,8 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <HAL/hal.hpp>
 
 #include "../ELFKernel.hpp"
-#include "../Stack.hpp"
-#include "../io.h"
 
 #include <stdio.h>
 
@@ -53,43 +52,13 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
 
     x86_64_SetKernelAddress((void*)kernel_virtual, (void*)kernel_physical, kernel_size);
     x86_64_SetHHDMStart((void*)HHDM_start);
-
-    fast_memset(&K_PML4_Array, 0, sizeof(Level3Group) / 8);
-    fast_memset(&PML3_LowestArray, 0, sizeof(Level2Group) / 8);
-    fast_memset(&PML2_LowestArray, 0, sizeof(Level2Group) / 8);
-    fast_memset(&PML1_LowestArray, 0, sizeof(Level1Group) / 8);
-    fast_memset(&PML3_KernelGroup, 0, sizeof(Level2Group) / 8);
-    fast_memset(&PML2_KernelLower, 0, sizeof(Level1Group) / 8);
-    fast_memset(&PML1_KernelLowest, 0, sizeof(Level1Group) / 8);
-
-    K_PML4_Array.entries[511].Present = 1;
-    K_PML4_Array.entries[511].ReadWrite = 1;
-    K_PML4_Array.entries[511].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML3_KernelGroup) >> 12;
-
-    uint16_t HHDM_PML4_offset = (HHDM_start & 0x0000ff8000000000) >> 39;
-    K_PML4_Array.entries[HHDM_PML4_offset].Present = 1;
-    K_PML4_Array.entries[HHDM_PML4_offset].ReadWrite = 1;
-    K_PML4_Array.entries[HHDM_PML4_offset].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML3_LowestArray) >> 12;
-
-    PML3_LowestArray.entries[0].Present = 1;
-    PML3_LowestArray.entries[0].ReadWrite = 1;
-    PML3_LowestArray.entries[0].UserSuper = 1;
-    PML3_LowestArray.entries[0].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML2_LowestArray) >> 12;
-
-    PML3_KernelGroup.entries[510].Present = 1;
-    PML3_KernelGroup.entries[510].ReadWrite = 1;
-    PML3_KernelGroup.entries[510].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML2_KernelLower) >> 12;
-
-    PML2_LowestArray.entries[0].Present = 1;
-    PML2_LowestArray.entries[0].ReadWrite = 1;
-    PML2_LowestArray.entries[0].UserSuper = 1;
-    PML2_LowestArray.entries[0].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML1_LowestArray) >> 12;
-
-    PML2_KernelLower.entries[0].Present = 1;
-    PML2_KernelLower.entries[0].ReadWrite = 1;
-    PML2_KernelLower.entries[0].Address = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &PML1_KernelLowest) >> 12;
     
     volatile uint64_t PML4_phys = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &K_PML4_Array);
+    g_KPML4_physical = (void*)PML4_phys;
+
+    // Perform early initialisation of physical MM
+    PPFA.EarlyInit(MemoryMap[0], MMEntryCount, g_MemorySize);
+    g_PPFA = &PPFA;
 
     /* Create page map */
 
@@ -97,13 +66,8 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
         kernel_size -= kernel_size & 4095;
         kernel_size += 4096;
     }
-    
+
     MapKernel((void*)kernel_physical, (void*)kernel_virtual, kernel_size); // do not flush TLB until after kernel is loaded
-
-    // Perform early initialisation of physical MM
-    PPFA.EarlyInit(MemoryMap[0], MMEntryCount, g_MemorySize);
-    g_PPFA = &PPFA;
-
 
     // Map from end of 1st page until 2MiB
     for (uint64_t i = 0x1000; i < 0x200000; i += 0x1000)
@@ -166,3 +130,22 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     KVPM.InitVPageMgr(MemoryMap, MMEntryCount, (void*)kernel_virtual, kernel_size, (void*)fb_virt, fb_size, KVRegion);
     g_KVPM = &KVPM;
 }
+
+/*Level4Group* x86_64_CreatePageTable(uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, uint64_t HHDM_start) {
+    Level4Group* PML4 = (Level4Group*)x86_64_to_HHDM(PPFA.AllocatePage());
+
+    fast_memset(PML4, 0, sizeof(Level4Group) / 8);
+
+    // Map from end of 1st page until 2MiB
+    for (uint64_t i = 0x1000; i < 0x200000; i += 0x1000)
+        x86_64_map_page_noflush(PML4, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+    
+    
+    // Map from 2MiB to 4GiB with 2MiB pages
+    for (uint64_t i = 0x200000; i < 0x100000000; i += 0x200000)
+        x86_64_map_large_page_noflush(PML4, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+
+    MapKernel((void*)kernel_physical, (void*)kernel_virtual, kernel_size); // FIXME: change PML4 group
+
+
+}*/

@@ -88,11 +88,11 @@ namespace Scheduling {
 
 
 
-    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_region(nullptr, nullptr), m_VPM(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_PID(-1), m_NextTID(0), m_UID(0), m_GID(0), m_EUID(0), m_EGID(0), m_defaultWorkingDirectory(nullptr), m_sigMetadata({false, nullptr, 0, nullptr, nullptr, 0}) {
+    Process::Process() : m_Entry(nullptr), m_entry_data(nullptr), m_flags(USER_DEFAULT), m_Priority(Priority::NORMAL), m_pm(nullptr), m_main_thread_initialised(false), m_main_thread(nullptr), m_region(nullptr, nullptr), m_VPM(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_PID(-1), m_NextTID(0), m_UID(0), m_GID(0), m_EUID(0), m_EGID(0), m_defaultWorkingDirectory(nullptr), m_sigMetadata{{false, nullptr, 0, nullptr, nullptr, 0}} {
 
     }
 
-    Process::Process(ProcessEntry_t entry, void* entry_data, uint32_t UID, uint32_t GID, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_UID(UID), m_GID(GID), m_EUID(UID), m_EGID(GID), m_defaultWorkingDirectory(nullptr), m_sigMetadata({false, nullptr, 0, nullptr, nullptr, 0}) {
+    Process::Process(ProcessEntry_t entry, void* entry_data, uint32_t UID, uint32_t GID, Priority priority, uint8_t flags, PageManager* pm) : m_Entry(entry), m_entry_data(entry_data), m_flags(flags), m_Priority(priority), m_pm(pm), m_main_thread_initialised(false), m_main_thread(nullptr), m_main_thread_creation_requested(false), m_region_allocated(false), m_UID(UID), m_GID(GID), m_EUID(UID), m_EGID(GID), m_defaultWorkingDirectory(nullptr), m_sigMetadata{{false, nullptr, 0, nullptr, nullptr, 0}} {
 
     }
 
@@ -326,7 +326,7 @@ namespace Scheduling {
         return m_defaultWorkingDirectory;
     }
 
-    int Process::sys$onsignal(int signum, const struct signal_action* new_action, struct signal_action* old_action) {
+    int Process::sys_onsignal(int signum, const struct signal_action* new_action, struct signal_action* old_action) {
         if (!IN_BOUNDS(signum, SIG_MIN, SIG_MAX))
             return -EINVAL;
         if (old_action != nullptr) {
@@ -342,11 +342,11 @@ namespace Scheduling {
         return ESUCCESS;
     }
 
-    int Process::sys$sendsig(pid_t pid, int signum) {
+    int Process::sys_sendsig(pid_t pid, int signum) {
         return Scheduler::SendSignal(this, pid, signum);
     }
 
-    void Process::sys$sigreturn(int signum) {
+    void Process::sys_sigreturn(int signum) {
         // We must first restore the registers
         CPU_Registers* regs = m_main_thread->GetCPURegisters();
         memcpy(regs, m_sigMetadata[signum - SIG_MIN].old_regs, sizeof(CPU_Registers));
@@ -381,7 +381,7 @@ namespace Scheduling {
         Scheduler::PickNext();
         Scheduler::Next();
         // we should never reach here
-        PANIC("sys$sigreturn returned");
+        PANIC("sys_sigreturn returned");
     }
 
     void Process::ReceiveSignal(int signum) {
@@ -397,7 +397,7 @@ namespace Scheduling {
             case SIGSEGV:
             case SIGTERM:
             case SIGKILL:
-                sys$exit(m_main_thread, signum + SIG_RET_STATUS_OFFSET); // we don't return from this.
+                sys_exit(m_main_thread, signum + SIG_RET_STATUS_OFFSET); // we don't return from this.
                 break;
             case SIGCHLD:
                 break;

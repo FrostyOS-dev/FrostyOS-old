@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
+
+#include <spinlock.h>
 
 namespace LinkedList {
 
@@ -174,6 +176,57 @@ namespace LinkedList {
 		uint64_t m_count;
 		Node* m_start;
 		bool m_eternal; // for a linked list that will never have nodes deleted
+	};
+
+	template <typename T> class LockableLinkedList { // has a internal SimpleLinkedList and a spinlock. We do not lock automatically, so the user must lock the list before using it.
+	public:
+		LockableLinkedList(bool eternal = false) : m_list(eternal), m_lock() {}
+		~LockableLinkedList() {
+			spinlock_acquire(&m_lock);
+			m_list.~SimpleLinkedList();
+			spinlock_release(&m_lock);
+		}
+
+		void insert(const T* obj) {
+			m_list.insert(obj);
+		}
+		T* get(uint64_t index) const {
+			return m_list.get(index);
+		}
+		uint64_t getIndex(const T* obj) const {
+			return m_list.getIndex(obj);
+		}
+		void remove(uint64_t index) {
+			m_list.remove(index);
+		}
+		void remove(const T* obj) {
+			m_list.remove(obj);
+		}
+		void rotateLeft() {
+			m_list.rotateLeft();
+		}
+		void rotateRight() {
+			m_list.rotateRight();
+		}
+		T* getHead() {
+			return m_list.getHead();
+		}
+		void fprint(const fd_t file) {
+			m_list.fprint(file);
+		}
+		uint64_t getCount() const {
+			return m_list.getCount();
+		}
+
+		void lock() const {
+			spinlock_acquire(&m_lock);
+		}
+		void unlock() const {
+			spinlock_release(&m_lock);
+		}
+	private:
+		SimpleLinkedList<T> m_list;
+		mutable spinlock_t m_lock;
 	};
 
 }

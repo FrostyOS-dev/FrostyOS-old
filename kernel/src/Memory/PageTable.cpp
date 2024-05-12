@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ PageTable g_KPT {false, g_KPM};
 
 #ifdef __x86_64__
 #include <arch/x86_64/Memory/PageMapIndexer.hpp>
+#include <arch/x86_64/Memory/PagingUtil.hpp>
 
 
 PageTable::PageTable(bool mode, PageManager* pm) : m_root_table(nullptr), m_mode(mode), m_pm(pm) {
@@ -42,28 +43,29 @@ PageTable::~PageTable() {
 }
 
 void PageTable::MapPage(void* physical_addr, void* virtual_addr, PagePermissions perms, bool flush) {
+    x86_64_map_page_noflush((Level4Group*)m_root_table, physical_addr, virtual_addr, DecodePageFlags(perms));
     if (flush)
-        x86_64_map_page((Level4Group*)m_root_table, physical_addr, virtual_addr, DecodePageFlags(perms));
-    else
-        x86_64_map_page_noflush((Level4Group*)m_root_table, physical_addr, virtual_addr, DecodePageFlags(perms));
+        x86_64_TLBShootdown(virtual_addr, 0x1000, true);
 }
 
 void PageTable::RemapPage(void* virtual_addr, PagePermissions perms, bool flush) {
+    x86_64_remap_page_noflush((Level4Group*)m_root_table, virtual_addr, DecodePageFlags(perms));
     if (flush)
-        x86_64_remap_page((Level4Group*)m_root_table, virtual_addr, DecodePageFlags(perms));
-    else
-        x86_64_remap_page_noflush((Level4Group*)m_root_table, virtual_addr, DecodePageFlags(perms));
+        x86_64_TLBShootdown(virtual_addr, 0x1000, true);
 }
 
 void PageTable::UnmapPage(void* virtual_addr, bool flush) {
+    x86_64_unmap_page_noflush((Level4Group*)m_root_table, virtual_addr);
     if (flush)
-        x86_64_unmap_page((Level4Group*)m_root_table, virtual_addr);
-    else
-        x86_64_unmap_page_noflush((Level4Group*)m_root_table, virtual_addr);
+        x86_64_TLBShootdown(virtual_addr, 0x1000, true);
 }
 
 void* PageTable::GetPhysicalAddress(void* virtual_addr) const {
     return x86_64_get_physaddr((Level4Group*)m_root_table, virtual_addr);
+}
+
+void PageTable::Flush(void* addr, uint64_t length, bool wait) {
+    x86_64_TLBShootdown(addr, length, wait);
 }
 
 uint32_t PageTable::DecodePageFlags(PagePermissions perms) const {

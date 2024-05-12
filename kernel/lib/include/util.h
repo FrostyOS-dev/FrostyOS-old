@@ -30,6 +30,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define KERNEL_STACK_SIZE 16384
 #endif
 
+#define volatile_read8(x) (*(volatile uint8_t*)&(x))
+#define volatile_read16(x) (*(volatile uint16_t*)&(x))
+#define volatile_read32(x) (*(volatile uint32_t*)&(x))
+#define volatile_read64(x) (*(volatile uint64_t*)&(x))
+
+#define volatile_write8(x, y) (*(volatile uint8_t*)&(x) = (y))
+#define volatile_write16(x, y) (*(volatile uint16_t*)&(x) = (y))
+#define volatile_write32(x, y) (*(volatile uint32_t*)&(x) = (y))
+#define volatile_write64(x, y) (*(volatile uint64_t*)&(x) = (y))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
