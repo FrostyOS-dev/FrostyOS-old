@@ -115,7 +115,7 @@ HPET::~HPET() {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
-void __attribute__((no_sanitize("undefined"))) HPET::Init(HPETRegisters* regs) {
+void HPET::Init(HPETRegisters* regs) {
     m_regs = regs;
     uint64_t GeneralCAPID = volatile_read64(regs->GeneralCAPID);
     uint32_t CounterClockPeriod = GeneralCAPID >> 32;
@@ -160,7 +160,7 @@ void __attribute__((no_sanitize("undefined"))) HPET::Init(HPETRegisters* regs) {
 }
 
 
-bool __attribute__((no_sanitize("undefined"))) HPET::StartTimer(uint64_t femtoSec, HPETCallback callback, void* data) {
+bool HPET::StartTimer(uint64_t femtoSec, HPETCallback callback, void* data) {
     uint8_t timer = 0;
     bool found = false;
     for (uint8_t i = 0; i < 32; i++) {
@@ -218,17 +218,17 @@ bool __attribute__((no_sanitize("undefined"))) HPET::StartTimer(uint64_t femtoSe
     return true;
 }
 
-uint64_t __attribute__((no_sanitize("undefined"))) HPET::GetMainCounter() const {
+uint64_t HPET::GetMainCounter() const {
     return volatile_read64(m_regs->MainCounterValue);
 }
 
-uint64_t* __attribute__((no_sanitize("undefined"))) HPET::GetMainCounterAddress() const {
+uint64_t* HPET::GetMainCounterAddress() const {
     return &m_regs->MainCounterValue;
 }
 
 #pragma GCC diagnostic pop
 
-uint64_t __attribute__((no_sanitize("undefined"))) HPET::GetClockPeriod() const {
+uint64_t HPET::GetClockPeriod() const {
     return m_CounterClockPeriod;
 }
 

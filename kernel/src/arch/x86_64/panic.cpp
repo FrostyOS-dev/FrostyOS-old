@@ -50,7 +50,7 @@ x86_64_Registers g_regs; // only used as buffer
 
 char const* g_panic_reason = nullptr;
 
-extern "C" void __attribute__((noreturn, no_sanitize("undefined"))) x86_64_Panic(const char* reason, void* data, const bool type) {
+extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void* data, const bool type) {
     x86_64_DisableInterrupts();
 
     if (x86_64_GetCurrentLocalAPIC() != nullptr)

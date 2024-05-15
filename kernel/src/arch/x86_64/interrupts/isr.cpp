@@ -64,14 +64,14 @@ void x86_64_ISR_Initialize() {
         x86_64_IDT_EnableGate(i);
 }
 
-void __attribute__((no_sanitize("undefined"))) x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler) {
+void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler) {
     g_ISRHandlers[interrupt] = handler;
     x86_64_IDT_EnableGate(interrupt);
 }
 
 bool in_interrupt = false;
 
-extern "C" void __attribute__((no_sanitize("undefined"))) x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
+extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
     //dbgprintf("ISR: %d\n", regs->interrupt);
 
     /* Check if there is a designated handler */

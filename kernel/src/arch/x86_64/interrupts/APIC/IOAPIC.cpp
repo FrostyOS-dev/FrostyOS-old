@@ -29,24 +29,24 @@ x86_64_IOAPIC::x86_64_IOAPIC(void* baseAddress, uint8_t IRQBase) : m_registers((
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
-void __attribute__((no_sanitize("undefined"))) x86_64_IOAPIC::WriteRegister(uint32_t reg, uint32_t value) {
+void x86_64_IOAPIC::WriteRegister(uint32_t reg, uint32_t value) {
     volatile_write32(m_registers->IOREGSEL, reg);
     volatile_write32(m_registers->IOWIN, value);
 }
 
-uint32_t __attribute__((no_sanitize("undefined"))) x86_64_IOAPIC::ReadRegister(uint32_t reg) {
+uint32_t x86_64_IOAPIC::ReadRegister(uint32_t reg) {
     volatile_write32(m_registers->IOREGSEL, reg);
     return volatile_read32(m_registers->IOWIN);
 }
 
 
-void __attribute__((no_sanitize("undefined"))) x86_64_IOAPIC::SetRedirectionEntry(uint8_t index, x86_64_IOAPIC_RedirectionEntry entry) {
+void x86_64_IOAPIC::SetRedirectionEntry(uint8_t index, x86_64_IOAPIC_RedirectionEntry entry) {
     uint64_t* entryPtr = (uint64_t*)&entry;
     WriteRegister(IOAPIC_REGISTER_REDIRECTION_TABLE + index * 2, *entryPtr & 0xFFFFFFFF);
     WriteRegister(IOAPIC_REGISTER_REDIRECTION_TABLE + index * 2 + 1, *entryPtr >> 32);
 }
 
-x86_64_IOAPIC_RedirectionEntry __attribute__((no_sanitize("undefined"))) x86_64_IOAPIC::GetRedirectionEntry(uint8_t index) {
+x86_64_IOAPIC_RedirectionEntry x86_64_IOAPIC::GetRedirectionEntry(uint8_t index) {
     x86_64_IOAPIC_RedirectionEntry entry;
     uint64_t* entryPtr = (uint64_t*)&entry;
     *entryPtr = ReadRegister(IOAPIC_REGISTER_REDIRECTION_TABLE + index * 2);
