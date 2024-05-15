@@ -50,10 +50,11 @@ x86_64_Registers g_regs; // only used as buffer
 
 char const* g_panic_reason = nullptr;
 
-extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void* data, const bool type) {
+extern "C" void __attribute__((noreturn, no_sanitize("undefined"))) x86_64_Panic(const char* reason, void* data, const bool type) {
     x86_64_DisableInterrupts();
 
-    x86_64_SendIPI(x86_64_GetCurrentLocalAPIC()->GetRegisters(), 0, x86_64_IPI_DeliveryMode::NMI, false, false, x86_64_IPI_DestinationShorthand::AllExcludingSelf, 0);
+    if (x86_64_GetCurrentLocalAPIC() != nullptr)
+        x86_64_SendIPI(x86_64_GetCurrentLocalAPIC()->GetRegisters(), 0, x86_64_IPI_DeliveryMode::NMI, false, false, x86_64_IPI_DestinationShorthand::AllExcludingSelf, 0);
     
     Scheduling::Scheduler::Stop();
 
@@ -88,7 +89,7 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
     uint8_t id = 255;
     uint8_t LAPIC_id = 255;
     if (info == nullptr)
-        dbgputs("WARNING: Processor info unavailable.\n");
+        puts("WARNING: Processor info unavailable.\n");
     else {
         id = info->id;
         Processor* proc = info->processor;
@@ -102,7 +103,7 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
 
     // Output all to debug first
 
-    dbgputs("KERNEL PANIC!\n");
+    /*dbgputs("KERNEL PANIC!\n");
     if (type)
         dbgputs("Exception: ");
     dbgputs(reason);
@@ -116,13 +117,13 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
 
     dbgprintf("RAX=%016lx  RBX=%016lx  RCX=%016lx  RDX=%016lx\nRSI=%016lx  RDI=%016lx  RSP=%016lx  RBP=%016lx\nR8 =%016lx  R9 =%016lx  R10=%016lx  R11=%016lx\nR12=%016lx  R13=%016lx  R14=%016lx  R15=%016lx\nRIP=%016lx  RFL=%016lx", regs->RAX, regs->RBX, regs->RCX, regs->RDX, regs->RSI, regs->RDI, regs->RSP, regs->RBP, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->RIP, regs->RFLAGS);
     dbgprintf("\nCS=%04hx  DS=%04hx", regs->CS, regs->DS);
-    if (type /* true = interrupt */) {
+    if (type /* true = interrupt *//*) {
         dbgprintf("  SS=%04hx\nINTERRUPT=%02hhx", i_regs->ss, i_regs->interrupt);
         if (i_regs->error != 0)
             dbgprintf("  ERROR CODE=%08x\n", i_regs->error);
         else
             dbgputc('\n');
-        if (i_regs->interrupt == 0xE /* Page Fault */)
+        if (i_regs->interrupt == 0xE /* Page Fault *//*)
             dbgprintf("CR2=%016lx  CR3=%016lx\n", i_regs->CR2, regs->CR3);
     }
     else
@@ -142,7 +143,7 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
 
     dbgputs("\nThreads:\n");
 
-    Scheduling::Scheduler::PrintThreads(stddebug);
+    Scheduling::Scheduler::PrintThreads(stddebug);*/
 
     // Output all to stdout after in case framebuffer writes cause a page fault
 
@@ -159,7 +160,13 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
         puts("KERNEL PANIC!\n");
         if (type)
             puts("Exception: ");
-        printf("%s\n", reason);
+        puts(reason);
+        if (id != 255) {
+            printf(" on CPU %hhu", id);
+            if (LAPIC_id != 255)
+                printf(" (LAPIC %hhu)", LAPIC_id);
+        }
+        putc('\n');
 
         printf("RAX=%016lx  RBX=%016lx  RCX=%016lx  RDX=%016lx\nRSI=%016lx  RDI=%016lx  RSP=%016lx  RBP=%016lx\nR8 =%016lx  R9 =%016lx  R10=%016lx  R11=%016lx\nR12=%016lx  R13=%016lx  R14=%016lx  R15=%016lx\nRIP=%016lx  RFL=%016lx", regs->RAX, regs->RBX, regs->RCX, regs->RDX, regs->RSI, regs->RDI, regs->RSP, regs->RBP, regs->R8, regs->R9, regs->R10, regs->R11, regs->R12, regs->R13, regs->R14, regs->R15, regs->RIP, regs->RFLAGS);
         printf("\nCS=%04hx  DS=%04hx", regs->CS, regs->DS);
@@ -172,6 +179,20 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
             if (i_regs->interrupt == 0xE /* Page Fault */)
                 printf("CR2=%016lx  CR3=%016lx\n", i_regs->CR2, regs->CR3);
         }
+        else
+            putc('\n');
+
+        printf("Stack trace:\n");
+        char const* name = nullptr;
+        if (g_KernelSymbols != nullptr)
+            name = g_KernelSymbols->LookupSymbol(regs->RIP);
+        printf("%016lx", regs->RIP);
+        if (name != nullptr)
+            printf(": %s\n", name);
+        else
+            putc('\n');
+
+        x86_64_walk_stack_frames((void*)(regs->RBP));
     }
 
     while (true) {

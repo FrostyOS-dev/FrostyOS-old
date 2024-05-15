@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Scheduler.hpp"
 #include "Data-structures/LinkedList.hpp"
 #include "Semaphore.hpp"
+#include "arch/x86_64/Scheduling/task.h"
 #include "arch/x86_64/interrupts/APIC/IPI.hpp"
 
 #include <assert.h>

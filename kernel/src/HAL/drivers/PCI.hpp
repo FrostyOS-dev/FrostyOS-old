@@ -176,6 +176,14 @@ namespace PCI {
         void AddPCIDevice(Header0* device);
         void RemovePCIDevice(uint64_t index);
     }
+
+    void PCI_ConfigReadByte(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint8_t* data);
+    void PCI_ConfigReadWord(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint16_t* data);
+    void PCI_ConfigReadDWord(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t* data);
+    void PCI_ConfigWriteByte(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint8_t data);
+    void PCI_ConfigWriteWord(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint16_t data);
+    void PCI_ConfigWriteDWord(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t data);
+
 }
 
 #endif /* _HAL_PCI_HPP */

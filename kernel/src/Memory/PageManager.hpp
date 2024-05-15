@@ -23,7 +23,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <spinlock.h>
 
 #include "PageObject.hpp"
-#include "Memory.hpp"
 #include "VirtualPageManager.hpp"
 #include "PageTable.hpp"
 
@@ -56,6 +55,12 @@ public:
     void FreePages(void* addr);
 
     void Remap(void* addr, PagePermissions perms);
+
+    void* MapPage(void* phys, PagePermissions perms, void* addr = nullptr);
+    void* MapPages(void* phys, uint64_t count, PagePermissions perms, void* addr = nullptr);
+
+    void UnmapPage(void* addr);
+    void UnmapPages(void* addr);
 
     bool ExpandVRegionToRight(size_t new_size);
 

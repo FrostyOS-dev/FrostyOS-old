@@ -16,6 +16,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "kernel.hpp"
+#include "arch/x86_64/RTC.hpp"
+#include "time.h"
 
 #ifdef __x86_64__
 #include <arch/x86_64/ELFSymbols.hpp>
@@ -41,6 +43,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <assert.h>
 #include <errno.h>
+#include <string.h>
 
 #include <fs/VFS.hpp>
 #include <fs/initramfs.hpp>
@@ -49,7 +52,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <SystemCalls/SystemCall.hpp>
 #include <SystemCalls/exec.hpp>
 
-#include <arch/x86_64/cpuid.hpp>
+#include <HAL/drivers/ACPI/ACPI.hpp>
 
 FrameBuffer m_InitialFrameBuffer;
 Colour g_fgcolour;
@@ -147,7 +150,7 @@ extern "C" void StartKernel(KernelParams* params) {
     else
         g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size, true);
 
-    KBasicVGA.EnableDoubleBuffering(g_KPM);
+    //KBasicVGA.EnableDoubleBuffering(g_KPM);
 
     KWorkingDirectory = nullptr;
 
@@ -172,7 +175,7 @@ extern "C" void StartKernel(KernelParams* params) {
 }
 
 void Kernel_Stage2(void* params_addr) {
-    dbgputs("Starting WorldOS!\n");
+    //dbgputs("Starting WorldOS!\n");
     puts("Starting WorldOS!\n");
 
     m_Stage = STAGE2;
@@ -185,16 +188,32 @@ void Kernel_Stage2(void* params_addr) {
     g_VFS = KVFS;
     assert(KVFS->MountRoot(FileSystemType::TMPFS) == ESUCCESS);
 
-    dbgputs("VFS root mounted.\n");
+    puts("VFS root mounted.\n");
 
     KWorkingDirectory = KVFS->GetRootWorkingDirectory();
     KProcess->SetDefaultWorkingDirectory(KWorkingDirectory);
 
     Initialise_InitRAMFS(params->initramfs_addr, params->initramfs_size);
 
-    dbgputs("Initial RAMFS initialised.\n");
+    puts("Initial RAMFS initialised.\n");
 
     SystemCallInit();
+
+    puts("Sleeping for 10 seconds...\n");
+
+    RTCTime t = RTC_getCurrentTime();
+    time_t time = ((days_since_epoch(t.Year, t.Month, t.DayOfMonth) * 24 + t.Hours) * 60 + t.Minutes) * 60 + t.Seconds;
+    while ((time + 10) > (((days_since_epoch(t.Year, t.Month, t.DayOfMonth) * 24 + t.Hours) * 60 + t.Minutes) * 60 + t.Seconds)) {
+        t = RTC_getCurrentTime();
+    }
+
+
+    puts("Attempting ACPI Shutdown!\n");
+
+    int rc = ACPI_shutdown();
+    if (rc != 0) {
+        printf("ACPI Shutdown failed with error code %s (%d)\n", strerror(-rc), rc);
+    }
 
     while (true) {
         

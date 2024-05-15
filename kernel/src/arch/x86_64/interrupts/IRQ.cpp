@@ -41,8 +41,10 @@ void x86_64_PIC_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
     x86_64_PIC_sendEOI(irq); // ignore any interrupts that aren't routed through the I/O APIC(s)
 }
 
-void x86_64_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
+void __attribute__((no_sanitize("undefined"))) x86_64_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
     uint8_t IRQ = regs->interrupt - PIC_REMAP_OFFSET - 0x10;
+
+    //dbgprintf("IRQ: %#.2hhx\n", IRQ);
 
     if (g_IRQHandlers[IRQ] != nullptr)
         g_IRQHandlers[IRQ](regs);
@@ -53,7 +55,7 @@ void x86_64_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
 }
 
 // we have to configure and disable the PIC in preparation for the I/O APIC
-void x86_64_IRQ_EarlyInit() {
+void __attribute__((no_sanitize("undefined"))) x86_64_IRQ_EarlyInit() {
     x86_64_PIC_Configure(PIC_REMAP_OFFSET, PIC_REMAP_OFFSET + 8, false);
     x86_64_PIC_Disable();
 
@@ -61,7 +63,7 @@ void x86_64_IRQ_EarlyInit() {
         x86_64_ISR_RegisterHandler(i + PIC_REMAP_OFFSET, x86_64_PIC_IRQ_Handler);
 }
 
-void x86_64_IRQ_FullInit() {
+void __attribute__((no_sanitize("undefined"))) x86_64_IRQ_FullInit() {
     uint64_t INTMax = 0;
     for (uint64_t i = 0; i < g_IOAPICs.getCount(); i++) {
         x86_64_IOAPIC* ioapic = g_IOAPICs.get(i);
@@ -97,13 +99,13 @@ void x86_64_IRQ_FullInit() {
     x86_64_IRQ_ReserveIRQ(12); // mouse
 }
 
-void x86_64_IRQ_ReserveIRQ(uint8_t irq) {
+void __attribute__((no_sanitize("undefined"))) x86_64_IRQ_ReserveIRQ(uint8_t irq) {
     spinlock_acquire(&g_IRQBitmapLock);
     g_IRQBitmap.Set(irq, true);
     spinlock_release(&g_IRQBitmapLock);
 }
 
-void x86_64_IRQ_UnreserveIRQ(uint8_t irq) {
+void __attribute__((no_sanitize("undefined"))) x86_64_IRQ_UnreserveIRQ(uint8_t irq) {
     spinlock_acquire(&g_IRQBitmapLock);
     g_IRQBitmap.Set(irq, false);
     spinlock_release(&g_IRQBitmapLock);
@@ -116,7 +118,7 @@ bool x86_64_IRQ_IsIRQReserved(uint8_t irq) {
     return ret;
 }
 
-uint8_t x86_64_IRQ_AllocateIRQ() {
+uint8_t __attribute__((no_sanitize("undefined"))) x86_64_IRQ_AllocateIRQ() {
     spinlock_acquire(&g_IRQBitmapLock);
     uint8_t IRQ = INVALID_IRQ;
     for (IRQ = 0; IRQ < g_IRQHandlersCount; IRQ++) {
@@ -129,7 +131,7 @@ uint8_t x86_64_IRQ_AllocateIRQ() {
     return IRQ;
 }
 
-uint8_t x86_64_IRQ_AllocateIRQ(uint64_t mask, uint64_t shift) {
+uint8_t __attribute__((no_sanitize("undefined"))) x86_64_IRQ_AllocateIRQ(uint64_t mask, uint64_t shift) {
     spinlock_acquire(&g_IRQBitmapLock);
     uint8_t IRQ = INVALID_IRQ;
     for (uint8_t i = 0; i < 64; i++) {
@@ -151,7 +153,7 @@ void x86_64_IRQ_FreeIRQ(uint8_t irq) {
     spinlock_release(&g_IRQBitmapLock);
 }
 
-void x86_64_IRQ_RegisterHandler(uint8_t irq, x86_64_IRQHandler_t handler) {
+void __attribute__((no_sanitize("undefined"))) x86_64_IRQ_RegisterHandler(uint8_t irq, x86_64_IRQHandler_t handler) {
     if (irq < g_IRQHandlersCount)
         g_IRQHandlers[irq] = handler;
     else

@@ -34,7 +34,7 @@ struct stack_frame {
 
 void x86_64_walk_stack_frames(void* RBP) {
     if (RBP == nullptr) {
-        dbgprintf("[%s(%lp)] WARN: no stack frames.\n", __extension__ __PRETTY_FUNCTION__, RBP);
+        printf("[%s(%lp)] WARN: no stack frames.\n", __extension__ __PRETTY_FUNCTION__, RBP);
         return;
     }
 
@@ -46,11 +46,11 @@ void x86_64_walk_stack_frames(void* RBP) {
         char const* name = nullptr;
         if (g_KernelSymbols != nullptr)
             name = g_KernelSymbols->LookupSymbol(frame->RIP);
-        dbgprintf("%016lx", frame->RIP);
+        printf("%016lx", frame->RIP);
         if (name != nullptr)
-            dbgprintf(": %s\n", name);
+            printf(": %s\n", name);
         else
-            dbgputc('\n');
+            putc('\n');
         frame = frame->RBP;
     }
 }

@@ -24,13 +24,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-extern void x86_64_outb(uint16_t port, uint8_t value);
-extern uint8_t x86_64_inb(uint16_t port);
+void x86_64_outb(uint16_t port, uint8_t value);
+void x86_64_outw(uint16_t port, uint16_t value);
+void x86_64_outd(uint16_t port, uint32_t value);
 
-extern void x86_64_EnableInterrupts();
-extern void x86_64_DisableInterrupts();
+uint8_t x86_64_inb(uint16_t port);
+uint16_t x86_64_inw(uint16_t port);
+uint32_t x86_64_ind(uint16_t port);
 
-extern void x86_64_iowait();
+void x86_64_EnableInterrupts();
+void x86_64_DisableInterrupts();
+
+void x86_64_iowait();
 
 #ifdef __cplusplus
 }

@@ -168,7 +168,7 @@ extern "C" void _start(void) {
     MemoryMapEntry** memoryMap = (MemoryMapEntry**)memmap_response->entries;
 
     kernelParams = {
-        .frameBuffer = {buffer->address, buffer->width, buffer->height, buffer->bpp, buffer->red_mask_size, buffer->red_mask_shift, buffer->green_mask_size, buffer->green_mask_shift, buffer->blue_mask_size, buffer->blue_mask_shift},
+        .frameBuffer = {buffer->address, buffer->width, buffer->height, buffer->pitch, buffer->bpp, buffer->red_mask_size, buffer->red_mask_shift, buffer->green_mask_size, buffer->green_mask_shift, buffer->blue_mask_size, buffer->blue_mask_shift},
         .MemoryMap = memoryMap,
         .MemoryMapEntryCount = memmap_response->entry_count,
         .EFI_SYSTEM_TABLE_ADDR = efi_system_table_response->address,

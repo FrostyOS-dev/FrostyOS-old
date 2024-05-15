@@ -33,6 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../../hal.hpp"
 
 //#define MADT_DEBUG
+//#define WORLDOS_DISABLE_SMP
 
 ACPISDTHeader* g_MADT;
 

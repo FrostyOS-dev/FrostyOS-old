@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../../Scheduling/taskutil.hpp"
 #include "arch/x86_64/Memory/PagingUtil.hpp"
 
+#include <cstdio>
 #include <math.h>
 #include <string.h>
 #include <util.h>

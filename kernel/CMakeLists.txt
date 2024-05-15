@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+include(dependencies/uACPI/uacpi.cmake)
+
 if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
     set(kernel_sources
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/IDT.cpp
@@ -84,12 +86,15 @@ set(kernel_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/RSDP.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/SDT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/XSDT.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/uACPI.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/ACPI.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/HPET.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/Keyboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/PCI.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/PS2/PS2Controller.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/PS2/PS2Keyboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/hal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/IRQ.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/time.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/kernel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/kmalloc.cpp
@@ -118,6 +123,7 @@ set(kernel_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemCalls/SystemCall.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tty/KeyboardInput.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tty/TTY.cpp
+    ${UACPI_SOURCES}
 )
 
 set(kernel_lib_sources
@@ -150,6 +156,7 @@ set_target_properties(kernel PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 target_include_directories(kernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(kernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib/include)
 target_include_directories(kernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/headers)
+target_include_directories(kernel PRIVATE ${UACPI_INCLUDES})
 
 target_compile_options(kernel
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-mcmodel=kernel>
@@ -166,9 +173,10 @@ target_compile_options(kernel
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-ffreestanding>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-fno-pie>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-fstack-protector>
+    PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=undefined>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-mgeneral-regs-only>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-mno-red-zone>
-    PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-O2>
+    PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
@@ -182,7 +190,10 @@ target_link_options(kernel
     PUBLIC -Bsymbolic
     PUBLIC -nostdlib
     PUBLIC -zmax-page-size=0x1000
+    PRIVATE -mno-red-zone
 )
+
+target_link_libraries(kernel PRIVATE gcc)
 
 target_compile_definitions(kernel PRIVATE _IS_IN_KERNEL=1)
 

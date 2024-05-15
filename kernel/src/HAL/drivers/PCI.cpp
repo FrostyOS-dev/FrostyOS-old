@@ -23,6 +23,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Memory/PagingUtil.hpp>
 
+#include "ACPI/MCFG.hpp"
+
 namespace PCI {
 
     void EnumerateFunctions(void* device_addr) {
@@ -73,6 +75,72 @@ namespace PCI {
             if (device == nullptr)
                 return;
             LinkedList::deleteNode(g_deviceList, (uint64_t)device);
+        }
+    }
+
+    void PCI_ConfigReadByte(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint8_t* data) {
+        for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
+            MCFGEntry* entry = GetMCFGEntry(i);
+            if (entry->StartBusNumber <= bus && entry->EndBusNumber >= bus) {
+                uint64_t addr = entry->Address + (bus << 20) + (device << 15) + (function << 12) + offset;
+                *data = *(uint8_t*)to_HHDM((void*)addr);
+                return;
+            }
+        }
+    }
+
+    void PCI_ConfigReadWord(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint16_t* data) {
+        for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
+            MCFGEntry* entry = GetMCFGEntry(i);
+            if (entry->StartBusNumber <= bus && entry->EndBusNumber >= bus) {
+                uint64_t addr = entry->Address + (bus << 20) + (device << 15) + (function << 12) + offset;
+                *data = *(uint16_t*)to_HHDM((void*)addr);
+                return;
+            }
+        }
+    }
+
+    void PCI_ConfigReadDWord(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t* data) {
+        for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
+            MCFGEntry* entry = GetMCFGEntry(i);
+            if (entry->StartBusNumber <= bus && entry->EndBusNumber >= bus) {
+                uint64_t addr = entry->Address + (bus << 20) + (device << 15) + (function << 12) + offset;
+                *data = *(uint32_t*)to_HHDM((void*)addr);
+                return;
+            }
+        }
+    }
+    
+    void PCI_ConfigWriteByte(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint8_t data) {
+        for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
+            MCFGEntry* entry = GetMCFGEntry(i);
+            if (entry->StartBusNumber <= bus && entry->EndBusNumber >= bus) {
+                uint64_t addr = entry->Address + (bus << 20) + (device << 15) + (function << 12) + offset;
+                *(uint8_t*)to_HHDM((void*)addr) = data;
+                return;
+            }
+        }
+    }
+
+    void PCI_ConfigWriteWord(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint16_t data) {
+        for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
+            MCFGEntry* entry = GetMCFGEntry(i);
+            if (entry->StartBusNumber <= bus && entry->EndBusNumber >= bus) {
+                uint64_t addr = entry->Address + (bus << 20) + (device << 15) + (function << 12) + offset;
+                *(uint16_t*)to_HHDM((void*)addr) = data;
+                return;
+            }
+        }
+    }
+
+    void PCI_ConfigWriteDWord(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t data) {
+        for (uint64_t i = 0; i < GetMCFGEntryCount(); i++) {
+            MCFGEntry* entry = GetMCFGEntry(i);
+            if (entry->StartBusNumber <= bus && entry->EndBusNumber >= bus) {
+                uint64_t addr = entry->Address + (bus << 20) + (device << 15) + (function << 12) + offset;
+                *(uint32_t*)to_HHDM((void*)addr) = data;
+                return;
+            }
         }
     }
 

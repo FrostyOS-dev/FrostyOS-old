@@ -88,6 +88,7 @@ HeapAllocator::HeapAllocator(size_t size) : m_freeList(nullptr), m_freeMem(0), m
     size_t numPages = DIV_ROUNDUP((size + sizeof(BlockHeader)), PAGE_SIZE);
     size_t numBytes = numPages * PAGE_SIZE;
     void* ptr = g_KPM->AllocatePages(numPages);
+    memset(ptr, 0, numBytes);
     BlockHeader* header = (BlockHeader*)ptr;
     m_MetadataMem += sizeof(BlockHeader);
     header->size = numBytes - sizeof(BlockHeader);
@@ -260,6 +261,8 @@ extern "C" void* kcalloc(size_t num, size_t size) {
 }
 
 extern "C" void kfree(void* addr) {
+    if (addr == nullptr)
+        return;
     g_heapAllocator.lock();
     g_heapAllocator.free(addr);
     g_heapAllocator.unlock();

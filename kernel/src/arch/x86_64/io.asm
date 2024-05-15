@@ -22,11 +22,39 @@ x86_64_outb:
     out dx, al
     ret
 
+global x86_64_outw
+x86_64_outw:
+    mov ax, si ; value must be in ax or the instruction won't work
+    mov dx, di ; port must be in dx or instruction won't work
+    out dx, ax
+    ret
+
+global x86_64_outd
+x86_64_outd:
+    mov eax, esi ; value must be in ax or the instruction won't work
+    mov dx, di ; port must be in dx or instruction won't work
+    out dx, eax
+    ret
+
 global x86_64_inb
 x86_64_inb:
     mov dx, di ; port must be in dx
     xor rax, rax ; clear rax
     in al, dx
+    ret
+
+global x86_64_inw
+x86_64_inw:
+    mov dx, di ; port must be in dx
+    xor rax, rax ; clear rax
+    in ax, dx
+    ret
+
+global x86_64_ind
+x86_64_ind:
+    mov dx, di ; port must be in dx
+    xor rax, rax ; clear rax
+    in eax, dx
     ret
 
 global x86_64_EnableInterrupts

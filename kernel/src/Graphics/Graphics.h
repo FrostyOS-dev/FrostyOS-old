@@ -34,6 +34,7 @@ struct FrameBuffer {
     void* FrameBufferAddress;
     uint64_t FrameBufferWidth;
     uint64_t FrameBufferHeight;
+    uint64_t pitch;
     uint16_t bpp; // Bits per pixel
     uint8_t red_mask_size;
     uint8_t red_mask_shift;

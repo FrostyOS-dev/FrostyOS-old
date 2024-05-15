@@ -39,7 +39,7 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
         uint32_t uid = (uint32_t)ASCII_OCT_To_UInt(header->uid, 8);
         uint32_t gid = (uint32_t)ASCII_OCT_To_UInt(header->gid, 8);
         uint16_t ACL = (uint16_t)ASCII_OCT_To_UInt(header->mode, 8);
-        dbgprintf("initramfs item: path=\"%s\", size=%lu, type=%c, uid=%u, gid=%u, ACL=%03ho\n", header->filepath, size, header->TypeFlag, uid, gid, ACL);
+        //dbgprintf("initramfs item: path=\"%s\", size=%lu, type=%c, uid=%u, gid=%u, ACL=%03ho\n", header->filepath, size, header->TypeFlag, uid, gid, ACL);
 
         uint8_t last_separator = 255;
         for (uint8_t i = 0; i < 99 && header->filepath[i]; i++) {

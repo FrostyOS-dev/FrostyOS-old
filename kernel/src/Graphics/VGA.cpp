@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/io.h>
 #endif
 
-BasicVGA::BasicVGA() : m_CursorPosition({0, 0}), m_bgcolour(), m_fgcolour(), m_FrameBuffer({nullptr, 0, 0, 0, 0, 0, 0, 0, 0, 0}), m_HasBeenInitialised(false), m_pm(nullptr), m_DoubleBuffer(false), m_buffer(nullptr) {
+BasicVGA::BasicVGA() : m_CursorPosition({0, 0}), m_bgcolour(), m_fgcolour(), m_FrameBuffer({nullptr, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), m_HasBeenInitialised(false), m_pm(nullptr), m_DoubleBuffer(false), m_buffer(nullptr) {
 
 }
 
@@ -89,28 +89,28 @@ void BasicVGA::PlotPixel(uint64_t x, uint64_t y, const Colour& colour) {
     if (bpp <= 8)
         buffer[m_FrameBuffer.FrameBufferWidth * y + x] = data & 0xFF;
     else if (bpp <= 16)
-        *(uint16_t*)((uint64_t)buffer + 2 * m_FrameBuffer.FrameBufferWidth * y + 2 * x) = data & 0xFFFF;
+        *(uint16_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 2 * x) = data & 0xFFFF;
     else if (bpp <= 24) {
-        *(uint16_t*)((uint64_t)buffer + 3 * m_FrameBuffer.FrameBufferWidth * y + 3 * x) = data & 0xFFFF;
-        buffer[3 * m_FrameBuffer.FrameBufferWidth * y + 3 * x + 2] = (data & 0xFF0000) >> 16;
+        *(uint16_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 3 * x) = data & 0xFFFF;
+        buffer[m_FrameBuffer.pitch * y + 3 * x + 2] = (data & 0xFF0000) >> 16;
     }
     else if (bpp <= 32)
-        *(uint32_t*)((uint64_t)buffer + 4 * m_FrameBuffer.FrameBufferWidth * y + 4 * x) = data & 0xFFFFFFFF;
+        *(uint32_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 4 * x) = data & 0xFFFFFFFF;
     else if (bpp <= 40) {
-        *(uint32_t*)((uint64_t)buffer + 5 * m_FrameBuffer.FrameBufferWidth * y + 5 * x) = data & 0xFFFFFFFF;
-        buffer[5 * m_FrameBuffer.FrameBufferWidth * y + 5 * x + 4] = (data & 0xFF00000000) >> 32;
+        *(uint32_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 5 * x) = data & 0xFFFFFFFF;
+        buffer[m_FrameBuffer.pitch * y + 5 * x + 4] = (data & 0xFF00000000) >> 32;
     }
     else if (bpp <= 48) {
-        *(uint32_t*)((uint64_t)buffer + 6 * m_FrameBuffer.FrameBufferWidth * y + 6 * x) = data & 0xFFFFFFFF;
-        *(uint16_t*)((uint64_t)buffer + 6 * m_FrameBuffer.FrameBufferWidth * y + 6 * x + 4) = (data & 0xFFFF00000000) >> 32;
+        *(uint32_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 6 * x) = data & 0xFFFFFFFF;
+        *(uint16_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 6 * x + 4) = (data & 0xFFFF00000000) >> 32;
     }
     else if (bpp <= 56) {
-        *(uint32_t*)((uint64_t)buffer + 7 * m_FrameBuffer.FrameBufferWidth * y + 7 * x) = data & 0xFFFFFFFF;
-        *(uint16_t*)((uint64_t)buffer + 7 * m_FrameBuffer.FrameBufferWidth * y + 7 * x + 4) = (data & 0xFFFF00000000) >> 32;
-        buffer[7 * m_FrameBuffer.FrameBufferWidth * y + 7 * x + 6] = (data & 0xFF000000000000) >> 48;
+        *(uint32_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 7 * x) = data & 0xFFFFFFFF;
+        *(uint16_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 7 * x + 4) = (data & 0xFFFF00000000) >> 32;
+        buffer[m_FrameBuffer.pitch * y + 7 * x + 6] = (data & 0xFF000000000000) >> 48;
     }
     else if (bpp <= 64)
-        *(uint64_t*)((uint64_t)buffer + 8 * m_FrameBuffer.FrameBufferWidth * y + 8 * x) = data;
+        *(uint64_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 8 * x) = data;
 }
 
 void BasicVGA::NewLine() {

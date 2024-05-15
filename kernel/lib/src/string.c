@@ -31,6 +31,19 @@ size_t strlen(const char* str) {
     return len;
 }
 
+size_t strnlen(const char* str, size_t maxlen) {
+    size_t len = 0;
+
+    char c = str[len];
+
+    while (c != 0 && len < maxlen) {
+        len++;
+        c = str[len];
+    }
+
+    return len;
+}
+
 char* strcpy(char* dst, const char* src) {
     if (dst == NULL || src == NULL)
         return dst;
