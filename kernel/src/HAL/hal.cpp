@@ -89,9 +89,12 @@ void HAL_Stage2(void* RSDP) {
     assert(MCFGFound); // it must be found or device detection won't work
     if (MADTFound)
         EnumerateMADTEntries();
+    printf("MADT init done\n");
     HPET* hpet = new HPET();
     hpet->Init((HPETRegisters*)GetHPETAddress());
     g_HPET = hpet;
+
+    printf("HPET init done\n");
     
     ACPI_init((void*)((uint64_t)RSDP - (uint64_t)g_HHDM_start));
 

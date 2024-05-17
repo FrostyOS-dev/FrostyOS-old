@@ -41,4 +41,7 @@ void x86_64_InitUserTable(void* PML4);
 
 void x86_64_InvalidatePages(uint64_t address, uint64_t length);
 
+void x86_64_Prep_SMP_Startup();
+void x86_64_Cleanup_SMP_Startup();
+
 #endif /* _KERNEL_X86_64_PAGING_UTIL_HPP */

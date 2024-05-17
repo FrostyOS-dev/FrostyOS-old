@@ -62,13 +62,13 @@ uint8_t x86_64_IOAPIC::GetIRQBase() const {
 
 uint8_t x86_64_IOAPIC::GetIRQEnd() {
     if (m_IRQEnd == 0) // cache the end for speed
-        m_IRQEnd = m_IRQBase + ((ReadRegister(IOAPIC_REGISTER_VERSION) >> 16) & 0xFF) + 1;
+        m_IRQEnd = m_IRQBase + ((ReadRegister(IOAPIC_REGISTER_VERSION) >> 16) & 0xFF);
     return m_IRQEnd;
 }
 
 void x86_64_IOAPIC::SetINTStart(uint8_t INTStart) {
     m_INTStart = INTStart;
-    for (uint8_t i = 0; i < (GetIRQEnd() - GetIRQBase()); i++) {
+    for (uint8_t i = 0; i <= (GetIRQEnd() - GetIRQBase()); i++) {
         x86_64_IOAPIC_RedirectionEntry entry = GetRedirectionEntry(i);
         entry.Vector = INTStart + i;
         SetRedirectionEntry(i, entry);

@@ -132,11 +132,13 @@ extern "C" void StartKernel(KernelParams* params) {
 
     // Do any early initialisation
 
+    printf("Very early init done.\n");
+
     HAL_Stage2(params->RSDP_table);
 
     KPS2Controller = PS2Controller();
     KPS2Controller.Init();
-    dbgprintf("Detected %s %s\n", KPS2Controller.getVendorName(), KPS2Controller.getDeviceName());
+    printf("Detected %s %s\n", KPS2Controller.getVendorName(), KPS2Controller.getDeviceName());
 
     KInput = KeyboardInput();
     KInput.Initialise((Keyboard*)KPS2Controller.GetKeyboard());

@@ -15,11 +15,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+//#define MADT_DEBUG
+
 #include "MADT.hpp"
 
 #include <Data-structures/LinkedList.hpp>
 
+#ifdef MADT_DEBUG
 #include <stdio.h>
+#endif
 
 #include <Memory/PagingUtil.hpp>
 
@@ -28,11 +32,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/interrupts/APIC/IOAPIC.hpp>
 
 #include <arch/x86_64/interrupts/IRQ.hpp>
+
+#include <arch/x86_64/Memory/PagingUtil.hpp>
 #endif
 
 #include "../../hal.hpp"
 
-//#define MADT_DEBUG
 //#define WORLDOS_DISABLE_SMP
 
 ACPISDTHeader* g_MADT;
@@ -126,8 +131,9 @@ void EnumerateMADTEntries() {
     for (uint64_t i = 0; i < IOAPICs.getCount(); i++) {
         MADT_IOAPIC* ioAPIC = IOAPICs.get(i);
         x86_64_IOAPIC* ioapic = new x86_64_IOAPIC(to_HHDM((void*)(uint64_t)(ioAPIC->IOAPICAddress)), ioAPIC->GlobalSystemInterruptBase);
-        for (uint64_t j = ioapic->GetIRQBase(); j < ioapic->GetIRQEnd(); j++) {
+        for (uint64_t j = ioapic->GetIRQBase(); j <= ioapic->GetIRQEnd(); j++) {
             x86_64_IOAPIC_RedirectionEntry entry;
+            memset(&entry, 0, sizeof(x86_64_IOAPIC_RedirectionEntry));
             entry.DeliveryMode = 0;
             entry.DestinationMode = 0;
             entry.DeliveryStatus = 0;
@@ -140,8 +146,9 @@ void EnumerateMADTEntries() {
         }
         for (uint64_t j = 0; j < InterruptSourceOverrides.getCount(); j++) {
             MADT_InterruptSourceOverride* interruptSourceOverride = InterruptSourceOverrides.get(j);
-            if (interruptSourceOverride->GlobalSystemInterrupt >= ioapic->GetIRQBase() && interruptSourceOverride->GlobalSystemInterrupt < ioapic->GetIRQEnd()) {
+            if (interruptSourceOverride->GlobalSystemInterrupt >= ioapic->GetIRQBase() && interruptSourceOverride->GlobalSystemInterrupt <= ioapic->GetIRQEnd()) {
                 x86_64_IOAPIC_RedirectionEntry entry;
+                memset(&entry, 0, sizeof(x86_64_IOAPIC_RedirectionEntry));
                 entry.DeliveryMode = 0;
                 entry.DestinationMode = 0;
                 entry.DeliveryStatus = 0;
@@ -163,6 +170,8 @@ void EnumerateMADTEntries() {
         x86_64_IRQ_ReserveIRQ(interruptSourceOverride->GlobalSystemInterrupt);
     }
 
+    x86_64_Prep_SMP_Startup();
+
     for (uint64_t i = 0; i < LAPICs.getCount(); i++) {
         MADT_LocalAPIC* localAPIC = LAPICs.get(i);
         if (localAPIC->APICID != APIC_ID) {
@@ -175,6 +184,8 @@ void EnumerateMADTEntries() {
             g_BSP.InitialiseLocalAPIC();
         }
     }
+
+    x86_64_Cleanup_SMP_Startup();
 
 }
 

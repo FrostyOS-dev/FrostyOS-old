@@ -176,7 +176,7 @@ target_compile_options(kernel
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-fsanitize=undefined>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-mgeneral-regs-only>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-mno-red-zone>
-    PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-O1>
+    PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-O2>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>

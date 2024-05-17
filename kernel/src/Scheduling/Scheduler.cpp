@@ -363,6 +363,11 @@ namespace Scheduling {
         }
 
         void AddProcessor(Processor* processor) {
+            /*__asm__ volatile("cli");
+            while (true) {
+                __asm__ volatile ("hlt");
+            }
+            */
             ProcessorInfo* info = new ProcessorInfo();
             info->processor = processor;
             info->id = g_processors.getCount();

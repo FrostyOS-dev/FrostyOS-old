@@ -40,3 +40,13 @@ void x86_64_InvalidatePages(uint64_t address, uint64_t length) {
         x86_64_InvalidatePage(address + i);
     }
 }
+
+void x86_64_Prep_SMP_Startup() {
+    x86_64_map_page_noflush(&K_PML4_Array, (void*)0, (void*)0, 0x3); // Read/Write, Present, Execute
+    x86_64_InvalidatePage(0);
+}
+
+void x86_64_Cleanup_SMP_Startup() {
+    x86_64_map_page_noflush(&K_PML4_Array, (void*)0, (void*)0, 0x0); // Read/Write, Present
+    x86_64_InvalidatePage(0);
+}

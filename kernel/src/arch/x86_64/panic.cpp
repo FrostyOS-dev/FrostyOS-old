@@ -150,10 +150,10 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
     if (g_VGADevice == nullptr)
         dbgprintf("\nWARNING VGA Device unavailable.\n");
     else {
-        g_VGADevice->ClearScreen(g_panic_background /* blue */);
-        g_VGADevice->SetBackgroundColour(g_panic_background /* blue */);
-        g_VGADevice->SetCursorPosition({0,0});
-        g_VGADevice->SwapBuffers(false);
+        //g_VGADevice->ClearScreen(g_panic_background /* blue */);
+        //g_VGADevice->SetBackgroundColour(g_panic_background /* blue */);
+        //g_VGADevice->SetCursorPosition({0,0});
+        //g_VGADevice->SwapBuffers(false);
 
         g_CurrentTTY->SetVGADevice(g_VGADevice);
 

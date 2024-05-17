@@ -209,7 +209,7 @@ void PS2Controller::Init() {
     }
     char const* device_type_name = GetDeviceTypeName(bytes, bytes_received);
     bool device_type = GetDeviceType(bytes, bytes_received);
-    dbgprintf("Detected PS/2 %s: %s\n", device_type ? "Mouse" : "Keyboard", device_type_name);
+    printf("Detected PS/2 %s: %s\n", device_type ? "Mouse" : "Keyboard", device_type_name);
 
     WriteData(PS2_DEVICE_CMD_ENABLE_SCANNING);
     result = ReadData();
@@ -219,7 +219,7 @@ void PS2Controller::Init() {
     {
         Device* device = nullptr;
         if (device_type)
-            dbgprintf("PS/2 Mouse not supported yet!\n");
+            printf("PS/2 Mouse not supported yet!\n");
         else {
             PS2Keyboard* keyboard = new PS2Keyboard(this, false, device_type_name);
             keyboard->Initialise();
@@ -261,7 +261,7 @@ void PS2Controller::Init() {
         }
         char const* device_type_name = GetDeviceTypeName(bytes, bytes_received);
         bool device_type = GetDeviceType(bytes, bytes_received);
-        dbgprintf("Detected PS/2 %s: %s\n", device_type ? "Mouse" : "Keyboard", device_type_name);
+        printf("Detected PS/2 %s: %s\n", device_type ? "Mouse" : "Keyboard", device_type_name);
         SendCommand(PS2_CMD_WRITE_PORT_2);
         WriteData(PS2_DEVICE_CMD_ENABLE_SCANNING);
         result = ReadData();
@@ -270,7 +270,7 @@ void PS2Controller::Init() {
         }
         Device* device = nullptr;
         if (device_type)
-            dbgprintf("PS/2 Mouse not supported yet!\n");
+            printf("PS/2 Mouse not supported yet!\n");
         else {
             PS2Keyboard* keyboard = new PS2Keyboard(this, true, device_type_name);
             keyboard->Initialise();

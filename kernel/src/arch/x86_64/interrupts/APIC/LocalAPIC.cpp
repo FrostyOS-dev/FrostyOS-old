@@ -24,9 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../../Memory/PageMapIndexer.hpp"
 
 #include "../../Scheduling/taskutil.hpp"
-#include "arch/x86_64/Memory/PagingUtil.hpp"
 
-#include <cstdio>
 #include <math.h>
 #include <string.h>
 #include <util.h>
@@ -70,8 +68,6 @@ void x86_64_LocalAPIC::StartCPU() {
     if (!m_BSP) {
         x86_64_DisableInterrupts();
         //x86_64_PIC_Disable();
-        x86_64_map_page_noflush(&K_PML4_Array, (void*)0x0000, (void*)0x0000, 0x3); // Present, Read/Write, Execute
-        x86_64_InvalidatePage(0);
         // copy the ap trampoline to 0x0000
         memcpy((void*)0x0000, &ap_trampoline, 0x1000);
         uint32_t* CR3_value = (uint32_t*)0xFFC;
@@ -119,8 +115,6 @@ void x86_64_LocalAPIC::StartCPU() {
 #pragma GCC diagnostic pop
 
 void x86_64_LocalAPIC::Init() {
-    if (!m_BSP) // unmap first page
-        x86_64_unmap_page(&K_PML4_Array, (void*)0);
     // we mask all LVTs
     uint8_t max_lvt = (volatile_read32(m_registers->Version) >> 16) & 0xFF;
     for (uint64_t i = (uint64_t)m_registers + 0x320; i < ((uint64_t)m_registers + 0x320 + max_lvt * 0x10); i += 0x10) {
