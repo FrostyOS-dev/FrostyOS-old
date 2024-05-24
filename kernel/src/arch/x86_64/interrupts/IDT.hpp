@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,13 +15,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_IDT_HPP
-#define _KERNEL_IDT_HPP
+#ifndef _x86_64_IDT_HPP
+#define _x86_64_IDT_HPP
 
-#include <stddef.h>
 #include <stdint.h>
-
-#include <util.h>
 
 enum IDT_FLAGS {
     IDT_FLAG_GATE_TASK              = 0x5,
@@ -96,4 +93,4 @@ IVT Offset | INT #     | Description
 
 */
 
-#endif /* _KERNEL_IDT_HPP */
+#endif /* _x86_64_IDT_HPP */

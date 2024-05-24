@@ -190,11 +190,11 @@ void BasicVGA::putc(const char c) {
 void BasicVGA::ScrollText() {
     /* Copy everything up one row */
     for (uint64_t y = 16; y < (GetAmountOfTextRows() * 16); y += 16) {
-        fast_memcpy((void*)((uint64_t)(m_FrameBuffer.FrameBufferAddress) + ((y - 16) * 4 * m_FrameBuffer.FrameBufferWidth)), (void*)((uint64_t)m_FrameBuffer.FrameBufferAddress + (y * 4 * m_FrameBuffer.FrameBufferWidth)), 4 * m_FrameBuffer.FrameBufferWidth * 16);
+        memcpy((void*)((uint64_t)(m_FrameBuffer.FrameBufferAddress) + ((y - 16) * m_FrameBuffer.pitch)), (void*)((uint64_t)m_FrameBuffer.FrameBufferAddress + (y * m_FrameBuffer.pitch)), m_FrameBuffer.pitch * 16);
     }
 
     /* Set everything in the last row to zero */
-    fast_memset((void*)((uint64_t)(m_FrameBuffer.FrameBufferAddress) + 4 * m_FrameBuffer.FrameBufferWidth * 16 * (GetAmountOfTextRows() - 1)), 0, (4 * m_FrameBuffer.FrameBufferWidth * 16) / 8);
+    memset((void*)((uint64_t)(m_FrameBuffer.FrameBufferAddress) + m_FrameBuffer.pitch * 16 * (GetAmountOfTextRows() - 1)), 0, m_FrameBuffer.pitch * 16);
 
     m_CursorPosition.y -= 16;
 }

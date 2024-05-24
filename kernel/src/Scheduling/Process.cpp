@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Scheduler.hpp"
 
 #include <errno.h>
+#include <util.h>
 
 #include <SystemCalls/exit.hpp>
 

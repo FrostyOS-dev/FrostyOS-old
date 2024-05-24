@@ -92,6 +92,10 @@ struct ubsan_nonnull_return_v1_data {
     ubsan_source_location location;
 };
 
+struct ubsan_missing_return_data {
+    ubsan_source_location location;
+};
+
 typedef struct ubsan_overflow_data ubsan_overflow_data;
 typedef struct ubsan_shift_out_of_bounds_data ubsan_shift_out_of_bounds_data;
 typedef struct ubsan_out_of_bounds_data ubsan_out_of_bounds_data;
@@ -103,6 +107,7 @@ typedef struct ubsan_alignment_data ubsan_alignment_data;
 typedef struct ubsan_nonnull_arg_data ubsan_nonnull_arg_data;
 typedef struct ubsan_nonnull_return_data ubsan_nonnull_return_data;
 typedef struct ubsan_nonnull_return_v1_data ubsan_nonnull_return_v1_data;
+typedef struct ubsan_missing_return_data ubsan_missing_return_data;
 
 #ifdef __cplusplus
 extern "C" {
@@ -178,6 +183,10 @@ void __ubsan_handle_builtin_unreachable(ubsan_unreachable_data* data) {
 
 void __ubsan_handle_invalid_builtin(ubsan_invalid_value_data* data, uintptr_t value) {
     ubsan_print_error("invalid builtin", &data->location);
+}
+
+void __ubsan_handle_missing_return(ubsan_missing_return_data* data) {
+    ubsan_print_error("missing return", &data->location);
 }
 
 #ifdef __cplusplus

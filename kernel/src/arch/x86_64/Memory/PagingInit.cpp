@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../ELFKernel.hpp"
 
 #include <stdio.h>
+#include <util.h>
 
 PhysicalPageFrameAllocator PPFA;
 VirtualPageManager KVPM;
@@ -108,7 +109,7 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     */
 
     volatile CR3Layout cr3_layout;
-    fast_memset((void*)&cr3_layout, 0, sizeof(CR3Layout) / 8);
+    memset((void*)&cr3_layout, 0, sizeof(CR3Layout));
     cr3_layout.Address = PML4_phys >> 12;
 
     x86_64_LoadCR3(*((uint64_t*)&cr3_layout)); // will flush the TLB, so it does not need to be done earlier

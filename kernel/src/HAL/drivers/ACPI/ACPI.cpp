@@ -1,19 +1,19 @@
 #include "ACPI.hpp"
-#include "uacpi/sleep.h"
-#include "uacpi/status.h"
 
 #include <uacpi/uacpi.h>
 #include <uacpi/event.h>
+#include <uacpi/sleep.h>
+#include <uacpi/status.h>
 
 #include <stdio.h>
 #include <errno.h>
 
-int ACPI_init(void* RSDP) {
+int ACPI_EarlyInit(void* RSDP) {
     uacpi_phys_addr rsdp_phys = (uacpi_phys_addr)RSDP;
     uacpi_init_params init_params = {
         .rsdp = rsdp_phys,
         .rt_params = {
-            .log_level = UACPI_LOG_TRACE,
+            .log_level = UACPI_LOG_DEBUG,
             .flags = 0
         }
     };
@@ -24,23 +24,33 @@ int ACPI_init(void* RSDP) {
         return -ENODEV;
     }
 
-    rc = uacpi_namespace_load();
+    return ESUCCESS;
+}
+
+int ACPI_FullInit() {
+    uacpi_status rc = uacpi_namespace_load();
     if (uacpi_unlikely_error(rc)) {
-        dbgprintf("Failed to load ACPI namespace: %s\n", uacpi_status_to_string(rc));
+        printf("Failed to load ACPI namespace: %s\n", uacpi_status_to_string(rc));
         return -ENODEV;
     }
+
+    printf("ACPI namespace loaded\n");
 
     rc = uacpi_namespace_initialize();
     if (uacpi_unlikely_error(rc)) {
-        dbgprintf("Failed to initialize ACPI namespace: %s\n", uacpi_status_to_string(rc));
+        printf("Failed to initialize ACPI namespace: %s\n", uacpi_status_to_string(rc));
         return -ENODEV;
     }
 
+    printf("ACPI namespace initialized\n");
+
     rc = uacpi_finalize_gpe_initialization();
     if (uacpi_unlikely_error(rc)) {
-        dbgprintf("Failed to finalize GPE initialization: %s\n", uacpi_status_to_string(rc));
+        printf("Failed to finalize GPE initialization: %s\n", uacpi_status_to_string(rc));
         return -ENODEV;
     }
+
+    printf("GPE initialization finalized\n");
 
     return 0;
 }

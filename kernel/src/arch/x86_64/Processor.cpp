@@ -70,7 +70,8 @@ void Processor::Init(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t
 
     m_IPIList = x86_64_IPI_List();
 
-    InitialiseLocalAPIC();
+    if (!m_BSP)
+        InitialiseLocalAPIC();
 }
 
 void Processor::SetLocalAPIC(x86_64_LocalAPIC* LocalAPIC) {
@@ -96,10 +97,11 @@ uint8_t GetCurrentProcessorID() {
 }
 
 void Processor::InitialiseLocalAPIC() {
-    if (m_LocalAPIC != nullptr) {
-        m_LocalAPIC->Init();
-        if (!m_BSP)
-            Scheduling::Scheduler::AddProcessor(this);
+    assert(m_LocalAPIC != nullptr);
+    m_LocalAPIC->Init();
+    if (!m_BSP) {
+        Scheduling::Scheduler::AddProcessor(this);
+        PANIC("Scheduler::AddProcessor failed. This should not happen under any circumstance. Something is very wrong.");
     }
 }
 

@@ -204,7 +204,6 @@ bool HPET::StartTimer(uint64_t femtoSec, HPETCallback callback, void* data) {
     // Calculate the comparator value
     uint64_t ticks = femtoSec / m_CounterClockPeriod;
     volatile_write64(timerRegs->ConfigCAP, ConfigCAP);
-    volatile_write64(timerRegs->ComparatorValue, volatile_read64(m_regs->MainCounterValue) + ticks);
 
 #ifdef __x86_64__
     {
@@ -214,6 +213,8 @@ bool HPET::StartTimer(uint64_t femtoSec, HPETCallback callback, void* data) {
         ioapic->SetRedirectionEntry(IRQ - ioapic->GetIRQBase(), entry);
     }
 #endif
+
+    volatile_write64(timerRegs->ComparatorValue, volatile_read64(m_regs->MainCounterValue) + ticks);
 
     return true;
 }

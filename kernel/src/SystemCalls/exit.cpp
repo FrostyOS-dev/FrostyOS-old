@@ -27,6 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/Stack.hpp>
 #endif
 
+#include <util.h>
+
 void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running) {
     using namespace Scheduling;
     Process* parent = thread->GetParent();

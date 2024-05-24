@@ -20,9 +20,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "APIC/IOAPIC.hpp"
 
-#include "../io.h"
-
 #include <stdio.h>
+#include <util.h>
 
 #include <Data-structures/Bitmap.hpp>
 
@@ -44,7 +43,7 @@ void x86_64_PIC_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
 void x86_64_IRQ_Handler(x86_64_Interrupt_Registers* regs) {
     uint8_t IRQ = regs->interrupt - PIC_REMAP_OFFSET - 0x10;
 
-    dbgprintf("IRQ: %#.2hhx\n", IRQ);
+    //dbgprintf("IRQ: %#.2hhx\n", IRQ);
 
     if (g_IRQHandlers[IRQ] != nullptr)
         g_IRQHandlers[IRQ](regs);

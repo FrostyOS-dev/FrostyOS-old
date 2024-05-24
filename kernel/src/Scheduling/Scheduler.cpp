@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <errno.h>
 #include <spinlock.h>
+#include <util.h>
 
 #include <process.h>
 
@@ -385,7 +386,7 @@ namespace Scheduling {
             x86_64_set_kernel_gs_base((uint64_t)info);
             x86_64_LocalAPIC* LAPIC = processor->GetLocalAPIC();
             if (LAPIC == nullptr)
-                return;
+                return; // should be unreachable
 #endif
             while (info->start_allowed == 0) {
                 // wait for the processor to be allowed to start

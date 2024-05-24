@@ -17,23 +17,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "MCFG.hpp"
 
-ACPISDTHeader* g_MCFG;
+#include <uacpi/acpi.h>
 
-bool InitAndValidateMCFG(ACPISDTHeader* MCFG) {
+acpi_sdt_hdr* g_MCFG;
+
+bool InitAndValidateMCFG(uacpi_table* MCFG) {
     if (MCFG == nullptr)
         return false;
-    if (doChecksum(MCFG)) {
-        g_MCFG = MCFG;
-        return true;
-    }
-    return false;
+    g_MCFG = MCFG->hdr;
+    return true;
 }
 
 MCFGEntry* GetMCFGEntry(uint64_t index) {
-    MCFGEntry* start = (MCFGEntry*)((uint64_t)g_MCFG + sizeof(ACPISDTHeader) + 8/* Reserved */);
+    MCFGEntry* start = (MCFGEntry*)((uint64_t)g_MCFG + sizeof(acpi_sdt_hdr) + 8/* Reserved */);
     return (MCFGEntry*)&(start[index]);
 }
 
 uint64_t GetMCFGEntryCount() {
-    return (g_MCFG->Length - sizeof(ACPISDTHeader) - 8/* Reserved */) / sizeof(MCFGEntry);
+    return (g_MCFG->length - sizeof(acpi_sdt_hdr) - 8/* Reserved */) / sizeof(MCFGEntry);
 }

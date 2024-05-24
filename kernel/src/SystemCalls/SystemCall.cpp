@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <errno.h>
+#include <util.h>
 
 #include <Scheduling/Scheduler.hpp>
 #include <Scheduling/Thread.hpp>

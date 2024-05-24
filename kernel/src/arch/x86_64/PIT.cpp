@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,14 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "PIT.hpp"
 #include "io.h"
 
-#include <stdio.h>
-
-#include <Scheduling/Scheduler.hpp>
-
-#include "interrupts/pic.hpp"
 #include "interrupts/IRQ.hpp"
 
-#include "Scheduling/taskutil.hpp"
+#include "interrupts/APIC/IOAPIC.hpp"
 
 uint64_t g_Divisor = 0;
 uint64_t g_Frequency = 0;
@@ -39,11 +34,7 @@ uint64_t g_ticks = 0;
 #define BASE_FREQUENCY 1193182
 
 void x86_64_PIT_Handler(x86_64_Interrupt_Registers* iregs) {
-    g_ticks += 5;
-    /*if (!Scheduling::Scheduler::isRunning())
-        return;
-    x86_64_SaveIRegistersToThread(Scheduling::Scheduler::GetCurrent(), iregs);
-    Scheduling::Scheduler::TimerTick(iregs);*/
+    g_ticks += PIT_MS_PER_TICK;
 }
 
 void x86_64_PIT_Init() {
@@ -52,7 +43,12 @@ void x86_64_PIT_Init() {
     x86_64_outb(DATA_0, g_Divisor & 0xFF);
     x86_64_outb(DATA_0, (g_Divisor >> 8) & 0xFF);
 
-    x86_64_IRQ_RegisterHandler(0, (x86_64_IRQHandler_t)x86_64_PIT_Handler);
+    x86_64_IRQ_ReserveIRQ(2);
+    x86_64_IRQ_RegisterHandler(2, (x86_64_IRQHandler_t)x86_64_PIT_Handler);
+    x86_64_IOAPIC* ioapic = x86_64_IOAPIC_GetIOAPICForIRQ(2);
+    x86_64_IOAPIC_RedirectionEntry entry = ioapic->GetRedirectionEntry(2 - ioapic->GetIRQBase());
+    entry.Mask = 0;
+    ioapic->SetRedirectionEntry(2 - ioapic->GetIRQBase(), entry);
 
     g_Divisor = 0;
     g_Frequency = 0;

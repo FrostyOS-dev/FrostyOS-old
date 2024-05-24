@@ -22,6 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <HAL/hal.hpp>
 
+#include <util.h>
+
 PageManager* g_KPM = nullptr;
 
 PageManager::PageManager() : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(), m_VPM(), m_PT(false, this), m_mode(false), m_page_object_pool_used(false), m_auto_expand(false), m_lock(0) {

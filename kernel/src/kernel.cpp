@@ -26,9 +26,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Memory/PageManager.hpp>
 #include <Memory/kmalloc.hpp>
 
-#include <HAL/drivers/ACPI/RSDP.hpp>
-#include <HAL/drivers/ACPI/XSDT.hpp>
-
 #include <HAL/drivers/PS2/PS2Controller.hpp>
 
 #include <HAL/time.h>
@@ -179,6 +176,8 @@ extern "C" void StartKernel(KernelParams* params) {
 void Kernel_Stage2(void* params_addr) {
     //dbgputs("Starting WorldOS!\n");
     puts("Starting WorldOS!\n");
+    printf("Build time: %s %s\n", __DATE__, __TIME__);
+    //dbgprintf("Build time: %s %s\n", __DATE__, __TIME__);
 
     m_Stage = STAGE2;
 

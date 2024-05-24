@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,11 +15,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _X86_64_PIT_HPP
-#define _X86_64_PIT_HPP
+#ifndef _x86_64_PIT_HPP
+#define _x86_64_PIT_HPP
 
 #include <stdint.h>
-#include <stddef.h>
+
+#define PIT_OUT_FREQ 200
+#define PIT_MS_PER_TICK 1000 / PIT_OUT_FREQ
 
 // Init PIT. DO NOT run if hardware interrupts are enabled.
 void x86_64_PIT_Init();

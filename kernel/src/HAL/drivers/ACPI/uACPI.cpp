@@ -1,3 +1,5 @@
+#define UACPI_FORMATTED_LOGGING 1
+
 #include <uacpi/status.h>
 #include <uacpi/kernel_api.h>
 #include <uacpi/types.h>
@@ -260,7 +262,10 @@ uacpi_status uacpi_kernel_io_write(uacpi_handle handle, uacpi_size offset, uacpi
 }
 
 void* uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
-    return g_KPM->MapPages((void*)addr, DIV_ROUNDUP(len, PAGE_SIZE), PagePermissions::READ_WRITE);
+    void* out_addr = g_KPM->MapPages(ALIGN_ADDRESS_DOWN(addr, PAGE_SIZE), DIV_ROUNDUP(len, PAGE_SIZE), PagePermissions::READ_WRITE);
+    if (out_addr == nullptr)
+        return nullptr;
+    return (void*)((size_t)out_addr + (addr & (PAGE_SIZE - 1)));
 }
 
 void uacpi_kernel_unmap(void* addr, uacpi_size len) {
@@ -326,8 +331,8 @@ void uacpi_kernel_vlog(enum uacpi_log_level level, const char* format, uacpi_va_
             prefix = "ERROR";
             break;
     }
-    printf("uACPI, %s: ", prefix);
-    vprintf(format, args);
+    dbgprintf("uACPI, %s: ", prefix);
+    dbgvprintf(format, args);
 }
 
 /*

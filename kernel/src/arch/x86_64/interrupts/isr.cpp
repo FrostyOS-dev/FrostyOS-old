@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../Scheduling/taskutil.hpp"
 
 #include <stdio.h>
+#include <util.h>
 
 #include <HAL/hal.hpp>
 

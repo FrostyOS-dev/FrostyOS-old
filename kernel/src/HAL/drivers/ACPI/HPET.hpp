@@ -18,7 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _HAL_ACPI_HPET_HPP
 #define _HAL_ACPI_HPET_HPP
 
-#include "SDT.hpp"
+#include <stdint.h>
+
+#include <uacpi/tables.h>
 
 struct HPETACPIHeader {
     uint8_t HardwareRevID;
@@ -38,7 +40,7 @@ struct HPETACPIHeader {
     uint8_t OEMSpecific : 4;
 } __attribute__((packed));
 
-bool InitAndValidateHPET(ACPISDTHeader* HPET);
+bool InitAndValidateHPET(uacpi_table* HPET);
 
 void* GetHPETAddress();
 

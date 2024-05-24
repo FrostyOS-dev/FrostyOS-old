@@ -18,7 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _HAL_ACPI_MADT_HPP
 #define _HAL_ACPI_MADT_HPP
 
-#include "SDT.hpp"
+#include <stdint.h>
+
+#include <uacpi/tables.h>
 
 struct MADTEntriesHeader {
     uint32_t LAPICAddress;
@@ -87,7 +89,7 @@ struct MADT_Localx2APIC {
     uint32_t ACPIProcessorUID;
 } __attribute__((packed));
 
-bool InitAndValidateMADT(ACPISDTHeader* MADT);
+bool InitAndValidateMADT(uacpi_table* MADT);
 
 void EnumerateMADTEntries();
 

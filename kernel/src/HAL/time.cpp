@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "time.h"
 
 #ifdef __x86_64__
+#include <arch/x86_64/io.h>
 #include <arch/x86_64/RTC.hpp>
 #endif
 
@@ -39,7 +40,9 @@ extern "C" void HAL_TimeInit() {
     g_timerTicks = 0;
     g_allowTimer = 1;
     g_timerRunning = 1;
+    x86_64_DisableInterrupts();
     g_HPET->StartTimer(1'000'000'000'000, TimerCallback, nullptr);
+    x86_64_EnableInterrupts();
     
     RTC_Init();
     for (int i = 0; i < 5; i++) { // 5 attempts
@@ -65,7 +68,9 @@ void TimerCallback(void*) {
         return;
     }
     __atomic_add_fetch(&g_timerTicks, 1, __ATOMIC_SEQ_CST);
+    x86_64_DisableInterrupts();
     g_HPET->StartTimer(1'000'000'000'000, TimerCallback, nullptr);
+    x86_64_EnableInterrupts();
 }
 
 

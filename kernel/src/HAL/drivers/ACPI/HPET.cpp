@@ -19,19 +19,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Memory/PagingUtil.hpp>
 
-ACPISDTHeader* g_HPETTable;
+#include <uacpi/acpi.h>
 
-bool InitAndValidateHPET(ACPISDTHeader* HPET) {
+acpi_sdt_hdr* g_HPETTable;
+
+bool InitAndValidateHPET(uacpi_table* HPET) {
     if (HPET == nullptr)
         return false;
-    if (doChecksum(HPET)) {
-        g_HPETTable = HPET;
-        return true;
-    }
-    return false;
+    g_HPETTable = HPET->hdr;
+    return true;
 }
 
 void* GetHPETAddress() {
-    HPETACPIHeader* hpetHeader = (HPETACPIHeader*)((uint64_t)g_HPETTable + sizeof(ACPISDTHeader));
+    HPETACPIHeader* hpetHeader = (HPETACPIHeader*)((uint64_t)g_HPETTable + sizeof(acpi_sdt_hdr));
     return to_HHDM((void*)hpetHeader->Address);
 }

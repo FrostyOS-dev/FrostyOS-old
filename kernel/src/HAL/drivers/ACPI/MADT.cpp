@@ -18,12 +18,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //#define MADT_DEBUG
 
 #include "MADT.hpp"
+#include "uacpi/acpi.h"
 
 #include <Data-structures/LinkedList.hpp>
 
 #ifdef MADT_DEBUG
 #include <stdio.h>
 #endif
+
+#include <util.h>
 
 #include <Memory/PagingUtil.hpp>
 
@@ -38,22 +41,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../hal.hpp"
 
+#include <uacpi/tables.h>
+
 //#define WORLDOS_DISABLE_SMP
 
-ACPISDTHeader* g_MADT;
+acpi_sdt_hdr* g_MADT;
 
-bool InitAndValidateMADT(ACPISDTHeader* MADT) {
+bool InitAndValidateMADT(uacpi_table* MADT) {
     if (MADT == nullptr)
         return false;
-    if (doChecksum(MADT)) {
-        g_MADT = MADT;
-        return true;
-    }
-    return false;
+    g_MADT = MADT->hdr;
+    return true;
 }
 
 void EnumerateMADTEntries() {
-    MADTEntriesHeader* entriesHeader = (MADTEntriesHeader*)((uint64_t)g_MADT + sizeof(ACPISDTHeader));
+    MADTEntriesHeader* entriesHeader = (MADTEntriesHeader*)((uint64_t)g_MADT + sizeof(acpi_sdt_hdr));
     void* LAPIC_address = (void*)(uint64_t)(entriesHeader->LAPICAddress);
 
     uint8_t APIC_ID;
@@ -65,8 +67,8 @@ void EnumerateMADTEntries() {
     LinkedList::SimpleLinkedList<MADT_IOAPIC> IOAPICs;
     LinkedList::SimpleLinkedList<MADT_InterruptSourceOverride> InterruptSourceOverrides;
 
-    MADTEntryHeader* start = (MADTEntryHeader*)((uint64_t)g_MADT + sizeof(ACPISDTHeader) + sizeof(MADTEntriesHeader));
-    MADTEntryHeader* end = (MADTEntryHeader*)((uint64_t)g_MADT + g_MADT->Length);
+    MADTEntryHeader* start = (MADTEntryHeader*)((uint64_t)g_MADT + sizeof(acpi_sdt_hdr) + sizeof(MADTEntriesHeader));
+    MADTEntryHeader* end = (MADTEntryHeader*)((uint64_t)g_MADT + g_MADT->length);
     MADTEntryHeader* entry = start;
     while (entry < end) {
         switch (entry->Type) {

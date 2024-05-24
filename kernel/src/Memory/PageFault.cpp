@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "PageFault.hpp"
 
 #include <stdio.h>
+#include <util.h>
 
 #include <Scheduling/Scheduler.hpp>
 
@@ -30,7 +31,7 @@ void __attribute__((noreturn)) PageFaultHandler(PageFaultErrorCode error_code, v
     Scheduling::Thread* thread = Scheduling::Scheduler::GetCurrent();
     Scheduling::Process* process = nullptr;
     if (thread != nullptr) {
-        fast_memcpy(thread->GetCPURegisters(), regs, sizeof(CPU_Registers)); // save the registers
+        memcpy(thread->GetCPURegisters(), regs, sizeof(CPU_Registers)); // save the registers
         process = thread->GetParent();
     }
     if (error_code.user && Scheduling::Scheduler::isRunning() && process != nullptr)

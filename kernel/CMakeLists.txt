@@ -80,14 +80,13 @@ set(kernel_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Graphics/Colour.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Graphics/VGA.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Graphics/VGAFont.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/ACPI.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/ACPIDevice.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/FADT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/HPET.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/MADT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/MCFG.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/RSDP.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/SDT.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/XSDT.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/uACPI.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/ACPI/ACPI.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/HPET.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/Keyboard.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/HAL/drivers/PCI.cpp

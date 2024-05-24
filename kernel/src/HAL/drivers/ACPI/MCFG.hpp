@@ -18,7 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _HAL_ACPI_MCFG_HPP
 #define _HAL_ACPI_MCFG_HPP
 
-#include "SDT.hpp"
+#include <stdint.h>
+
+#include <uacpi/tables.h>
 
 struct MCFGEntry {
     uint64_t Address;
@@ -28,7 +30,7 @@ struct MCFGEntry {
     uint32_t Reserved;
 } __attribute__((packed));
 
-bool InitAndValidateMCFG(ACPISDTHeader* MCFG);
+bool InitAndValidateMCFG(uacpi_table* MCFG);
 
 MCFGEntry* GetMCFGEntry(uint64_t index);
 

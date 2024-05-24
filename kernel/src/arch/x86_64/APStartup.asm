@@ -50,12 +50,13 @@ align 64
     or eax, 1<<8 ; LME
     wrmsr
     mov eax, cr0
+    and eax, ~(1 << 30 | 1 << 29) ; clear CD and NW
     or eax, 1<<31 | 1<<16 ; PG, WP
     mov cr0, eax
-    jmp 0x18:dword 0x100
-align 64
+    jmp 0x18:dword 0x120
+align 32
 [bits 64]
-.lmode: ; 0x0100, we are now in long mode. Now we just setup what the kernel needs
+.lmode: ; 0x0120, we are now in long mode. Now we just setup what the kernel needs
     mov rax, 0x20
     mov ds, ax
     mov es, ax
