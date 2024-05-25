@@ -60,10 +60,10 @@ target_compile_options(c
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
 )
 
-set_target_properties(c PROPERTIES CXX_STANDARD 20)
+set_target_properties(c PROPERTIES CXX_STANDARD 23)
 set_target_properties(c PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(c PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(c PROPERTIES C_STANDARD 17)
+set_target_properties(c PROPERTIES C_STANDARD 23)
 set_target_properties(c PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(c PROPERTIES C_STANDARD_REQUIRED ON)
 
@@ -110,10 +110,10 @@ target_compile_options(ssp
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
 )
 
-set_target_properties(ssp PROPERTIES CXX_STANDARD 20)
+set_target_properties(ssp PROPERTIES CXX_STANDARD 23)
 set_target_properties(ssp PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(ssp PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(ssp PROPERTIES C_STANDARD 17)
+set_target_properties(ssp PROPERTIES C_STANDARD 23)
 set_target_properties(ssp PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(ssp PROPERTIES C_STANDARD_REQUIRED ON)
 
