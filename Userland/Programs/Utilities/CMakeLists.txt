@@ -33,10 +33,10 @@ target_compile_options(cat
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 )
 
-set_target_properties(cat PROPERTIES CXX_STANDARD 20)
+set_target_properties(cat PROPERTIES CXX_STANDARD 23)
 set_target_properties(cat PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(cat PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(cat PROPERTIES C_STANDARD 17)
+set_target_properties(cat PROPERTIES C_STANDARD 23)
 set_target_properties(cat PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(cat PROPERTIES C_STANDARD_REQUIRED ON)
 
@@ -55,10 +55,10 @@ target_compile_options(chmod
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 )
 
-set_target_properties(chmod PROPERTIES CXX_STANDARD 20)
+set_target_properties(chmod PROPERTIES CXX_STANDARD 23)
 set_target_properties(chmod PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(chmod PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(chmod PROPERTIES C_STANDARD 17)
+set_target_properties(chmod PROPERTIES C_STANDARD 23)
 set_target_properties(chmod PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(chmod PROPERTIES C_STANDARD_REQUIRED ON)
 
@@ -77,10 +77,10 @@ target_compile_options(chown
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 )
 
-set_target_properties(chown PROPERTIES CXX_STANDARD 20)
+set_target_properties(chown PROPERTIES CXX_STANDARD 23)
 set_target_properties(chown PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(chown PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(chown PROPERTIES C_STANDARD 17)
+set_target_properties(chown PROPERTIES C_STANDARD 23)
 set_target_properties(chown PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(chown PROPERTIES C_STANDARD_REQUIRED ON)
 
@@ -99,10 +99,10 @@ target_compile_options(echo
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 )
 
-set_target_properties(echo PROPERTIES CXX_STANDARD 20)
+set_target_properties(echo PROPERTIES CXX_STANDARD 23)
 set_target_properties(echo PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(echo PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(echo PROPERTIES C_STANDARD 17)
+set_target_properties(echo PROPERTIES C_STANDARD 23)
 set_target_properties(echo PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(echo PROPERTIES C_STANDARD_REQUIRED ON)
 
@@ -121,10 +121,10 @@ target_compile_options(ls
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 )
 
-set_target_properties(ls PROPERTIES CXX_STANDARD 20)
+set_target_properties(ls PROPERTIES CXX_STANDARD 23)
 set_target_properties(ls PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(ls PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(ls PROPERTIES C_STANDARD 17)
+set_target_properties(ls PROPERTIES C_STANDARD 23)
 set_target_properties(ls PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(ls PROPERTIES C_STANDARD_REQUIRED ON)
 
@@ -143,10 +143,10 @@ target_compile_options(stat
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 )
 
-set_target_properties(stat PROPERTIES CXX_STANDARD 20)
+set_target_properties(stat PROPERTIES CXX_STANDARD 23)
 set_target_properties(stat PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(stat PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(stat PROPERTIES C_STANDARD 17)
+set_target_properties(stat PROPERTIES C_STANDARD 23)
 set_target_properties(stat PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(stat PROPERTIES C_STANDARD_REQUIRED ON)
 

@@ -138,10 +138,10 @@ set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/kernel.ld)
 
 add_executable(kernel ${kernel_sources} ${kernel_lib_sources})
 
-set_target_properties(kernel PROPERTIES CXX_STANDARD 20)
+set_target_properties(kernel PROPERTIES CXX_STANDARD 23)
 set_target_properties(kernel PROPERTIES CXX_STANDARD_REQUIRED ON)
 set_target_properties(kernel PROPERTIES CXX_EXTENSIONS OFF)
-set_target_properties(kernel PROPERTIES C_STANDARD 17)
+set_target_properties(kernel PROPERTIES C_STANDARD 23)
 set_target_properties(kernel PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(kernel PROPERTIES C_STANDARD_REQUIRED ON)
 
