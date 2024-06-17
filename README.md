@@ -1,4 +1,4 @@
-# WorldOS
+# FrostyOS (formerly WorldOS)
 
 ## NOTE
 
