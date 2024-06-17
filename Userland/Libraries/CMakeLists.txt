@@ -13,11 +13,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# we need to create empty libm.a and libstdc++.a libraries in ${WORLDOS_INSTALL_PREFIX}/lib/ as libm is actually inside LibC and libstdc++ doesn't exist yet
+# we need to create empty libm.a and libstdc++.a libraries in ${FROSTYOS_INSTALL_PREFIX}/lib/ as libm is actually inside LibC and libstdc++ doesn't exist yet
 add_custom_target(create_fake_libraries
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/lib
-    COMMAND ${CMAKE_COMMAND} -E touch ${WORLDOS_INSTALL_PREFIX}/lib/libm.a
-    COMMAND ${CMAKE_COMMAND} -E touch ${WORLDOS_INSTALL_PREFIX}/lib/libstdc++.a
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/lib
+    COMMAND ${CMAKE_COMMAND} -E touch ${FROSTYOS_INSTALL_PREFIX}/lib/libm.a
+    COMMAND ${CMAKE_COMMAND} -E touch ${FROSTYOS_INSTALL_PREFIX}/lib/libstdc++.a
 )
 
 add_custom_target(Libraries)

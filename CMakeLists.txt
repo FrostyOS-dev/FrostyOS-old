@@ -15,13 +15,13 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-project(WorldOS C CXX ASM_NASM)
+project(FrostyOS C CXX ASM_NASM)
 
 include(${CMAKE_SOURCE_DIR}/build-scripts/utils.cmake)
 
 add_custom_target(build_initramfs
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS
-    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}/root /bin/sh -c "tar -c --no-auto-compress --owner=0 --group=0 -f ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS/initramfs.tar *"
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/dist/boot/FrostyOS
+    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_SOURCE_DIR}/root /bin/sh -c "tar -c --no-auto-compress --owner=0 --group=0 -f ${CMAKE_SOURCE_DIR}/dist/boot/FrostyOS/initramfs.tar *"
 )
 
 add_dependencies(build_initramfs Userland)
@@ -68,9 +68,9 @@ if (UNIX)
 	    COMMAND mmd -i ${CMAKE_SOURCE_DIR}/iso/fat.img ::/EFI
 	    COMMAND mmd -i ${CMAKE_SOURCE_DIR}/iso/fat.img ::/EFI/BOOT
 	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/EFI/BOOT/BOOTX64.EFI ::/EFI/BOOT
-	    COMMAND mmd -i ${CMAKE_SOURCE_DIR}/iso/fat.img ::/WorldOS
-	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS/kernel.elf ::/WorldOS
-	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS/initramfs.tar ::/WorldOS
+	    COMMAND mmd -i ${CMAKE_SOURCE_DIR}/iso/fat.img ::/FrostyOS
+	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/FrostyOS/kernel.elf ::/FrostyOS
+	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/FrostyOS/initramfs.tar ::/FrostyOS
 	    COMMAND mcopy -i ${CMAKE_SOURCE_DIR}/iso/fat.img ${CMAKE_SOURCE_DIR}/dist/boot/limine.cfg ::
         COMMAND ${CMAKE_SOURCE_DIR}/depend/tools/bin/mkgpt -o ${CMAKE_SOURCE_DIR}/iso/hdimage.bin --image-size 24576 --part ${CMAKE_SOURCE_DIR}/iso/fat.img --type system
 		BYPRODUCTS ${CMAKE_SOURCE_DIR}/iso/hdimage.bin ${CMAKE_SOURCE_DIR}/iso/fat.img
@@ -79,13 +79,13 @@ endif()
 
 add_dependencies(build_iso build_boot build_mkgpt update_ovmf)
 
-if(WORLDOS_BUILD_CONFIG STREQUAL "Debug")
+if(FROSTYOS_BUILD_CONFIG STREQUAL "Debug")
     add_custom_target(run-qemu
 		COMMAND qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=${CMAKE_SOURCE_DIR}/ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=${CMAKE_SOURCE_DIR}/iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -machine accel=kvm -M q35 -cpu qemu64 -smp 2
 		USES_TERMINAL
     )
 else()
-    if(WORLDOS_BUILD_CONFIG STREQUAL "Release")
+    if(FROSTYOS_BUILD_CONFIG STREQUAL "Release")
 		add_custom_target(run-qemu
 		    COMMAND qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=${CMAKE_SOURCE_DIR}/ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=${CMAKE_SOURCE_DIR}/iso/hdimage.bin,index=0,media=disk -m 256M -machine accel=kvm -M q35 -cpu qemu64 -smp 2
 		    USES_TERMINAL

@@ -30,7 +30,7 @@ size_t GetMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCount) 
 
     for (size_t i = 0; i < EntryCount; i++) {
         const MemoryMapEntry* entry = MemoryMap[i];
-        if (entry->type == WORLDOS_MEMORY_FREE) {
+        if (entry->type == FROSTYOS_MEMORY_FREE) {
             if (((uint64_t)(entry->Address) + entry->length) > endLastFree)
                 endLastFree = (uint64_t)(entry->Address) + entry->length;
         }
@@ -50,7 +50,7 @@ size_t UpdateMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCoun
 
     for (size_t i = EntryCount; i > 0; i--) {
         const MemoryMapEntry* entry = MemoryMap[i-1];
-        if (entry->type == WORLDOS_MEMORY_FREE) {
+        if (entry->type == FROSTYOS_MEMORY_FREE) {
             g_memorySizeBytes = (uint64_t)(entry->Address) + entry->length;
             NewEntryCount = i;
             break;

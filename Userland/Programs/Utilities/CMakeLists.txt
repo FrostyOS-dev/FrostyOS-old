@@ -153,13 +153,13 @@ set_target_properties(stat PROPERTIES C_STANDARD_REQUIRED ON)
 add_dependencies(stat install_libc)
 
 add_custom_target(Utilities
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/bin
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cat> ${WORLDOS_INSTALL_PREFIX}/bin/cat
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:chmod> ${WORLDOS_INSTALL_PREFIX}/bin/chmod
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:chown> ${WORLDOS_INSTALL_PREFIX}/bin/chown
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:echo> ${WORLDOS_INSTALL_PREFIX}/bin/echo
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:ls> ${WORLDOS_INSTALL_PREFIX}/bin/ls
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:stat> ${WORLDOS_INSTALL_PREFIX}/bin/stat
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/bin
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:cat> ${FROSTYOS_INSTALL_PREFIX}/bin/cat
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:chmod> ${FROSTYOS_INSTALL_PREFIX}/bin/chmod
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:chown> ${FROSTYOS_INSTALL_PREFIX}/bin/chown
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:echo> ${FROSTYOS_INSTALL_PREFIX}/bin/echo
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:ls> ${FROSTYOS_INSTALL_PREFIX}/bin/ls
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:stat> ${FROSTYOS_INSTALL_PREFIX}/bin/stat
 )
 
 add_dependencies(Utilities cat chmod chown echo ls stat)

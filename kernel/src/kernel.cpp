@@ -172,8 +172,8 @@ extern "C" void StartKernel(KernelParams* params) {
 }
 
 void Kernel_Stage2(void* params_addr) {
-    dbgputs("Starting WorldOS!\n");
-    puts("Starting WorldOS!\n");
+    dbgputs("Starting FrostyOS!\n");
+    puts("Starting FrostyOS!\n");
 
     m_Stage = STAGE2;
 

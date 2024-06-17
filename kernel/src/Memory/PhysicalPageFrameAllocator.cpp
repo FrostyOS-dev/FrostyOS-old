@@ -64,7 +64,7 @@ void PhysicalPageFrameAllocator::EarlyInit(const MemoryMapEntry* FirstMemoryMapE
     for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
         MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)FirstMemoryMapEntry + (i * MEMORY_MAP_ENTRY_SIZE));
         // We don't need to check if the address is in bitmap range because the bitmap has protections
-        if (entry->type == WORLDOS_MEMORY_FREE) {
+        if (entry->type == FROSTYOS_MEMORY_FREE) {
             m_FreeMem += entry->length;
             if (entry->length > PAGE_SIZE) {
                 for (uint64_t j = 0; j < entry->length; j += PAGE_SIZE)
@@ -115,7 +115,7 @@ void PhysicalPageFrameAllocator::FullInit(const MemoryMapEntry* FirstMemoryMapEn
         MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)FirstMemoryMapEntry + (i * MEMORY_MAP_ENTRY_SIZE));
         if ((entry->Address + entry->length) <= GiB(4))
             continue; // ignore entries below 4GiB
-        if (entry->type == WORLDOS_MEMORY_FREE) {
+        if (entry->type == FROSTYOS_MEMORY_FREE) {
             m_FreeMem += entry->length;
             if (entry->length > PAGE_SIZE) {
                 for (uint64_t j = 0; j < entry->length; j += PAGE_SIZE) {

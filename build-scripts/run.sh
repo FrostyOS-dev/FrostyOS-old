@@ -36,9 +36,9 @@ export TOOLCHAIN_PREFIX SYSROOT
 
 ./build-scripts/build_toolchain.sh
 
-# Check if $WORLDOS_BUILD_CONFIG is set, if not set it to Debug
-if [ -z "$WORLDOS_BUILD_CONFIG" ]; then
-    WORLDOS_BUILD_CONFIG=Debug
+# Check if $FROSTYOS_BUILD_CONFIG is set, if not set it to Debug
+if [ -z "$FROSTYOS_BUILD_CONFIG" ]; then
+    FROSTYOS_BUILD_CONFIG=Debug
 fi
 
 # Check if build directory exists
@@ -49,5 +49,5 @@ else
     cd build
 fi
 
-cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWORLDOS_BUILD_CONFIG=$WORLDOS_BUILD_CONFIG --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
+cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DFROSTYOS_BUILD_CONFIG=$FROSTYOS_BUILD_CONFIG --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
 ninja run-qemu

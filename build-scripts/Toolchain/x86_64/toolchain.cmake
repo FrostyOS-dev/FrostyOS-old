@@ -42,11 +42,11 @@ else()
     set(AR x86_64-worldos-ar)
 endif()
 
-set(WORLDOS_ARCHITECTURE x86_64)
+set(FROSTYOS_ARCHITECTURE x86_64)
 
 set(SYSROOT ${CMAKE_SOURCE_DIR}/root)
 
-set(WORLDOS_INSTALL_PREFIX ${SYSROOT}/data)
+set(FROSTYOS_INSTALL_PREFIX ${SYSROOT}/data)
 
 set(CMAKE_CXX_FLAGS "-fno-exceptions -fno-rtti")
 set(CMAKE_C_FLAGS "")

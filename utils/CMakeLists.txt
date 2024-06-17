@@ -15,7 +15,7 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-project(WorldOS-host-utils CXX C ASM_NASM)
+project(FrostyOS-host-utils CXX C ASM_NASM)
 
 find_program(NASM nasm)
 if(NOT NASM)
