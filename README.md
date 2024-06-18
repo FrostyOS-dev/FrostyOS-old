@@ -167,8 +167,7 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### System Requirement info
 
-- You should be able to run FrostyOS with less RAM (by changing the '256M' to the amount of RAM you want), but I have not test it with less.
-- There is no point trying to allocate more than 1 core, as only the first core is used.
+- You should be able to run FrostyOS with less RAM (by changing the '256M' to the amount of RAM you want), but I have not tested it with less.
 - KVM can be disabled, you will just need to remove `-machine accel=kvm` from the QEMU command line. It doesn't make much of a performance boost by using it, so it doesn't *have* to be enabled.
 
 ### Program Requirement info
@@ -178,7 +177,7 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 ### Building and Running
 
 - Make sure to follow the setup steps before building and running.
-- By default the OS runs with 2 cores. This can be changed by modifying the `qemu-system-x86_64` command line.
+- By default the OS runs with 2 cores. This can be changed by modifying the `-smp` flag in the `qemu-system-x86_64` command line. To run with just 1 core, remove that flag completely.
 
 ### Other platforms
 
