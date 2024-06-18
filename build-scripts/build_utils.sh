@@ -18,31 +18,12 @@
 # Exit on error
 set -e
 
-# build the host system utils
-./build-scripts/build_utils.sh
-
-# We have to check if the toolchain is up to date before building the OS
-# First we check if the $TOOLCHAIN_PREFIX is set, if not set it to toolchain/local
-if [ -z "$TOOLCHAIN_PREFIX" ]; then
-    TOOLCHAIN_PREFIX=$PWD/toolchain/local
-fi
-
-# Check if $SYSROOT is set, if not set it to root
-if [ -z "$SYSROOT" ]; then
-    SYSROOT=$PWD/root
-fi
-
-# Make the toolchain directory prefix, and install kernel and LibC headers
-mkdir -p $TOOLCHAIN_PREFIX
-
-export TOOLCHAIN_PREFIX SYSROOT
-
-./build-scripts/build_toolchain.sh
-
 # Check if $FROSTYOS_BUILD_CONFIG is set, if not set it to Debug
 if [ -z "$FROSTYOS_BUILD_CONFIG" ]; then
     FROSTYOS_BUILD_CONFIG=Debug
 fi
+
+cd utils
 
 # Check if build directory exists
 if [ -d "build" ]; then
@@ -52,5 +33,5 @@ else
     cd build
 fi
 
-cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DFROSTYOS_BUILD_CONFIG=$FROSTYOS_BUILD_CONFIG --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
-ninja run-qemu
+cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DFROSTYOS_BUILD_CONFIG=$FROSTYOS_BUILD_CONFIG ..
+ninja install
