@@ -15,4 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-toolchain/local/bin/x86_64-worldos-nm -C --format=bsd $1
+toolchain/local/bin/x86_64-frostyos-nm -C --format=bsd $1
