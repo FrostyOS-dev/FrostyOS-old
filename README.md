@@ -1,9 +1,5 @@
 # FrostyOS (formerly WorldOS)
 
-## NOTE
-
-This is unstable code and does not boot successfully.
-
 ## COPYING
 
 Copyright (©) 2022-2024  Frosty515
