@@ -1,8 +1,4 @@
-# WorldOS
-
-## NOTE
-
-This is unstable code and does not boot successfully.
+# FrostyOS (formerly WorldOS)
 
 ## COPYING
 
@@ -145,13 +141,13 @@ See notes if your system cannot meet these requirements
 
 1. run `cd utils && mkdir build && cd build && cmake -GNinja .. && ninja && ninja install && cd .. && rm -fr build && cd ..` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). This will automatically build with the number of jobs that `nproc` reports are possible. This will build and install the host system utilities to `utils/bin`. **This only needs to be run for the first build.**
 2. run `build-scripts/enter-environment.sh`. This will drop you into a new shell with your `$PATH` updated to include the toolchain. **This only needs to be run once per terminal session.**
-3. run `WORLDOS_BUILD_CONFIG=<config> build-scripts/build.sh` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<config>` should be either `Debug` or `Release`. This will automatically build with the number of jobs that `nproc` reports are possible. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
+3. run `FROSTYOS_BUILD_CONFIG=<config> build-scripts/build.sh` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<config>` should be either `Debug` or `Release`. This will automatically build with the number of jobs that `nproc` reports are possible. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
 
 ## Build and Run - Unix like, Windows 11 and Windows 10 method 2
 
 1. run `cd utils && mkdir build && cd build && cmake -GNinja .. && ninja && ninja install && cd .. && rm -fr build && cd ..` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). This will automatically build with the number of jobs that `nproc` reports are possible. This will build and install the host system utilities to `utils/bin`. **This only needs to be run for the first build.**
 2. run `build-scripts/enter-environment.sh`. This will drop you into a new shell with your `$PATH` updated to include the toolchain. **This only needs to be run once per terminal session.**
-3. run `WORLDOS_BUILD_CONFIG=<config> build-scripts/run.sh` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<config>` should be either `Debug` or `Release`. This will automatically build with the number of jobs that `nproc` reports are possible. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
+3. run `FROSTYOS_BUILD_CONFIG=<config> build-scripts/run.sh` in the appropriate place for your OS (WSL2 for Windows 10, WSLg for Windows 11, etc.). `<config>` should be either `Debug` or `Release`. This will automatically build with the number of jobs that `nproc` reports are possible. NOTE: If the toolchain isn't built and installed to the correct location, it **will** be built and installed.
 
 ## Running - Other
 
@@ -171,8 +167,7 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 
 ### System Requirement info
 
-- You should be able to run WorldOS with less RAM (by changing the '256M' to the amount of RAM you want), but I have not test it with less.
-- There is no point trying to allocate more than 1 core, as only the first core is used.
+- You should be able to run FrostyOS with less RAM (by changing the '256M' to the amount of RAM you want), but I have not tested it with less.
 - KVM can be disabled, you will just need to remove `-machine accel=kvm` from the QEMU command line. It doesn't make much of a performance boost by using it, so it doesn't *have* to be enabled.
 
 ### Program Requirement info
@@ -182,7 +177,7 @@ Run the following command(s) in the appropriate place for your OS (WSL2 for Wind
 ### Building and Running
 
 - Make sure to follow the setup steps before building and running.
-- By default the OS runs with 2 cores. This can be changed by modifying the `qemu-system-x86_64` command line.
+- By default the OS runs with 2 cores. This can be changed by modifying the `-smp` flag in the `qemu-system-x86_64` command line. To run with just 1 core, remove that flag completely.
 
 ### Other platforms
 

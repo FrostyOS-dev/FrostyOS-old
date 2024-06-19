@@ -262,7 +262,7 @@ void VirtualPageManager::InitVPageMgr(MemoryMapEntry** MemoryMap, uint64_t Memor
     FreePages(m_region.GetStart(), m_region.GetSize() >> 12);
     for (uint64_t i = 0; i < MemoryMapEntryCount; i++) {
         MemoryMapEntry* entry = (MemoryMapEntry*)((uint64_t)MemoryMap + (i * MEMORY_MAP_ENTRY_SIZE));
-        if ((entry->type == WORLDOS_MEMORY_ACPI_NVS || entry->type == WORLDOS_MEMORY_ACPI_RECLAIMABLE) && m_region.IsInside((void*)(entry->Address), entry->length)) {
+        if ((entry->type == FROSTYOS_MEMORY_ACPI_NVS || entry->type == FROSTYOS_MEMORY_ACPI_RECLAIMABLE) && m_region.IsInside((void*)(entry->Address), entry->length)) {
             uint64_t page_length = (((entry->length % 4096) > 0) ? ((entry->length / 4096) + 1) : (entry->length / 4096));
             ReservePages((void*)entry->Address, page_length);
         }

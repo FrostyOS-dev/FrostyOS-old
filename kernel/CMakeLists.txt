@@ -15,7 +15,7 @@
 
 include(dependencies/uACPI/uacpi.cmake)
 
-if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
+if(FROSTYOS_ARCHITECTURE STREQUAL "x86_64")
     set(kernel_sources
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/IDT.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/interrupts/isrs.asm
@@ -200,19 +200,19 @@ target_link_libraries(kernel PRIVATE gcc)
 target_compile_definitions(kernel PRIVATE _IS_IN_KERNEL=1)
 
 add_custom_target(install_kernel_headers ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/include/kernel
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/headers ${WORLDOS_INSTALL_PREFIX}/include/kernel
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/include/kernel
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/headers ${FROSTYOS_INSTALL_PREFIX}/include/kernel
 )
 
 add_custom_target(create_dist_dir ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/dist/boot/FrostyOS
 )
 
 add_dependencies(kernel limine_include install_kernel_headers create_dist_dir)
 
 add_custom_target(install_kernel
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS
-    # COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:kernel> ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS/kernel.elf
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/dist/boot/FrostyOS
+    # COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:kernel> ${CMAKE_SOURCE_DIR}/dist/boot/FrostyOS/kernel.elf
     COMMAND ${CMAKE_NM} -C --format=bsd -n $<TARGET_FILE:kernel> | ${CMAKE_SOURCE_DIR}/utils/bin/buildsymboltable ${CMAKE_SOURCE_DIR}/root/kernel.map
-    COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:kernel> -o ${CMAKE_SOURCE_DIR}/dist/boot/WorldOS/kernel.elf
+    COMMAND ${CMAKE_STRIP} --strip-debug $<TARGET_FILE:kernel> -o ${CMAKE_SOURCE_DIR}/dist/boot/FrostyOS/kernel.elf
 )

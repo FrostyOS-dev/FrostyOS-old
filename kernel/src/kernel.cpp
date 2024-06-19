@@ -190,8 +190,8 @@ extern "C" void StartKernel(KernelParams* params) {
 }
 
 void Kernel_Stage2(void* params_addr) {
-    //dbgputs("Starting WorldOS!\n");
-    puts("Starting WorldOS!\n");
+    //dbgputs("Starting FrostyOS!\n");
+    puts("Starting FrostyOS!\n");
     printf("Build time: %s %s\n", __DATE__, __TIME__);
     //dbgprintf("Build time: %s %s\n", __DATE__, __TIME__);
 

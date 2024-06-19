@@ -27,7 +27,7 @@ fi
 # Install mkgpt
 rm -fr depend/tools/build/mkgpt
 mkdir -p depend/tools/build/mkgpt
-curl -OL https://github.com/WorldOS-dev/various-scripts/raw/master/mkgpt/mkgpt.tar.gz
+curl -OL https://github.com/FrostyOS-dev/various-scripts/raw/master/mkgpt/mkgpt.tar.gz
 tar -xf mkgpt.tar.gz -C depend/tools/build/mkgpt
 rm -fr mkgpt.tar.gz
 cd depend/tools/build/mkgpt
@@ -35,7 +35,7 @@ cd depend/tools/build/mkgpt
 make -j$(nproc)
 cd ../..
 mkdir -p bin licenses/mkgpt
-curl -o licenses/mkgpt/LICENSE https://raw.githubusercontent.com/WorldOS-dev/various-scripts/master/mkgpt/LICENSE
+curl -o licenses/mkgpt/LICENSE https://raw.githubusercontent.com/FrostyOS-dev/various-scripts/master/mkgpt/LICENSE
 cp build/mkgpt/mkgpt bin/
 chmod 755 bin/mkgpt
 rm -fr build/mkgpt

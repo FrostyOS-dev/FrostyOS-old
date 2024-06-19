@@ -20,24 +20,24 @@ set -e
 
 mkdir -p $TOOLCHAIN_PREFIX
 
-# Check if x86_64-worldos binutils exists and is version 2.42 using x86_64-worldos-ld
-if [ -f "$TOOLCHAIN_PREFIX/bin/x86_64-worldos-ld" ]; then
-    if [ "$($TOOLCHAIN_PREFIX/bin/x86_64-worldos-ld -v | grep '2.42')" ]; then
-        echo "x86_64-worldos binutils is up to date."
+# Check if x86_64-frostyos binutils exists and is version 2.42 using x86_64-frostyos-ld
+if [ -f "$TOOLCHAIN_PREFIX/bin/x86_64-frostyos-ld" ]; then
+    if [ "$($TOOLCHAIN_PREFIX/bin/x86_64-frostyos-ld -v | grep '2.42')" ]; then
+        echo "x86_64-frostyos binutils is up to date."
         exit 0
     fi
 fi
 
-# Install x86_64-worldos binutils
+# Install x86_64-frostyos binutils
 
 echo -----------------
 echo Building binutils
 echo -----------------
 mkdir -p toolchain/binutils/{src,build}
 cd toolchain/binutils/src
-git clone https://github.com/WorldOS-dev/binutils-gdb.git --depth 1 --branch binutils-2_42-branch binutils-2.42
+git clone https://github.com/FrostyOS-dev/binutils-gdb.git --depth 1 --branch binutils-2_42-branch binutils-2.42
 cd ../build
-../src/binutils-2.42/configure --target=x86_64-worldos --prefix="$TOOLCHAIN_PREFIX" --with-sysroot=$SYSROOT --disable-nls --disable-werror --enable-shared --disable-gdb
+../src/binutils-2.42/configure --target=x86_64-frostyos --prefix="$TOOLCHAIN_PREFIX" --with-sysroot=$SYSROOT --disable-nls --disable-werror --enable-shared --disable-gdb
 make -j$(nproc)
 make install
 cd ../../..

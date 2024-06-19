@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
+if(FROSTYOS_ARCHITECTURE STREQUAL "x86_64")
     set(libc_sources
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/inttypes.asm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/stdlib.asm
@@ -68,13 +68,13 @@ set_target_properties(c PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(c PROPERTIES C_STANDARD_REQUIRED ON)
 
 add_custom_target(install_c_headers
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/include
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/include ${WORLDOS_INSTALL_PREFIX}/include
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/include
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/include ${FROSTYOS_INSTALL_PREFIX}/include
 )
 
 add_custom_target(install_libc
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/lib
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:c> ${WORLDOS_INSTALL_PREFIX}/lib
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/lib
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:c> ${FROSTYOS_INSTALL_PREFIX}/lib
 )
 
 add_dependencies(install_c_headers install_kernel_headers)
@@ -121,9 +121,9 @@ set_target_properties(ssp PROPERTIES C_STANDARD_REQUIRED ON)
 add_dependencies(ssp install_kernel_headers)
 
 add_custom_target(install_ssp
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/lib
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:ssp> ${WORLDOS_INSTALL_PREFIX}/lib
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${WORLDOS_INSTALL_PREFIX}/lib/libssp.a ${WORLDOS_INSTALL_PREFIX}/lib/libssp_nonshared.a
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/lib
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:ssp> ${FROSTYOS_INSTALL_PREFIX}/lib
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${FROSTYOS_INSTALL_PREFIX}/lib/libssp.a ${FROSTYOS_INSTALL_PREFIX}/lib/libssp_nonshared.a
 )
 
 
@@ -131,7 +131,7 @@ add_custom_target(install_ssp
 
 add_custom_target(install_startfiles)
 
-if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
+if(FROSTYOS_ARCHITECTURE STREQUAL "x86_64")
     set(startfiles_sources
         ${startfiles_sources}
         ${CMAKE_CURRENT_SOURCE_DIR}/startfiles/src/arch/x86_64/crt0.asm
@@ -143,25 +143,25 @@ if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
     add_library(crtn OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/startfiles/src/arch/x86_64/crtn.asm)
 
     add_custom_target(install_crt0
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/lib
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_OBJECTS:crt0> ${WORLDOS_INSTALL_PREFIX}/lib
-        COMMAND ${CMAKE_COMMAND} -E rename ${WORLDOS_INSTALL_PREFIX}/lib/crt0.asm.o ${WORLDOS_INSTALL_PREFIX}/lib/crt0.o
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/lib
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_OBJECTS:crt0> ${FROSTYOS_INSTALL_PREFIX}/lib
+        COMMAND ${CMAKE_COMMAND} -E rename ${FROSTYOS_INSTALL_PREFIX}/lib/crt0.asm.o ${FROSTYOS_INSTALL_PREFIX}/lib/crt0.o
     )
 
     add_dependencies(install_crt0 crt0)
 
     add_custom_target(install_crti
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/lib
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_OBJECTS:crti> ${WORLDOS_INSTALL_PREFIX}/lib
-        COMMAND ${CMAKE_COMMAND} -E rename ${WORLDOS_INSTALL_PREFIX}/lib/crti.asm.o ${WORLDOS_INSTALL_PREFIX}/lib/crti.o
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/lib
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_OBJECTS:crti> ${FROSTYOS_INSTALL_PREFIX}/lib
+        COMMAND ${CMAKE_COMMAND} -E rename ${FROSTYOS_INSTALL_PREFIX}/lib/crti.asm.o ${FROSTYOS_INSTALL_PREFIX}/lib/crti.o
     )
 
     add_dependencies(install_crti crti)
 
     add_custom_target(install_crtn
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/lib
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_OBJECTS:crtn> ${WORLDOS_INSTALL_PREFIX}/lib
-        COMMAND ${CMAKE_COMMAND} -E rename ${WORLDOS_INSTALL_PREFIX}/lib/crtn.asm.o ${WORLDOS_INSTALL_PREFIX}/lib/crtn.o
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${FROSTYOS_INSTALL_PREFIX}/lib
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_OBJECTS:crtn> ${FROSTYOS_INSTALL_PREFIX}/lib
+        COMMAND ${CMAKE_COMMAND} -E rename ${FROSTYOS_INSTALL_PREFIX}/lib/crtn.asm.o ${FROSTYOS_INSTALL_PREFIX}/lib/crtn.o
     )
 
     add_dependencies(install_crtn crtn)

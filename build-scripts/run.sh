@@ -18,6 +18,9 @@
 # Exit on error
 set -e
 
+# build the host system utils
+./build-scripts/build_utils.sh
+
 # We have to check if the toolchain is up to date before building the OS
 # First we check if the $TOOLCHAIN_PREFIX is set, if not set it to toolchain/local
 if [ -z "$TOOLCHAIN_PREFIX" ]; then
@@ -36,9 +39,9 @@ export TOOLCHAIN_PREFIX SYSROOT
 
 ./build-scripts/build_toolchain.sh
 
-# Check if $WORLDOS_BUILD_CONFIG is set, if not set it to Debug
-if [ -z "$WORLDOS_BUILD_CONFIG" ]; then
-    WORLDOS_BUILD_CONFIG=Debug
+# Check if $FROSTYOS_BUILD_CONFIG is set, if not set it to Debug
+if [ -z "$FROSTYOS_BUILD_CONFIG" ]; then
+    FROSTYOS_BUILD_CONFIG=Debug
 fi
 
 # Check if build directory exists
@@ -49,5 +52,5 @@ else
     cd build
 fi
 
-cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DWORLDOS_BUILD_CONFIG=$WORLDOS_BUILD_CONFIG --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
+cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DFROSTYOS_BUILD_CONFIG=$FROSTYOS_BUILD_CONFIG --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
 ninja run-qemu

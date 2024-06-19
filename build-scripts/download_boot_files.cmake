@@ -16,4 +16,4 @@
 include(${ROOT_SOURCE_DIR}/build-scripts/utils.cmake)
 
 download_file("https://raw.githubusercontent.com/limine-bootloader/limine/v6.x-branch-binary/BOOTX64.EFI" ${ROOT_SOURCE_DIR}/dist/boot/EFI/BOOT/BOOTX64.EFI)
-download_file("https://raw.githubusercontent.com/WorldOS-dev/various-scripts/master/WorldOS/boot/limine.cfg" ${ROOT_SOURCE_DIR}/dist/boot/limine.cfg)
+download_file("https://raw.githubusercontent.com/FrostyOS-dev/various-scripts/master/FrostyOS/boot/limine.cfg" ${ROOT_SOURCE_DIR}/dist/boot/limine.cfg)

@@ -15,4 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-toolchain/local/bin/x86_64-worldos-addr2line -e $1 $2
+toolchain/local/bin/x86_64-frostyos-addr2line -e $1 $2

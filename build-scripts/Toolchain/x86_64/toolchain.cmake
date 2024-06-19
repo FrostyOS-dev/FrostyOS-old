@@ -17,9 +17,9 @@ set(CMAKE_SYSTEM_NAME "Linux")
 set(CMAKE_SYSTEM_PROCESSOR x86-64)
 
 
-set(CMAKE_C_COMPILER x86_64-worldos-gcc)
-set(CMAKE_CXX_COMPILER x86_64-worldos-g++)
-set(CMAKE_ASM-ATT_COMPILER x86_64-worldos-as)
+set(CMAKE_C_COMPILER x86_64-frostyos-gcc)
+set(CMAKE_CXX_COMPILER x86_64-frostyos-g++)
+set(CMAKE_ASM-ATT_COMPILER x86_64-frostyos-as)
 set(CMAKE_ASM_NASM_COMPILER nasm)
 set(CMAKE_C_COMPILER_WORKS true)
 set(CMAKE_CXX_COMPILER_WORKS true)
@@ -28,25 +28,25 @@ set(CMAKE_CXX_COMPILER_WORKS true)
 
 set(CMAKE_ASM_NASM_OBJECT_FORMAT elf64)
 
-find_program(HAS_x86_64_worldos_nm x86_64-worldos-nm)
-if(NOT HAS_x86_64_worldos_nm)
-    message(FATAL_ERROR "Could not find x86_64-worldos-nm")
+find_program(HAS_x86_64_frostyos_nm x86_64-frostyos-nm)
+if(NOT HAS_x86_64_frostyos_nm)
+    message(FATAL_ERROR "Could not find x86_64-frostyos-nm")
 else()
-    set(NM x86_64-worldos-nm)
+    set(NM x86_64-frostyos-nm)
 endif()
 
-find_program(HAS_x86_64_worldos_ar x86_64-worldos-ar)
-if(NOT HAS_x86_64_worldos_ar)
-    message(FATAL_ERROR "Could not find x86_64-worldos-ar")
+find_program(HAS_x86_64_frostyos_ar x86_64-frostyos-ar)
+if(NOT HAS_x86_64_frostyos_ar)
+    message(FATAL_ERROR "Could not find x86_64-frostyos-ar")
 else()
-    set(AR x86_64-worldos-ar)
+    set(AR x86_64-frostyos-ar)
 endif()
 
-set(WORLDOS_ARCHITECTURE x86_64)
+set(FROSTYOS_ARCHITECTURE x86_64)
 
 set(SYSROOT ${CMAKE_SOURCE_DIR}/root)
 
-set(WORLDOS_INSTALL_PREFIX ${SYSROOT}/data)
+set(FROSTYOS_INSTALL_PREFIX ${SYSROOT}/data)
 
 set(CMAKE_CXX_FLAGS "-fno-exceptions -fno-rtti")
 set(CMAKE_C_FLAGS "")
