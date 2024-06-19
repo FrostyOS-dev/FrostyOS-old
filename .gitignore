@@ -12,6 +12,7 @@ root/data/include/
 ovmf/
 build/
 .cache/
+.vscode/
 
 # Files
 kernel/src/limine.h

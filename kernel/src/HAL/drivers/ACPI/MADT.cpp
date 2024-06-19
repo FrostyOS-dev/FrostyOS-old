@@ -43,8 +43,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <uacpi/tables.h>
 
-//#define WORLDOS_DISABLE_SMP
-
 acpi_sdt_hdr* g_MADT;
 
 bool InitAndValidateMADT(uacpi_table* MADT) {
