@@ -251,15 +251,21 @@ namespace Scheduling {
                 AddProcess(thread->GetParent());
             g_processes.unlock();
             CPU_Registers* regs = thread->GetCPURegisters();
-            fast_memset(regs, 0, DIV_ROUNDUP(sizeof(CPU_Registers), 8));
+            memset(regs, 0, sizeof(CPU_Registers));
 #ifdef __x86_64__
             if ((thread->GetFlags() & CREATE_STACK)) {
-                x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64));
-                thread->GetParent()->SyncRegion();
+                if (thread->GetParent()->GetPriority() == Priority::KERNEL && thread->GetKernelStack() != 0) {
+                    thread->SetStack(thread->GetKernelStack());
+                    regs->RSP = thread->GetStack();
+                }
+                else {
+                    x86_64_GetNewStack(thread->GetParent()->GetPageManager(), regs, KiB(64));
+                    thread->GetParent()->SyncRegion();
+                    thread->SetStack(regs->RSP);
+                }
             }
             else
-                regs->RSP = (uint64_t)x86_64_get_stack_ptr();
-            thread->SetStack(regs->RSP);
+                regs->RSP = thread->GetStack();
             regs->RIP = (uint64_t)thread->GetEntry();
             regs->RFLAGS = (1 << 9) | (1 << 1); // IF Flag and Reserved (always 1)
             regs->CR3 = (uint64_t)(thread->GetParent()->GetPageManager()->GetPageTable().GetRootTablePhysical()) & 0x000FFFFFFFFFF000;
@@ -371,7 +377,6 @@ namespace Scheduling {
             */
             ProcessorInfo* info = new ProcessorInfo();
             info->processor = processor;
-            info->id = g_processors.getCount();
             info->kernel_run_count = 0;
             info->high_run_count = 0;
             info->normal_run_count = 0;
@@ -380,6 +385,7 @@ namespace Scheduling {
             info->ticks = 0;
             info->start_allowed = 0;
             g_processors.lock();
+            info->id = g_processors.getCount();
             g_processors.insert(info);
             g_processors.unlock();
 #ifdef __x86_64__

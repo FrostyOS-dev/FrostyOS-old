@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,10 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "VirtualRegion.hpp"
 
 #include <stdio.h>
-
-/* VirtualRegion class */
-
-/* Public Methods*/
 
 VirtualRegion::VirtualRegion() : m_start(nullptr), m_end(nullptr), m_size(0) {
 
@@ -98,6 +94,10 @@ bool VirtualRegion::EnsureIsInside(void*& mem, size_t& size) const {
     if (size > m_size)
         size -= (size_t)mem_i - (size_t)m_start;
     return true;
+}
+
+bool VirtualRegion::contains(const VirtualRegion& region) const {
+    return (region.m_start >= m_start) && (region.m_end <= m_end);
 }
 
 void VirtualRegion::fprint(fd_t file) const {

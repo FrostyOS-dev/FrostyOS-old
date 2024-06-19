@@ -83,6 +83,7 @@ align 32
     mov rsp, QWORD [0xFE0]
     mov rcx, QWORD [0xFD8]
     mov QWORD [rdi+rcx], rsp
+    add rsp, 16384
     xor rsi, rsi
     xor rdx, rdx
     xor rcx, rcx

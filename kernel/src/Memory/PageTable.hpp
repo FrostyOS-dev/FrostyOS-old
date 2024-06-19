@@ -23,13 +23,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 enum class PagePermissions;
 class PageManager;
 
+enum class CachingType {
+    Uncacheable,
+    WriteCombining,
+    WriteThrough,
+    WriteProtected,
+    WriteBack,
+    Uncached
+};
+
 class PageTable {
 public:
     PageTable(bool mode, PageManager* pm); // mode is false for supervisor, true for user
     ~PageTable();
 
-    void MapPage(void* physical_addr, void* virtual_addr, PagePermissions perms, bool flush = true);
-    void RemapPage(void* virtual_addr, PagePermissions perms, bool flush = true);
+    void MapPage(void* physical_addr, void* virtual_addr, PagePermissions perms, bool flush = true, CachingType cache = CachingType::WriteBack);
+    void RemapPage(void* virtual_addr, PagePermissions perms, bool flush = true, CachingType cache = CachingType::WriteBack);
     void UnmapPage(void* virtual_addr, bool flush = true);
 
     void* GetPhysicalAddress(void* virtual_addr) const;
@@ -42,6 +51,8 @@ public:
 private:
 
     uint32_t DecodePageFlags(PagePermissions perms) const;
+
+    uint16_t DecodeCacheFlags(CachingType type) const;
 
 private:
     void* m_root_table;

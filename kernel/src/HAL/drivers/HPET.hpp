@@ -95,8 +95,8 @@ public:
 
     void HandleInterrupt(uint8_t interrupt);
 
-    const char* getVendorName() override;
-    const char* getDeviceName() override;
+    const char* getVendorName() const override;
+    const char* getDeviceName() const override;
 
 private:
     HPETRegisters* m_regs;

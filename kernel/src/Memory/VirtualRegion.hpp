@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_VIRTUAL_MEMORY_REGION_HPP
-#define _KERNEL_VIRTUAL_MEMORY_REGION_HPP
+#ifndef _VIRTUAL_MEMORY_REGION_HPP
+#define _VIRTUAL_MEMORY_REGION_HPP
 
 #include <stdio.h>
 #include <stddef.h>
@@ -43,6 +43,8 @@ public:
 
     bool EnsureIsInside(void*& mem, size_t& size) const;
 
+    bool contains(const VirtualRegion& region) const;
+
     void fprint(fd_t file) const;
 
 private:
@@ -52,4 +54,4 @@ private:
 };
 
 
-#endif /* _KERNEL_VIRTUAL_MEMORY_REGION_HPP */
+#endif /* _VIRTUAL_MEMORY_REGION_HPP */

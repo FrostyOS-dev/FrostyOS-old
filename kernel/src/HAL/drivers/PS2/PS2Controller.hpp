@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../Device.hpp"
 
 #include <stdint.h>
+#include <stdio.h>
 
 struct PS2DeviceInfo {
     bool type;
@@ -37,8 +38,8 @@ public:
 
     void Init();
 
-    const char* getVendorName() override;
-    const char* getDeviceName() override;
+    const char* getVendorName() const override;
+    const char* getDeviceName() const override;
 
     uint8_t SendCommandToDevice(uint8_t command, bool channel, uint8_t* data = nullptr, uint64_t data_size = 0);
     void EnableInterrupts(bool channel);
@@ -46,6 +47,8 @@ public:
     uint8_t ReadData();
 
     PS2Keyboard* GetKeyboard();
+
+    void PrintDeviceInfo(fd_t fd) const;
     
 protected:
     uint8_t GetStatus();

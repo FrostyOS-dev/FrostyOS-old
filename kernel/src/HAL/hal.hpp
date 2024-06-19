@@ -41,6 +41,10 @@ void HAL_Stage2(void* RSDP);
 // Initials less-essential features. This is (in order): PCI/PCIe
 void HAL_FullInit();
 
+void PrepareForShutdown();
+
+int Shutdown();
+
 extern Processor g_BSP;
 
 #endif /* _KERNEL_HAL_HPP */

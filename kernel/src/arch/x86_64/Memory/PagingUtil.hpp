@@ -15,10 +15,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _KERNEL_X86_64_PAGING_UTIL_HPP
-#define _KERNEL_X86_64_PAGING_UTIL_HPP
+#ifndef _x86_64_PAGING_UTIL_HPP
+#define _x86_64_PAGING_UTIL_HPP
 
 #include <stdint.h>
+#include <stddef.h>
 
 // the threshold for when to flush the entire TLB instead of invalidating individual pages
 #define FULL_FLUSH_THRESHOLD 0x100000
@@ -44,4 +45,6 @@ void x86_64_InvalidatePages(uint64_t address, uint64_t length);
 void x86_64_Prep_SMP_Startup();
 void x86_64_Cleanup_SMP_Startup();
 
-#endif /* _KERNEL_X86_64_PAGING_UTIL_HPP */
+bool isInKernelSpace(void* base, size_t length);
+
+#endif /* _x86_64_PAGING_UTIL_HPP */

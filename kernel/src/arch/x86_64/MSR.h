@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,16 +15,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _HAL_DEVICE_HPP
-#define _HAL_DEVICE_HPP
+#ifndef _x86_64_MSR_H
+#define _x86_64_MSR_H
 
-class Device {
-public:
-    Device() {}
-    virtual ~Device() {};
+#include <stdint.h>
 
-    virtual const char* getVendorName() const = 0;
-    virtual const char* getDeviceName() const = 0;
-};
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif /* _HAL_DEVICE_HPP */
+uint64_t x86_64_ReadMSR(uint32_t msr);
+void x86_64_WriteMSR(uint32_t msr, uint64_t value);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _x86_64_MSR_H */

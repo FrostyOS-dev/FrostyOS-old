@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../../Processor.hpp"
 
 #include "../../Memory/PageMapIndexer.hpp"
+#include "../../Memory/PAT.hpp"
 
 #include "../../Scheduling/taskutil.hpp"
 
@@ -30,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <util.h>
 
 #include <Memory/PageManager.hpp>
+#include <Memory/Stack.hpp>
 
 #include <HAL/hal.hpp>
 #include <HAL/time.h>
@@ -82,7 +84,7 @@ void x86_64_LocalAPIC::StartCPU() {
         *CR3_value = (uint32_t)(uint64_t)x86_64_get_physaddr(&K_PML4_Array, &K_PML4_Array);
         *start_lock = 1; // we prevent it from starting executing actual kernel code until we are ready
         spinlock_acquire(&m_timerLock); // we can't have the APIC timer being configured until after the HPET is initialized.
-        x86_64_remap_page(&K_PML4_Array, m_registers, 0x8000013); // Present, Read/Write, No execute, Cache disable
+        x86_64_remap_page(&K_PML4_Array, m_registers, 0x8000003 | x86_64_GetPTEFlagsFromPAT(x86_64_PATType::Uncacheable)); // Present, Read/Write, No execute, Cache disable
         //x86_64_unmap_page(&K_PML4_Array, (void*)0x0000);
         uint64_t old_aps_running = aps_running;
         m_registers->ErrorStatus = 0; // clear errors
@@ -105,7 +107,7 @@ void x86_64_LocalAPIC::StartCPU() {
         proc->SetLocalAPIC(this);
         *jump_addr = (uint64_t)InitProcessor;
         *jmp_arg = (uint64_t)proc;
-        *stack = (uint64_t)g_KPM->AllocatePages(KERNEL_STACK_SIZE / PAGE_SIZE);
+        *stack = (uint64_t)CreateKernelStack();
         *kernel_stack_offset = Processor::get_kernel_stack_offset();
         *start_lock = 0;
         x86_64_EnableInterrupts();

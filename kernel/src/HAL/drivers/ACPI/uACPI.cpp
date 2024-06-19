@@ -41,6 +41,7 @@ extern "C" {
  * -------------------------------------------------------------------------
  */
 uacpi_status uacpi_kernel_raw_memory_read(uacpi_phys_addr address, uacpi_u8 byte_width, uacpi_u64 *out_value) {
+    printf("uacpi_kernel_raw_memory_read(%lp, %u, %lp)\n", address, byte_width, out_value);
     void* virt_addr = to_HHDM((void*)address);
     switch (byte_width) {
         case 1:
@@ -62,6 +63,7 @@ uacpi_status uacpi_kernel_raw_memory_read(uacpi_phys_addr address, uacpi_u8 byte
 }
 
 uacpi_status uacpi_kernel_raw_memory_write(uacpi_phys_addr address, uacpi_u8 byte_width, uacpi_u64 in_value) {
+    printf("uacpi_kernel_raw_memory_write(%lp, %u, %lp)\n", address, byte_width, in_value);
     void* virt_addr = to_HHDM((void*)address);
     switch (byte_width) {
         case 1:
@@ -89,6 +91,7 @@ uacpi_status uacpi_kernel_raw_memory_write(uacpi_phys_addr address, uacpi_u8 byt
  * be of the exact width.
  */
 uacpi_status uacpi_kernel_raw_io_read(uacpi_io_addr address, uacpi_u8 byte_width, uacpi_u64 *out_value) {
+    printf("uacpi_kernel_raw_io_read(%u, %u, %lp)\n", address, byte_width, out_value);
 #ifdef __x86_64__
     switch (byte_width) {
         case 1:
@@ -110,6 +113,7 @@ uacpi_status uacpi_kernel_raw_io_read(uacpi_io_addr address, uacpi_u8 byte_width
 }
 
 uacpi_status uacpi_kernel_raw_io_write(uacpi_io_addr address, uacpi_u8 byte_width, uacpi_u64 in_value) {
+    printf("uacpi_kernel_raw_io_write(%u, %u, %lp)\n", address, byte_width, in_value);
 #ifdef __x86_64__
     switch (byte_width) {
         case 1:
@@ -140,6 +144,7 @@ uacpi_status uacpi_kernel_raw_io_write(uacpi_io_addr address, uacpi_u8 byte_widt
  * byte.
  */
 uacpi_status uacpi_kernel_pci_read(uacpi_pci_address* in_address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 *value) {
+    printf("uacpi_kernel_pci_read(%lp, %u, %u, %lp)\n", in_address, offset, byte_width, value);
     uacpi_pci_address* address = (uacpi_pci_address*)to_HHDM(in_address);
     if (address->segment != 0)
         return UACPI_STATUS_UNIMPLEMENTED;
@@ -162,6 +167,7 @@ uacpi_status uacpi_kernel_pci_read(uacpi_pci_address* in_address, uacpi_size off
 }
 
 uacpi_status uacpi_kernel_pci_write(uacpi_pci_address* in_address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 value) {
+    printf("uacpi_kernel_pci_write(%lp, %u, %u, %lp)\n", in_address, offset, byte_width, value);
     uacpi_pci_address* address = (uacpi_pci_address*)to_HHDM(in_address);
     if (address->segment != 0)
         return UACPI_STATUS_UNIMPLEMENTED;
@@ -193,6 +199,7 @@ struct io_region {
  * handle that can be used for reading and writing the IO range.
  */
 uacpi_status uacpi_kernel_io_map(uacpi_io_addr base, uacpi_size len, uacpi_handle *out_handle) {
+    printf("uacpi_kernel_io_map(%u, %u, %lp)\n", base, len, out_handle);
     io_region* region = new io_region {
         .base = base,
         .len = len
@@ -202,6 +209,7 @@ uacpi_status uacpi_kernel_io_map(uacpi_io_addr base, uacpi_size len, uacpi_handl
 }
 
 void uacpi_kernel_io_unmap(uacpi_handle handle) {
+    printf("uacpi_kernel_io_unmap(%lp)\n", handle);
     delete (io_region*)handle;
 }
 
@@ -215,6 +223,7 @@ void uacpi_kernel_io_unmap(uacpi_handle handle) {
  * be of the exact width.
  */
 uacpi_status uacpi_kernel_io_read(uacpi_handle handle, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 *value) {
+    printf("uacpi_kernel_io_read(%lp, %u, %u, %lp)\n", handle, offset, byte_width, value);
     io_region* region = (io_region*)handle;
     if (offset + byte_width > region->len)
         return UACPI_STATUS_INVALID_ARGUMENT;
@@ -238,6 +247,7 @@ uacpi_status uacpi_kernel_io_read(uacpi_handle handle, uacpi_size offset, uacpi_
 #endif
 }
 uacpi_status uacpi_kernel_io_write(uacpi_handle handle, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 value) {
+    printf("uacpi_kernel_io_write(%lp, %u, %u, %lp)\n", handle, offset, byte_width, value);
     io_region* region = (io_region*)handle;
     if (offset + byte_width > region->len)
         return UACPI_STATUS_INVALID_ARGUMENT;
@@ -262,6 +272,7 @@ uacpi_status uacpi_kernel_io_write(uacpi_handle handle, uacpi_size offset, uacpi
 }
 
 void* uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
+    printf("uacpi_kernel_map(%lp, %u)\n", addr, len);
     void* out_addr = g_KPM->MapPages(ALIGN_ADDRESS_DOWN(addr, PAGE_SIZE), DIV_ROUNDUP(len, PAGE_SIZE), PagePermissions::READ_WRITE);
     if (out_addr == nullptr)
         return nullptr;
@@ -269,6 +280,7 @@ void* uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len) {
 }
 
 void uacpi_kernel_unmap(void* addr, uacpi_size len) {
+    printf("uacpi_kernel_unmap(%lp, %u)\n", addr, len);
     (void)len;
     g_KPM->UnmapPages(addr);
 }
@@ -331,8 +343,8 @@ void uacpi_kernel_vlog(enum uacpi_log_level level, const char* format, uacpi_va_
             prefix = "ERROR";
             break;
     }
-    dbgprintf("uACPI, %s: ", prefix);
-    dbgvprintf(format, args);
+    printf("uACPI, %s: ", prefix);
+    vprintf(format, args);
 }
 
 /*
@@ -340,27 +352,34 @@ void uacpi_kernel_vlog(enum uacpi_log_level level, const char* format, uacpi_va_
  * strictly monotonic.
  */
 uacpi_u64 uacpi_kernel_get_ticks(void) {
-    return 10'000; // 1ms
+    printf("uacpi_kernel_get_ticks()\n");
+    return getNanos() * 100;
 }
 
 /*
  * Spin for N microseconds.
  */
 void uacpi_kernel_stall(uacpi_u8 usec) {
-    uacpi_kernel_sleep(DIV_ROUNDUP(usec, 1000));
+    printf("uacpi_kernel_stall(%u)\n", usec);
+    uint64_t now = getNanos();
+    uint64_t end = now + (uint64_t)usec * 1000;
+    while (getNanos() < end);
 }
 
 /*
  * Sleep for N milliseconds.
  */
 void uacpi_kernel_sleep(uacpi_u64 msec) {
+    printf("uacpi_kernel_sleep(%lu)\n", msec);
     sleep(msec);
+    printf("end uacpi_kernel_sleep(%lu)\n", msec);
 }
 
 /*
  * Create/free an opaque non-recursive kernel mutex object.
  */
 uacpi_handle uacpi_kernel_create_mutex(void) {
+    printf("uacpi_kernel_create_mutex()\n");
     int rc = createMutex();
     if (rc < 0)
         return nullptr;
@@ -368,6 +387,7 @@ uacpi_handle uacpi_kernel_create_mutex(void) {
 }
 
 void uacpi_kernel_free_mutex(uacpi_handle handle) {
+    printf("uacpi_kernel_free_mutex(%lp)\n", handle);
     int ID = *(int*)handle;
     delete (int*)handle;
     destroyMutex(ID);
@@ -377,10 +397,12 @@ void uacpi_kernel_free_mutex(uacpi_handle handle) {
  * Create/free an opaque kernel (semaphore-like) event object.
  */
 uacpi_handle uacpi_kernel_create_event(void) {
+    printf("uacpi_kernel_create_event()\n");
     return new size_t;
 }
 
 void uacpi_kernel_free_event(uacpi_handle handle) {
+    printf("uacpi_kernel_free_event(%lp)\n", handle);
     delete (size_t*)handle;
 }
 
@@ -389,11 +411,13 @@ void uacpi_kernel_free_event(uacpi_handle handle) {
  * A timeout value of 0xFFFF implies infinite wait.
  */
 uacpi_bool uacpi_kernel_acquire_mutex(uacpi_handle handle, uacpi_u16) {
+    printf("uacpi_kernel_acquire_mutex(%lp)\n", handle);
     int ID = *(int*)handle;
     return acquireMutex(ID) == 0 ? UACPI_TRUE : UACPI_FALSE;
 }
 
 void uacpi_kernel_release_mutex(uacpi_handle handle) {
+    printf("uacpi_kernel_release_mutex(%lp)\n", handle);
     int ID = *(int*)handle;
     releaseMutex(ID);
 }
@@ -406,7 +430,8 @@ void uacpi_kernel_release_mutex(uacpi_handle handle) {
  *
  * A successful wait is indicated by returning UACPI_TRUE.
  */
-uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle, uacpi_u16) {
+uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle handle, uacpi_u16) {
+    printf("uacpi_kernel_wait_for_event(%lp)\n", handle);
     return UACPI_FALSE;
 }
 
@@ -416,14 +441,14 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle, uacpi_u16) {
  * This function may be used in interrupt contexts.
  */
 void uacpi_kernel_signal_event(uacpi_handle handle) {
-    
+    printf("uacpi_kernel_signal_event(%lp)\n", handle);
 }
 
 /*
  * Reset the event counter to 0.
  */
 void uacpi_kernel_reset_event(uacpi_handle handle) {
-    
+    printf("uacpi_kernel_reset_event(%lp)\n", handle);
 }
 
 /*
@@ -432,6 +457,7 @@ void uacpi_kernel_reset_event(uacpi_handle handle) {
  * Currently either a Breakpoint or Fatal operators.
  */
 uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request*) {
+    printf("uacpi_kernel_handle_firmware_request()\n");
     return UACPI_STATUS_UNIMPLEMENTED;
 }
 
@@ -443,9 +469,10 @@ uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request*) {
  * refer to this handler from other API.
  */
 uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interrupt_handler handler, uacpi_handle ctx, uacpi_handle *out_irq_handle) {
+    printf("uacpi_kernel_install_interrupt_handler(%u, %lp, %lp, %lp)\n", irq, handler, ctx, out_irq_handle);
     InterruptHandlerInfo* info = RegisterInterruptHandler(irq, handler, ctx);
     if (info == nullptr) {
-        dbgprintf("Failed to register interrupt handler for IRQ %u\n", irq);
+        printf("Failed to register interrupt handler for IRQ %u\n", irq);
         return UACPI_STATUS_INVALID_ARGUMENT;
     }
     *out_irq_handle = info;
@@ -457,6 +484,7 @@ uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interru
  * 'out_irq_handle' during installation.
  */
 uacpi_status uacpi_kernel_uninstall_interrupt_handler(uacpi_interrupt_handler, uacpi_handle irq_handle) {
+    printf("uacpi_kernel_uninstall_interrupt_handler(%lp)\n", irq_handle);
     UnregisterInterruptHandler((InterruptHandlerInfo*)irq_handle);
     return UACPI_STATUS_OK;
 }
@@ -486,7 +514,6 @@ void uacpi_kernel_free_spinlock(uacpi_handle handle) {
  * Note that lock is infalliable.
  */
 uacpi_cpu_flags uacpi_kernel_spinlock_lock(uacpi_handle handle) {
-    dbgprintf("Locking spinlock\n");
     uacpi_cpu_flags flags;
 #ifdef __x86_64__
     __asm__ volatile("pushfq;pop %0;cli" : "=r"(flags));
@@ -499,7 +526,6 @@ uacpi_cpu_flags uacpi_kernel_spinlock_lock(uacpi_handle handle) {
 }
 
 void uacpi_kernel_spinlock_unlock(uacpi_handle handle, uacpi_cpu_flags flags) {
-    dbgprintf("Unlocking spinlock\n");
     spinlock_t* lock = (spinlock_t*)handle;
     spinlock_release(lock);
 #ifdef __x86_64__
@@ -513,6 +539,7 @@ void uacpi_kernel_spinlock_unlock(uacpi_handle handle, uacpi_cpu_flags flags) {
  * Might be invoked from an interrupt context.
  */
 uacpi_status uacpi_kernel_schedule_work(uacpi_work_type, uacpi_work_handler, uacpi_handle ctx) {
+    printf("uacpi_kernel_schedule_work(%u, %lp, %lp)\n", ctx);
     return UACPI_STATUS_UNIMPLEMENTED;
 }
 
@@ -520,6 +547,7 @@ uacpi_status uacpi_kernel_schedule_work(uacpi_work_type, uacpi_work_handler, uac
  * Blocks until all scheduled work is complete and the work queue becomes empty.
  */
 uacpi_status uacpi_kernel_wait_for_work_completion(void) {
+    printf("uacpi_kernel_wait_for_work_completion()\n");
     return UACPI_STATUS_UNIMPLEMENTED;
 }
 

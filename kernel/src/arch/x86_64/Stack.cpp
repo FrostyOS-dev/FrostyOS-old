@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,17 +15,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "ELFSymbols.hpp"
 #include "Stack.hpp"
+
+#include "Memory/PagingUtil.hpp"
+
+#include <stdint.h>
+#include <stdio.h>
+
+#include <Memory/PageManager.hpp>
 
 extern "C" {
 unsigned char __attribute__((aligned(0x1000))) kernel_stack[INITIAL_KERNEL_STACK_SIZE] = {0};
 unsigned long int kernel_stack_size = INITIAL_KERNEL_STACK_SIZE;
 }
-
-#include <stdint.h>
-#include <stdio.h>
-
-#include "ELFSymbols.hpp"
 
 struct stack_frame {
     stack_frame* RBP;
@@ -38,11 +41,9 @@ void x86_64_walk_stack_frames(void* RBP) {
         return;
     }
 
-    
-
     stack_frame* frame = (stack_frame*)RBP;
 
-    while (frame) {
+    while (isInKernelSpace(frame, sizeof(stack_frame))) {
         char const* name = nullptr;
         if (g_KernelSymbols != nullptr)
             name = g_KernelSymbols->LookupSymbol(frame->RIP);

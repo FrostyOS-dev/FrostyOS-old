@@ -27,8 +27,8 @@ public:
     PS2Keyboard(PS2Controller* controller, bool channel, char const* name);
     ~PS2Keyboard();
 
-    const char* getVendorName() override;
-    const char* getDeviceName() override;
+    const char* getVendorName() const override;
+    const char* getDeviceName() const override;
 
     void HandleInterrupt();
 

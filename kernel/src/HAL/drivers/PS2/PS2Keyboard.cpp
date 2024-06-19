@@ -62,11 +62,11 @@ PS2Keyboard::~PS2Keyboard() {
 
 }
 
-const char* PS2Keyboard::getVendorName() {
+const char* PS2Keyboard::getVendorName() const {
     return "";
 }
 
-const char* PS2Keyboard::getDeviceName() {
+const char* PS2Keyboard::getDeviceName() const {
     return "";
 }
 

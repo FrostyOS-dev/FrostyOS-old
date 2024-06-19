@@ -264,6 +264,9 @@ int64_t FileDescriptor::Write(const uint8_t* buffer, int64_t count, int* status)
     case FileDescriptorType::TTY: {
         int64_t i = 0;
         while (i < count) {
+#ifdef __x86_64__
+            x86_64_debug_putc(buffer[i]); // write everything to debug as well
+#endif
             m_TTY->putc(buffer[i]);
             i++;
         }

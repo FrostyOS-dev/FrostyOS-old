@@ -52,7 +52,7 @@ void do_exit(Scheduling::Thread* thread, int status, bool was_scheduler_running)
             Scheduler::RemoveThread(i_thread);
             if (i_thread->GetFlags() & CREATE_STACK)
                 parent->GetPageManager()->FreePages((void*)(i_thread->GetStack() - KiB(64)));
-            cleanup = i_thread->GetCleanupFunction();
+            ThreadCleanup_t cleanup = i_thread->GetCleanupFunction();
             if (cleanup.function != nullptr)
                 cleanup.function(cleanup.data);
             parent->RemoveThread(i_thread);
@@ -76,12 +76,6 @@ void sys_exit(Scheduling::Thread* thread, int status) {
     if (thread != current_thread) // unhandled signal received from different thread most likely.
         do_exit(thread, status, was_running);
 #ifdef __x86_64__
-    {
-        uint64_t stack;
-        __asm__ volatile("mov %%rsp, %0" : "=r"(stack));
-        if (IN_BOUNDS(stack, (uint64_t)kernel_stack, ((uint64_t)kernel_stack + KiB(64) - 1))) // most likely in a interrupt handler
-            do_exit(thread, status, was_running);
-    }
     x86_64_PrepareThreadExit(thread, status, was_running, do_exit);
 #endif
 }

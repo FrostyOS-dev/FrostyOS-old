@@ -42,6 +42,9 @@ void x86_64_8042_WriteCommand(uint8_t command) {
 }
 
 uint8_t x86_64_8042_ReadData() {
+    while ((x86_64_8042_ReadStatusRegister_Raw() & 1) != 1) {
+        
+    }
     return x86_64_inb(PS2_DATA_PORT);
 }
 

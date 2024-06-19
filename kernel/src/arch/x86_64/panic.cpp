@@ -54,7 +54,7 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
     x86_64_DisableInterrupts();
 
     if (x86_64_GetCurrentLocalAPIC() != nullptr)
-        x86_64_IssueIPI(x86_64_IPI_DestinationShorthand::AllExcludingSelf, 0, x86_64_IPI_Type::Stop);
+        x86_64_IssueIPI(x86_64_IPI_DestinationShorthand::AllExcludingSelf, 0, x86_64_IPI_Type::Stop, 0, true);
     
     Scheduling::Scheduler::Stop();
 

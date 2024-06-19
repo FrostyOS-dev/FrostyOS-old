@@ -63,6 +63,22 @@ void operator delete[](void* p, size_t) {
         dbgprintf("operator delete[] attempted when unavailable. doing nothing.\n");
 }
 
+void* operator new(size_t, void* p) {
+    return p;
+}
+
+void* operator new[](size_t, void* p) {
+    return p;
+}
+
+void operator delete(void*, void*) {
+
+}
+
+void operator delete[](void*, void*) {
+
+}
+
 
 bool g_NewDeleteInitialised = false;
 

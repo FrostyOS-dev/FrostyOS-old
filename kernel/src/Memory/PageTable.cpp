@@ -26,6 +26,7 @@ PageTable g_KPT {false, g_KPM};
 #ifdef __x86_64__
 #include <arch/x86_64/Memory/PageMapIndexer.hpp>
 #include <arch/x86_64/Memory/PagingUtil.hpp>
+#include <arch/x86_64/Memory/PAT.hpp>
 
 
 PageTable::PageTable(bool mode, PageManager* pm) : m_root_table(nullptr), m_mode(mode), m_pm(pm) {
@@ -42,14 +43,14 @@ PageTable::~PageTable() {
         m_pm->FreePage(m_root_table);
 }
 
-void PageTable::MapPage(void* physical_addr, void* virtual_addr, PagePermissions perms, bool flush) {
-    x86_64_map_page_noflush((Level4Group*)m_root_table, physical_addr, virtual_addr, DecodePageFlags(perms));
+void PageTable::MapPage(void* physical_addr, void* virtual_addr, PagePermissions perms, bool flush, CachingType cache) {
+    x86_64_map_page_noflush((Level4Group*)m_root_table, physical_addr, virtual_addr, DecodePageFlags(perms) | DecodeCacheFlags(cache));
     if (flush)
         x86_64_TLBShootdown(virtual_addr, 0x1000, true);
 }
 
-void PageTable::RemapPage(void* virtual_addr, PagePermissions perms, bool flush) {
-    x86_64_remap_page_noflush((Level4Group*)m_root_table, virtual_addr, DecodePageFlags(perms));
+void PageTable::RemapPage(void* virtual_addr, PagePermissions perms, bool flush, CachingType cache) {
+    x86_64_remap_page_noflush((Level4Group*)m_root_table, virtual_addr, DecodePageFlags(perms) | DecodeCacheFlags(cache));
     if (flush)
         x86_64_TLBShootdown(virtual_addr, 0x1000, true);
 }
@@ -88,6 +89,34 @@ uint32_t PageTable::DecodePageFlags(PagePermissions perms) const {
         break;
     }
     return page_perms;
+}
+
+uint16_t PageTable::DecodeCacheFlags(CachingType type) const {
+    x86_64_PATType pat_type;
+    switch (type) {
+    case CachingType::Uncacheable:
+        pat_type = x86_64_PATType::Uncacheable;
+        break;
+    case CachingType::WriteCombining:
+        pat_type = x86_64_PATType::WriteCombining;
+        break;
+    case CachingType::WriteThrough:
+        pat_type = x86_64_PATType::WriteThrough;
+        break;
+    case CachingType::WriteProtected:
+        pat_type = x86_64_PATType::WriteProtected;
+        break;
+    case CachingType::WriteBack:
+        pat_type = x86_64_PATType::WriteBack;
+        break;
+    case CachingType::Uncached:
+        pat_type = x86_64_PATType::Uncached;
+        break;
+    default:
+        pat_type = x86_64_PATType::WriteBack;
+        break;
+    }
+    return x86_64_GetPTEFlagsFromPAT(pat_type);
 }
 
 #endif /* __x86_64__*/

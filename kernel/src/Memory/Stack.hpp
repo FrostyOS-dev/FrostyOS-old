@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,16 +15,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _HAL_DEVICE_HPP
-#define _HAL_DEVICE_HPP
+#ifndef _STACK_HPP
+#define _STACK_HPP
 
-class Device {
-public:
-    Device() {}
-    virtual ~Device() {};
+void* CreateKernelStack();
+void DestroyKernelStack(void* stack);
 
-    virtual const char* getVendorName() const = 0;
-    virtual const char* getDeviceName() const = 0;
-};
-
-#endif /* _HAL_DEVICE_HPP */
+#endif /* _STACK_HPP */

@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <HAL/hal.hpp>
 
 #include "../ELFKernel.hpp"
+#include "arch/x86_64/Memory/PAT.hpp"
 
 #include <stdio.h>
 #include <util.h>
@@ -53,6 +54,8 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
 
     x86_64_SetKernelAddress((void*)kernel_virtual, (void*)kernel_physical, kernel_size);
     x86_64_SetHHDMStart((void*)HHDM_start);
+
+    memset(&K_PML4_Array, 0, sizeof(K_PML4_Array));
     
     volatile uint64_t PML4_phys = (uint64_t)x86_64_get_physaddr(&K_PML4_Array, &K_PML4_Array);
     g_KPML4_physical = (void*)PML4_phys;
@@ -74,38 +77,70 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     for (uint64_t i = 0x1000; i < 0x200000; i += 0x1000)
         x86_64_map_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
     
+    uint64_t fb_phys = fb_virt - HHDM_start;
+
+    uint64_t largePagePart0End = ALIGN_DOWN((uint64_t)fb_phys, 0x200000);
+
+    uint64_t fbLargePagesStart = ALIGN_UP((uint64_t)fb_phys, 0x200000);
+    uint64_t fbLargePagesEnd = ALIGN_DOWN(((uint64_t)fb_phys + fb_size), 0x200000);
     
-    // Map from 2MiB to 4GiB with 2MiB pages
-    for (uint64_t i = 0x200000; i < 0x100000000; i += 0x200000)
+    // Map from 2MiB to before start of framebuffer with 2MiB pages
+    for (uint64_t i = 0x200000; i < largePagePart0End && i < GiB(4); i += 0x200000)
         x86_64_map_large_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+
+    // Map remaining pages until framebuffer
+    for (uint64_t i = largePagePart0End; i < fb_phys && i < GiB(4); i += 0x1000)
+        x86_64_map_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+    
+    // Map framebuffer until 2MiB boundary as write combining
+    for (uint64_t i = fb_phys; i < fbLargePagesStart; i += 0x1000)
+        x86_64_map_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003 | x86_64_GetPTEFlagsFromPAT(x86_64_PATType::WriteCombining)); // Read/Write, Present, Execute Disable
+
+    // Map framebuffer with 2MiB pages until end of alignment as write combining
+    for (uint64_t i = fbLargePagesStart; i < fbLargePagesEnd; i += 0x200000)
+        x86_64_map_large_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003 | x86_64_GetPDEFlagsFromPAT(x86_64_PATType::WriteCombining)); // Read/Write, Present, Execute Disable
+
+    // Map remaining framebuffer pages as write combining
+    for (uint64_t i = fbLargePagesEnd; i < (fb_phys + fb_size); i += 0x1000)
+        x86_64_map_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003 | x86_64_GetPTEFlagsFromPAT(x86_64_PATType::WriteCombining)); // Read/Write, Present, Execute Disable
+
+    if ((fb_phys + fb_size) < 0x100000000) { // if framebuffer is not in HHDM address space
+        // Map from end of framebuffer until next 2MiB boundary with normal pages
+        for (uint64_t i = fb_phys + fb_size; i < ALIGN_DOWN((uint64_t)fb_phys + fb_size, 0x200000) && i < GiB(4); i += 0x1000)
+            x86_64_map_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+
+        // Map from 2MiB boundary after end of framebuffer until 4GiB with 2MiB pages
+        for (uint64_t i = ALIGN_UP((uint64_t)fb_phys + fb_size, 0x200000); i < GiB(4); i += 0x200000)
+            x86_64_map_large_page_noflush(&K_PML4_Array, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+    }
 
     for (uint64_t i = 0; i < MMEntryCount; i++) {
         MemoryMapEntry* entry = MemoryMap[i];
         if ((entry->Address + entry->length) < 0x100000000) continue; // skip entries that have already been mapped
-        uint64_t addr = entry->Address & ~0xfff;
-        uint64_t length = entry->length + 0xfff;
-        length &= ~0xfff;
+        uint64_t addr = ALIGN_DOWN(entry->Address, PAGE_SIZE);
+        uint64_t length = ALIGN_UP(entry->length, PAGE_SIZE);
+
+        // we break up the mapping into 3 sections: pre-2MiB alignment, 2MiB pages, and post-2MiB alignment
+
+        // Map from start of entry until 2MiB boundary with normal pages
+        for (uint64_t j = addr; j < (ALIGN_UP((addr + length), (MiB(2)))); j += PAGE_SIZE)
+            x86_64_map_page_noflush(&K_PML4_Array, (void*)j, (void*)(j + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
         
-        for (uint64_t j = 0; j < length; j+=0x1000)
-            x86_64_map_page_noflush(&K_PML4_Array, (void*)(j + addr), (void*)(j + addr + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+        // Map from 2MiB boundary after end of entry until next 2MiB boundary with 2MiB pages
+        for (uint64_t j = ALIGN_UP((addr + length), (MiB(2))); j < ALIGN_DOWN((addr + length), (MiB(2))); j += MiB(2))
+            x86_64_map_large_page_noflush(&K_PML4_Array, (void*)j, (void*)(j + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
+
+        // Map from 2MiB boundary after end of entry until end of entry with normal pages
+        for (uint64_t j = ALIGN_DOWN((addr + length), (MiB(2))); j < (addr + length); j += PAGE_SIZE)
+            x86_64_map_page_noflush(&K_PML4_Array, (void*)j, (void*)(j + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
     }
-
-    // Map the framebuffer
-    fb_size += 4095;
-    fb_size >>= 12; // avoid slow division
-
-    uint64_t fb_phys = fb_virt - HHDM_start;
-
-    for (uint64_t i = 0; i < fb_size; i++)
-        x86_64_map_page_noflush(&K_PML4_Array, (void*)(fb_phys + i * 4096), (void*)(fb_virt + i * 4096), 0x8000003); // Present, Read/Write, Execute Disable
-
-    fb_size <<= 12; // convert back for later use
     
     /*
     Notes:
     - No page tables need to mapped as they are are inside the kernel and are already mapped.
     - If kernel goes over 2MB, extra set(s) of PML1 tables will need to be added
     - the stack does not need to be mapped as it is in the kernel file
+    - framebuffer is mapped as WC (write combining) to improve performance
     */
 
     volatile CR3Layout cr3_layout;
@@ -131,22 +166,3 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     KVPM.InitVPageMgr(MemoryMap, MMEntryCount, (void*)kernel_virtual, kernel_size, (void*)fb_virt, fb_size, KVRegion);
     g_KVPM = &KVPM;
 }
-
-/*Level4Group* x86_64_CreatePageTable(uint64_t kernel_virtual, uint64_t kernel_physical, size_t kernel_size, uint64_t HHDM_start) {
-    Level4Group* PML4 = (Level4Group*)x86_64_to_HHDM(PPFA.AllocatePage());
-
-    fast_memset(PML4, 0, sizeof(Level4Group) / 8);
-
-    // Map from end of 1st page until 2MiB
-    for (uint64_t i = 0x1000; i < 0x200000; i += 0x1000)
-        x86_64_map_page_noflush(PML4, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
-    
-    
-    // Map from 2MiB to 4GiB with 2MiB pages
-    for (uint64_t i = 0x200000; i < 0x100000000; i += 0x200000)
-        x86_64_map_large_page_noflush(PML4, (void*)i, (void*)(i + HHDM_start), 0x8000003); // Read/Write, Present, Execute Disable
-
-    MapKernel((void*)kernel_physical, (void*)kernel_virtual, kernel_size); // FIXME: change PML4 group
-
-
-}*/

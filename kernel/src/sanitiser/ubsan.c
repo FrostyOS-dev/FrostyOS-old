@@ -20,6 +20,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __x86_64__
+#include <arch/x86_64/io.h>
+#endif
+
 struct ubsan_source_location {
     const char* filename;
     uint32_t line;
@@ -114,6 +118,9 @@ extern "C" {
 #endif
 
 void ubsan_print_error(const char* error, ubsan_source_location* location) {
+#ifdef __x86_64__
+    x86_64_DisableInterrupts();
+#endif
     char buffer[1024];
     snprintf(buffer, 1024, "UBSan: %s at %s:%d:%d\n", error, location->filename, location->line, location->column);
     dbgputs(buffer);

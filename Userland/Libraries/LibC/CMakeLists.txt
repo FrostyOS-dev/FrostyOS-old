@@ -77,7 +77,8 @@ add_custom_target(install_libc
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:c> ${WORLDOS_INSTALL_PREFIX}/lib
 )
 
-add_dependencies(c kernel install_c_headers create_fake_libraries)
+add_dependencies(install_c_headers install_kernel_headers)
+add_dependencies(c install_kernel_headers install_c_headers create_fake_libraries)
 
 add_dependencies(install_libc c install_ssp install_startfiles)
 
@@ -117,7 +118,7 @@ set_target_properties(ssp PROPERTIES C_STANDARD 23)
 set_target_properties(ssp PROPERTIES C_EXTENSIONS OFF)
 set_target_properties(ssp PROPERTIES C_STANDARD_REQUIRED ON)
 
-add_dependencies(ssp kernel)
+add_dependencies(ssp install_kernel_headers)
 
 add_custom_target(install_ssp
     COMMAND ${CMAKE_COMMAND} -E make_directory ${WORLDOS_INSTALL_PREFIX}/lib

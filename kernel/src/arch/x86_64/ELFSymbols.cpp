@@ -28,6 +28,10 @@ const void* _data_end_addr     = &__data_end;
 const void* _bss_start_addr    = &__bss_start;
 const void* _bss_end_addr      = &__bss_end;
 const void* _kernel_end_addr   = &__kernel_end;
+const void* _ctors_start_addr  = &__ctors_start;
+const void* _ctors_end_addr    = &__ctors_end;
+const void* _dtors_start_addr  = &__dtors_start;
+const void* _dtors_end_addr    = &__dtors_end;
 
 }
 

@@ -15,9 +15,6 @@
 
 [bits 64]
 
-extern kernel_stack
-extern kernel_stack_size
-
 global x86_64_IsSystemCallSupported
 x86_64_IsSystemCallSupported:
     push rbp

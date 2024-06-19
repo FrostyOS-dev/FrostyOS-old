@@ -179,7 +179,12 @@ void x86_64_NMI_IPIHandler(x86_64_Interrupt_Registers* regs) {
     while (IPIList.GetCount() > 0) {
         x86_64_IPI* IPI = IPIList.PopFront();
         switch (IPI->type) {
-        case x86_64_IPI_Type::Stop:
+        case x86_64_IPI_Type::Stop: // this path won't return, so unlock the list immediately
+            if (IPI->flags.wait)
+                IPI->flags.done = true;
+            else
+                delete IPI;
+            IPIList.Unlock();
             processor->StopThis();
             break;
         case x86_64_IPI_Type::TLBShootdown: {

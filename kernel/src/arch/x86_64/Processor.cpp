@@ -25,10 +25,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "interrupts/NMI.hpp"
 
 #include "Memory/PagingInit.hpp"
+#include "Memory/PAT.hpp"
 
 #include <assert.h>
+#include <util.h>
 
 #include "Scheduling/syscall.h"
+
+#include <Memory/Stack.hpp>
 
 #include <Scheduling/Scheduler.hpp>
 
@@ -49,17 +53,20 @@ void Processor::Init(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t
         GDTDescriptor.Offset = (uint64_t)&(m_GDT[0]);
         x86_64_LoadGDT(&GDTDescriptor);
     }
+    x86_64_InitPAT();
     if (m_BSP) {
         x86_64_IDT_Initialize();
         x86_64_ISR_Initialize();
         x86_64_IRQ_EarlyInit();
         m_kernel_stack = kernel_stack;
         m_kernel_stack_size = kernel_stack_size;
-        x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ((fb.bpp >> 3) * fb.FrameBufferHeight * fb.FrameBufferWidth), HHDM_start);
+        x86_64_InitPaging(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, (uint64_t)(fb.FrameBufferAddress), ALIGN_UP((fb.FrameBufferHeight * fb.pitch), PAGE_SIZE), HHDM_start);
         x86_64_NMIInit();
     }
-    else
+    else {
         m_kernel_stack_size = KERNEL_STACK_SIZE; // m_kernel_stack is set in the APs early startup
+        EnableExceptionProtection();
+    }
     x86_64_IDT_Load(&idt.idtr);
 
     m_TSS.RSP[0] = (uint64_t)m_kernel_stack + m_kernel_stack_size;
@@ -113,4 +120,31 @@ void __attribute__((noreturn)) Processor::StopThis() {
 
 x86_64_IPI_List& Processor::GetIPIList() {
     return m_IPIList;
+}
+
+void Processor::UpdateKernelStack(void* stack, uint64_t stack_size) {
+    m_kernel_stack = stack;
+    m_kernel_stack_size = stack_size;
+    m_TSS.RSP[0] = (uint64_t)m_kernel_stack + m_kernel_stack_size;
+}
+
+void Processor::EnableExceptionProtection() {
+    // Use alternative ISTs for Page Faults, General Protection Faults and Double Faults
+    // First create the alternative stacks and set them in the TSS
+    m_double_fault_stack = CreateKernelStack();
+    m_general_protection_fault_stack = CreateKernelStack();
+    m_page_fault_stack = CreateKernelStack();
+    m_TSS.IST[0] = (uint64_t)m_double_fault_stack + KERNEL_STACK_SIZE;
+    m_TSS.IST[1] = (uint64_t)m_general_protection_fault_stack + KERNEL_STACK_SIZE;
+    m_TSS.IST[2] = (uint64_t)m_page_fault_stack + KERNEL_STACK_SIZE;
+
+    if (m_BSP) { // only need to be set for the BSP
+        idt.entries[0x8].ist = 1;
+        idt.entries[0xD].ist = 2;
+        idt.entries[0xE].ist = 3;
+    }
+}
+
+extern "C" void* GetRealKernelStack(Processor* processor) {
+    return (void*)((uint64_t)processor->GetKernelStack() + KERNEL_STACK_SIZE);
 }

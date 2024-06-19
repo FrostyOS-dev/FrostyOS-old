@@ -21,6 +21,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <util.h>
 
+#include <Memory/Memory.hpp>
+#include <Memory/PageManager.hpp>
+#include <Memory/VirtualRegion.hpp>
+
 void x86_64_InitUserTable(void* PML4) {
     Level4Group* group = (Level4Group*)PML4;
 
@@ -49,4 +53,17 @@ void x86_64_Prep_SMP_Startup() {
 void x86_64_Cleanup_SMP_Startup() {
     x86_64_map_page_noflush(&K_PML4_Array, (void*)0, (void*)0, 0x0); // Read/Write, Present
     x86_64_InvalidatePage(0);
+}
+
+bool isInKernelSpace(void* base, size_t length) {
+    VirtualRegion region(base, length);
+    VirtualRegion HHDMRegion(x86_64_GetHHDMStart(), GetMemorySize(nullptr, 0));
+    if (HHDMRegion.contains(region))
+        return true;
+    if (g_KPM != nullptr) {
+        VirtualRegion KernelRegion = g_KPM->GetRegion();
+        if (KernelRegion.contains(region))
+            return true;
+    }
+    return false;
 }

@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _X86_64_PROCESSOR_HPP
 
 #include <stdint.h>
+#include <util.h>
 
 #include "GDT.hpp"
 #include "TSS.hpp"
@@ -51,6 +52,14 @@ public:
         return offsetof(Processor, m_kernel_stack);
     }
 
+    inline void* GetKernelStack() const {
+        return m_kernel_stack;
+    }
+
+    void UpdateKernelStack(void* stack, uint64_t stack_size = KERNEL_STACK_SIZE);
+
+    void EnableExceptionProtection();
+
     void __attribute__((noreturn)) StopThis(); // Stops the current processor
 
     x86_64_IPI_List& GetIPIList();
@@ -68,11 +77,17 @@ private:
     x86_64_LocalAPIC* m_LocalAPIC;
 
     x86_64_IPI_List m_IPIList;
+
+    void* m_double_fault_stack;
+    void* m_general_protection_fault_stack;
+    void* m_page_fault_stack;
 };
 
 Processor* GetCurrentProcessor();
 Scheduling::Scheduler::ProcessorInfo* GetCurrentProcessorInfo();
 
 uint8_t GetCurrentProcessorID();
+
+extern "C" void* GetRealKernelStack(Processor* processor);
 
 #endif /* _X86_64_PROCESSOR_HPP */

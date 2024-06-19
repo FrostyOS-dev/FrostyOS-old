@@ -15,13 +15,24 @@
 
 [bits 64]
 
-extern kernel_stack
-extern kernel_stack_size
+extern GetRealKernelStack
 
 global x86_64_PrepareThreadExit
 x86_64_PrepareThreadExit:
-    mov rsp, kernel_stack
-    add rsp, [kernel_stack_size]
+    cli
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    swapgs
+    mov rdi, QWORD [gs:0]
+    swapgs
+    call GetRealKernelStack
+    pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
+    mov rsp, rax
     xor rbp, rbp
     call rcx
     cli

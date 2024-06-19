@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,16 +15,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _HAL_DEVICE_HPP
-#define _HAL_DEVICE_HPP
+#include "Stack.hpp"
+#include "PageManager.hpp"
 
-class Device {
-public:
-    Device() {}
-    virtual ~Device() {};
+#include <util.h>
 
-    virtual const char* getVendorName() const = 0;
-    virtual const char* getDeviceName() const = 0;
-};
+void* CreateKernelStack() {
+    void* stack_range_start = g_KPM->ReservePages(KERNEL_STACK_SIZE / PAGE_SIZE + 2, PagePermissions::READ_WRITE);
+    return g_KPM->AllocatePages(KERNEL_STACK_SIZE / PAGE_SIZE, PagePermissions::READ_WRITE, (void*)((uint64_t)stack_range_start + PAGE_SIZE));
+}
 
-#endif /* _HAL_DEVICE_HPP */
+void DestroyKernelStack(void* stack) {
+    g_KPM->FreePage((void*)((uint64_t)stack - PAGE_SIZE));
+    g_KPM->FreePages(stack);
+    g_KPM->FreePage((void*)((uint64_t)stack + KERNEL_STACK_SIZE));
+}

@@ -16,40 +16,44 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "kernel.hpp"
-#include "arch/x86_64/RTC.hpp"
-#include "time.h"
-
-#ifdef __x86_64__
-#include <arch/x86_64/ELFSymbols.hpp>
-#endif
-
-#include <Memory/PageManager.hpp>
-#include <Memory/kmalloc.hpp>
-
-#include <HAL/drivers/PS2/PS2Controller.hpp>
-
-#include <HAL/time.h>
-
-#include <Scheduling/Scheduler.hpp>
-
-#include <Graphics/VGA.hpp>
-#include <Graphics/Colour.hpp>
-
-#include <tty/TTY.hpp>
-#include <tty/KeyboardInput.hpp>
 
 #include <assert.h>
 #include <errno.h>
+#include <icxxabi.h>
+#include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <util.h>
 
-#include <fs/VFS.hpp>
-#include <fs/initramfs.hpp>
+#ifdef __x86_64__
+#include <arch/x86_64/ELFSymbols.hpp>
+#include <arch/x86_64/RTC.hpp>
+#endif
+
 #include <fs/FileDescriptorManager.hpp>
+#include <fs/initramfs.hpp>
+#include <fs/VFS.hpp>
 
-#include <SystemCalls/SystemCall.hpp>
-#include <SystemCalls/exec.hpp>
+#include <Graphics/Colour.hpp>
+#include <Graphics/VGA.hpp>
+
+#include <HAL/time.h>
 
 #include <HAL/drivers/ACPI/ACPI.hpp>
+
+#include <HAL/drivers/PS2/PS2Controller.hpp>
+
+#include <Memory/kmalloc.hpp>
+#include <Memory/PageManager.hpp>
+#include <Memory/Stack.hpp>
+
+#include <Scheduling/Scheduler.hpp>
+
+#include <SystemCalls/exec.hpp>
+#include <SystemCalls/SystemCall.hpp>
+
+#include <tty/KeyboardInput.hpp>
+#include <tty/TTY.hpp>
 
 FrameBuffer m_InitialFrameBuffer;
 Colour g_fgcolour;
@@ -72,7 +76,7 @@ FileDescriptor Kstdout;
 FileDescriptor Kstderr;
 FileDescriptor Kstddebug;
 
-PS2Controller KPS2Controller;
+PS2Controller* KPS2Controller;
 
 KeyboardInput KInput;
 
@@ -85,6 +89,14 @@ struct Stage2_Params {
 } Kernel_Stage2Params;
 
 extern "C" void StartKernel(KernelParams* params) {
+    {
+        typedef void (*ctor_fn)();
+        ctor_fn* ctors = (ctor_fn*)_ctors_start_addr;
+        uint64_t ctors_count = ((uint64_t)_ctors_end_addr - (uint64_t)_ctors_start_addr) / sizeof(ctor_fn);
+        for (uint64_t i = 0; i < ctors_count; i++)
+            ctors[i]();
+    }
+
     m_Stage = EARLY_STAGE;
     m_InitialFrameBuffer = params->frameBuffer;
     g_ColourFormat = ColourFormat(m_InitialFrameBuffer.bpp, m_InitialFrameBuffer.red_mask_shift, m_InitialFrameBuffer.red_mask_size, m_InitialFrameBuffer.green_mask_shift, m_InitialFrameBuffer.green_mask_size, m_InitialFrameBuffer.blue_mask_shift, m_InitialFrameBuffer.blue_mask_size);
@@ -129,16 +141,22 @@ extern "C" void StartKernel(KernelParams* params) {
 
     // Do any early initialisation
 
+    g_BSP.UpdateKernelStack(CreateKernelStack());
+    g_BSP.EnableExceptionProtection();
+
     printf("Very early init done.\n");
+
+    KBasicVGA.EnableDoubleBuffering(g_KPM);
 
     HAL_Stage2(params->RSDP_table);
 
-    KPS2Controller = PS2Controller();
-    KPS2Controller.Init();
-    printf("Detected %s %s\n", KPS2Controller.getVendorName(), KPS2Controller.getDeviceName());
+    KPS2Controller = new PS2Controller();
+    KPS2Controller->Init();
+    printf("Detected ");
+    KPS2Controller->PrintDeviceInfo(stdout);
 
     KInput = KeyboardInput();
-    KInput.Initialise((Keyboard*)KPS2Controller.GetKeyboard());
+    KInput.Initialise((Keyboard*)KPS2Controller->GetKeyboard());
 
     KTTY.SetKeyboardInput(&KInput);
 
@@ -148,8 +166,6 @@ extern "C" void StartKernel(KernelParams* params) {
         dbgprintf("WARN: Cannot find kernel symbol file\n");
     else
         g_KernelSymbols = new ELFSymbols(ELF_map_data, ELF_map_size, true);
-
-    //KBasicVGA.EnableDoubleBuffering(g_KPM);
 
     KWorkingDirectory = nullptr;
 
@@ -211,7 +227,7 @@ void Kernel_Stage2(void* params_addr) {
 
     puts("Attempting ACPI Shutdown!\n");
 
-    int rc = ACPI_shutdown();
+    int rc = Shutdown();
     if (rc != 0) {
         printf("ACPI Shutdown failed with error code %s (%d)\n", strerror(-rc), rc);
     }

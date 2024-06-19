@@ -160,8 +160,8 @@ class Keyboard : public Device {
 public:
     virtual ~Keyboard() {};
 
-    virtual const char* getVendorName() override = 0;
-    virtual const char* getDeviceName() override = 0;
+    virtual const char* getVendorName() const override = 0;
+    virtual const char* getDeviceName() const override = 0;
 
     virtual void Initialise() = 0;
     virtual void Destroy() = 0;

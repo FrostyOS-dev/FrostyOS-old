@@ -185,7 +185,7 @@ bool HPET::StartTimer(uint64_t femtoSec, HPETCallback callback, void* data) {
         if (IRQ == INVALID_IRQ) {
             m_timers[timer].usable = false;
             m_timers[timer].active = false;
-            dbgprintf("HPET: Failed to find an IRQ for timer %hhu\n", timer);
+            printf("HPET: Failed to find an IRQ for timer %hhu\n", timer);
             return StartTimer(femtoSec, callback, data); // try again with a different timer
         }
         m_timers[timer].IRQ = IRQ;
@@ -238,7 +238,7 @@ void HPET::HandleInterrupt(uint8_t timer) {
     m_timers[timer].callback(m_timers[timer].data);
 }
 
-const char* HPET::getVendorName() {
+const char* HPET::getVendorName() const {
     switch (m_VendorID) {
     case 0x8086:
         return "Intel";
@@ -247,7 +247,7 @@ const char* HPET::getVendorName() {
     }
 }
 
-const char* HPET::getDeviceName() {
+const char* HPET::getDeviceName() const {
     return "HPET";
 }
 

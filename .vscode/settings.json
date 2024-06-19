@@ -172,5 +172,6 @@
         "**/toolchain" : true,
         "**/.vscode": true,
         "**/.vs": true
-    }
+    },
+    "cmake.configureOnOpen": false
 }

@@ -29,12 +29,15 @@ extern "C" {
 #endif
 
 void HAL_TimeInit();
+void HAL_TimeShutdown();
 
 void sleep(uint64_t ms);
 
 uint64_t GetTimer();
 
 time_t getTime();
+
+uint64_t getNanos();
 
 #ifdef __cplusplus
 }

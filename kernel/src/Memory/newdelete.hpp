@@ -34,6 +34,14 @@ void operator delete[](void* p);
 void operator delete(void* p, size_t);
 void operator delete[](void* p, size_t);
 
+// Placement new/delete functions
+
+void* operator new(size_t, void* p);
+void* operator new[](size_t, void* p);
+
+void operator delete(void*, void*);
+void operator delete[](void*, void*);
+
 
 // utility functions
 

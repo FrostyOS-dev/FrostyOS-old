@@ -26,6 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <file.h>
 
+#include <Memory/Stack.hpp>
+
 #include <fs/TempFS/TempFSInode.hpp>
 
 #include <fs/FileStream.hpp>
@@ -35,11 +37,11 @@ namespace Scheduling {
 
     Thread::Thread(Process* parent, ThreadEntry_t entry, void* entry_data, uint8_t flags, tid_t TID) : m_Parent(parent), m_entry(entry), m_entry_data(entry_data), m_flags(flags), m_stack(0), m_cleanup({nullptr, nullptr}), m_FDManager(), m_TID(TID), m_sleeping(false), m_remaining_sleep_time(0), m_idle(false), m_blocked(false), m_working_directory(nullptr) {
         memset(&m_regs, 0, DIV_ROUNDUP(sizeof(m_regs), 8));
-        m_frame.kernel_stack = (uint64_t)g_KPM->AllocatePages(KERNEL_STACK_SIZE >> 12, PagePermissions::READ_WRITE) + KERNEL_STACK_SIZE; // FIXME: use actual page size
+        m_frame.kernel_stack = (uint64_t)CreateKernelStack() + KERNEL_STACK_SIZE; // FIXME: use actual page size
     }
 
     Thread::~Thread() {
-        g_KPM->FreePages((void*)(m_frame.kernel_stack - KERNEL_STACK_SIZE));
+        DestroyKernelStack((void*)(m_frame.kernel_stack - KERNEL_STACK_SIZE));
         if (m_working_directory != nullptr)
             delete m_working_directory;
     }

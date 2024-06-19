@@ -13,7 +13,7 @@ int ACPI_EarlyInit(void* RSDP) {
     uacpi_init_params init_params = {
         .rsdp = rsdp_phys,
         .rt_params = {
-            .log_level = UACPI_LOG_DEBUG,
+            .log_level = UACPI_LOG_TRACE,
             .flags = 0
         }
     };

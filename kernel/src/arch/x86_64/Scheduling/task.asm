@@ -76,17 +76,19 @@ x86_64_get_stack_ptr:
     mov rax, rsp
     ret
 
-extern kernel_stack
-extern kernel_stack_size
+extern GetRealKernelStack
 
 global x86_64_kernel_thread_end
 x86_64_kernel_thread_end:
     cli
-    pop rax
-    mov rsp, kernel_stack
-    add rsp, [kernel_stack_size]
+    pop r15
+    swapgs
+    mov rdi, [gs:0]
+    swapgs
+    call GetRealKernelStack
+    mov rsp, rax
     xor rbp, rbp
-    push rax
+    push r15
     ret
 
 global x86_64_context_switch

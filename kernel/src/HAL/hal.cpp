@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "hal.hpp"
+#include "arch/x86_64/interrupts/APIC/IPI.hpp"
 #include "time.h"
 
 #include "drivers/HPET.hpp"
@@ -94,14 +95,13 @@ void HAL_Stage2(void* RSDP) {
     }
     assert(InitAndValidateMCFG(MCFG));
     
-    ACPI_FullInit();
-
     x86_64_LocalAPIC* LAPIC = g_BSP.GetLocalAPIC();
     HAL_TimeInit();
     LAPIC->InitTimer();
 
     Scheduling::Scheduler::InitProcessorTimers();
     
+    ACPI_FullInit();
 }
 
 void HAL_FullInit() {
@@ -114,4 +114,25 @@ void HAL_FullInit() {
         printf("PCI Device: VendorID=%hx DeviceID=%hx Class=%hhx SubClass=%hhx Program Interface=%hhx\n", device->ch.VendorID, device->ch.DeviceID, device->ch.ClassCode, device->ch.SubClass, device->ch.ProgIF);
         device = PCI::PCIDeviceList::GetPCIDevice(i);
     }
+}
+
+void PrepareForShutdown() {
+    // Stop All the CPUs
+    x86_64_IssueIPI(x86_64_IPI_DestinationShorthand::AllExcludingSelf, 0, x86_64_IPI_Type::Stop, 0, true);
+
+    // Stop the scheduler globally
+    Scheduling::Scheduler::StopGlobal();
+
+    // Stop the scheduler on all the CPUs
+    Scheduling::Scheduler::EnumerateProcessors([](Scheduling::Scheduler::ProcessorInfo* info, void*){
+        info->running = false;
+    }, nullptr);
+
+    // Stop the kernel clock
+    HAL_TimeShutdown();
+}
+
+int Shutdown() {
+    PrepareForShutdown();
+    return ACPI_shutdown();
 }

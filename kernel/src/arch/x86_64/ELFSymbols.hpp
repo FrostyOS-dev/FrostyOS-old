@@ -33,6 +33,10 @@ extern uint8_t __data_end;
 extern uint8_t __bss_start;
 extern uint8_t __bss_end;
 extern uint8_t __kernel_end;
+extern uint8_t __ctors_start;
+extern uint8_t __ctors_end;
+extern uint8_t __dtors_start;
+extern uint8_t __dtors_end;
 
 extern const void* _text_start_addr;
 extern const void* _text_end_addr;
@@ -43,6 +47,10 @@ extern const void* _data_end_addr;
 extern const void* _bss_start_addr;
 extern const void* _bss_end_addr;
 extern const void* _kernel_end_addr;
+extern const void* _ctors_start_addr;
+extern const void* _ctors_end_addr;
+extern const void* _dtors_start_addr;
+extern const void* _dtors_end_addr;
  
 }
 

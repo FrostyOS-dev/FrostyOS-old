@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,16 +15,30 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _HAL_DEVICE_HPP
-#define _HAL_DEVICE_HPP
+#ifndef _ICXXABI_H
+#define _ICXXABI_H
 
-class Device {
-public:
-    Device() {}
-    virtual ~Device() {};
+#define ATEXIT_MAX_FUNCS 128
 
-    virtual const char* getVendorName() const = 0;
-    virtual const char* getDeviceName() const = 0;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef void (*cxa_destructor_t)(void*);
+typedef void (*cxa_atexit_t)(void);
+typedef unsigned int uarch_t;
+
+struct atexit_func_entry_t {
+    cxa_destructor_t dtor;
+    void* obj_ptr;
+    void* dso_handle;
 };
 
-#endif /* _HAL_DEVICE_HPP */
+int __cxa_atexit(cxa_destructor_t dtor, void* obj, void* dso);
+void __cxa_finalize(void* f);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

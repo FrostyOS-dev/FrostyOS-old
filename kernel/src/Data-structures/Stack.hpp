@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _STACK_HPP
-#define _STACK_HPP
+#ifndef _DS_STACK_HPP
+#define _DS_STACK_HPP
 
 #include <stddef.h>
 
@@ -75,4 +75,4 @@ private:
     size_t m_currentPos;
 };
 
-#endif /* _STACK_HPP */
+#endif /* _DS_STACK_HPP */

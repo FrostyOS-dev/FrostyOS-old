@@ -138,6 +138,11 @@ extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
     char tempReason[64];
     memset(tempReason, 0, 64);
 
+    if (regs->interrupt >= (sizeof(g_Exceptions) / sizeof(g_Exceptions[0]))) {
+        in_interrupt = true;
+        x86_64_Panic("Bad interrupt number. Most likely stack corruption", regs, true);
+    }
+
     const size_t strLength = g_ExceptionsSTRLengths[regs->interrupt];
 
     memcpy(tempReason, g_Exceptions[regs->interrupt], strLength);

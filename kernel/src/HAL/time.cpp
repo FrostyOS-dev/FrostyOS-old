@@ -56,6 +56,12 @@ extern "C" void HAL_TimeInit() {
     }
 }
 
+extern "C" void HAL_TimeShutdown() {
+    g_allowTimer = 0;
+    while (g_timerRunning == 1)
+        sleep(1);
+}
+
 extern "C" void sleep(uint64_t ms) {
     uint64_t start = GetTimer();
     while ((GetTimer() - start) < ms)
@@ -89,4 +95,8 @@ extern "C" time_t getTime() {
             return ((days_since_epoch(time.Year, time.Month, time.DayOfMonth) * 24 + time.Hours) * 60 + time.Minutes) * 60 + time.Seconds;
     }
     return 0;
+}
+
+extern "C" uint64_t getNanos() {
+    return g_HPET->GetMainCounter() * (g_HPET->GetClockPeriod() / 1'000'000);
 }

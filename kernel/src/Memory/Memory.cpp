@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2022-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,9 +22,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 volatile uint64_t g_memorySizeBytes = 0;
 
 size_t GetMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCount) {
-
     if (g_memorySizeBytes > 0)
         return g_memorySizeBytes;
+
+    if (MemoryMap == nullptr || EntryCount == 0)
+        return 0;
 
     size_t endLastFree = 0;
 
@@ -50,7 +52,7 @@ size_t UpdateMemorySize(const MemoryMapEntry** MemoryMap, const size_t EntryCoun
 
     for (size_t i = EntryCount; i > 0; i--) {
         const MemoryMapEntry* entry = MemoryMap[i-1];
-        if (entry->type == WORLDOS_MEMORY_FREE) {
+        if (entry->type == WORLDOS_MEMORY_FREE || entry->type == WORLDOS_MEMORY_KERNEL_AND_MODULES || entry->type == WORLDOS_MEMORY_FRAMEBUFFER) {
             g_memorySizeBytes = (uint64_t)(entry->Address) + entry->length;
             NewEntryCount = i;
             break;

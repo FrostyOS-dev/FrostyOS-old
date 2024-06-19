@@ -77,7 +77,8 @@ void x86_64_GetNewStack(PageManager* pm, x86_64_Registers* regs, size_t size) {
     size = ALIGN_UP(size, 4096);
     if (size < KiB(16))
         size = KiB(16);
-    void* stack = pm->AllocatePages(size / 4096);
+    void* stack_range_start = pm->ReservePages(size / PAGE_SIZE + 2, PagePermissions::READ_WRITE);
+    void* stack = pm->AllocatePages(size / PAGE_SIZE, PagePermissions::READ_WRITE, (void*)((uint64_t)stack_range_start + PAGE_SIZE));
     assert(stack != nullptr);
     regs->RSP = (uint64_t)stack + size; // stack grows downwards on x86
 }

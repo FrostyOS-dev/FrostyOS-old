@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _X86_64_KERNEL_STACK_HPP
-#define _X86_64_KERNEL_STACK_HPP
+#ifndef _x86_64_STACK_HPP
+#define _x86_64_STACK_HPP
 
 // Size for the initial kernel stack
 #define INITIAL_KERNEL_STACK_SIZE 65536
@@ -36,4 +36,4 @@ extern unsigned long int kernel_stack_size;
 
 void x86_64_walk_stack_frames(void* RBP);
 
-#endif /* _X86_64_KERNEL_STACK_HPP */
+#endif /* _x86_64_STACK_HPP */

@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2022-2023  Frosty515
+Copyright (©) 2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,16 +15,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _HAL_DEVICE_HPP
-#define _HAL_DEVICE_HPP
+#ifndef _x86_64_PAT_HPP
+#define _x86_64_PAT_HPP
 
-class Device {
-public:
-    Device() {}
-    virtual ~Device() {};
+#include <stdint.h>
 
-    virtual const char* getVendorName() const = 0;
-    virtual const char* getDeviceName() const = 0;
+enum class x86_64_PATType {
+    Uncacheable = 0, // UC
+    WriteCombining = 1, // WC
+    WriteThrough = 4, // WT
+    WriteProtected = 5, // WP
+    WriteBack = 6, // WB
+    Uncached = 7 // UC-
 };
 
-#endif /* _HAL_DEVICE_HPP */
+void x86_64_InitPAT();
+
+uint16_t x86_64_GetPTEFlagsFromPAT(x86_64_PATType type);
+uint16_t x86_64_GetPDEFlagsFromPAT(x86_64_PATType type); // for large pages
+
+#endif /* _x86_64_PAT_HPP */

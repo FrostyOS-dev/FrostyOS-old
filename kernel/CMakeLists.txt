@@ -31,6 +31,7 @@ if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Memory/PagingUtil.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Memory/PageMapIndexer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Memory/PagingInit.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Memory/PAT.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Scheduling/syscall.asm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Scheduling/task.asm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Scheduling/taskutil.cpp
@@ -53,6 +54,7 @@ if(WORLDOS_ARCHITECTURE STREQUAL "x86_64")
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/PIT.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/Processor.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/panic.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/x86_64/MSR.asm
     )
 
     set(kernel_lib_sources
@@ -105,6 +107,7 @@ set(kernel_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/PageTable.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/PagingUtil.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/PhysicalPageFrameAllocator.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/Stack.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/VirtualPageManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Memory/VirtualRegion.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ProgramLoader/ELF.cpp
@@ -128,6 +131,7 @@ set(kernel_sources
 set(kernel_lib_sources
     ${kernel_lib_sources}
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/assert.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/icxxabi.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/math.c
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/mutex.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/src/semaphore.cpp
@@ -178,7 +182,6 @@ target_compile_options(kernel
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-O2>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX,C>:-fno-omit-frame-pointer>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
-    PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
     PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
 )
 
