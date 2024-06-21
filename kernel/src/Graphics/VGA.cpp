@@ -210,7 +210,7 @@ Position BasicVGA::GetCursorPosition() {
 }
 
 uint64_t BasicVGA::GetScreenSizeBytes() {
-    return m_FrameBuffer.FrameBufferWidth * m_FrameBuffer.FrameBufferHeight * 4;
+    return m_FrameBuffer.FrameBufferWidth * m_FrameBuffer.pitch;
 }
 
 FrameBuffer BasicVGA::GetFrameBuffer() {

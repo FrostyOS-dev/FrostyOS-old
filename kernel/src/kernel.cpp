@@ -218,11 +218,14 @@ void Kernel_Stage2(void* params_addr) {
 
     puts("Sleeping for 10 seconds...\n");
 
-    RTCTime t = RTC_getCurrentTime();
-    time_t time = ((days_since_epoch(t.Year, t.Month, t.DayOfMonth) * 24 + t.Hours) * 60 + t.Minutes) * 60 + t.Seconds;
-    while ((time + 10) > (((days_since_epoch(t.Year, t.Month, t.DayOfMonth) * 24 + t.Hours) * 60 + t.Minutes) * 60 + t.Seconds)) {
-        t = RTC_getCurrentTime();
+    time_t time = getTime();
+    if (time > 0) {
+        while ((time + 10) > getTime()) {
+            
+        }
     }
+    else
+        puts("Cannot sleep as RTC doesn't exist");
 
 
     puts("Attempting ACPI Shutdown!\n");

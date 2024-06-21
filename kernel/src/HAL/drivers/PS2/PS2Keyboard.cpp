@@ -108,6 +108,7 @@ void PS2Keyboard::Initialise() {
     x86_64_8042_RegisterIRQHandler(HandleKeyboardInterrupt, this, m_Channel);
 #endif
     m_Controller->EnableInterrupts(m_Channel);
+    puts("PS/2 Keyboard init success\n");
 }
 
 void PS2Keyboard::Destroy() {

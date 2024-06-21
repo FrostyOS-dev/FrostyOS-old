@@ -36,4 +36,6 @@ void RTC_Init();
 void RTC_WaitForUpdate();
 RTCTime RTC_getCurrentTime();
 
+bool RTC_IsInitialised();
+
 #endif /* _X86_64_RTC_HPP */

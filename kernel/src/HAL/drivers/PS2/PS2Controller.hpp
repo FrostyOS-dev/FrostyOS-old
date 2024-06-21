@@ -44,6 +44,7 @@ public:
     uint8_t SendCommandToDevice(uint8_t command, bool channel, uint8_t* data = nullptr, uint64_t data_size = 0);
     void EnableInterrupts(bool channel);
 
+    bool ReadData(uint8_t* out, uint64_t attempts = 0);
     uint8_t ReadData();
 
     PS2Keyboard* GetKeyboard();

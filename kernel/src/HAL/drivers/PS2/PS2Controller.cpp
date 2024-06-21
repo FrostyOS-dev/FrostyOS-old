@@ -38,11 +38,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define PS2_CMD_TEST_PORT_2 0xA9
 #define PS2_CMD_SELF_TEST 0xAA
 #define PS2_CMD_TEST_CONTROLLER 0xA9
-#define PS2_CMD_WRITE_PORT_1 0xD1
-#define PS2_CMD_WRITE_PORT_2 0xD3
-#define PS2_CMD_READ_PORT_1 0xD0
-#define PS2_CMD_READ_PORT_2 0xD2
-#define PS2_CMD_WRITE_PORT_2_INPUT 0xD4
+#define PS2_CMD_WRITE_PORT_2 0xD4
 
 /* Define the generic device commands */
 
@@ -63,7 +59,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define PS2_DEVICE_RESPONSE_ACK 0xFA
 #define PS2_DEVICE_RESPONSE_ECHO 0xEE
 #define PS2_DEVICE_RESPONSE_RESEND 0xFE
-#define PS2_DEVICE_RESPONSE_RESET 0xAA
+#define PS2_DEVICE_RESPONSE_ST_PASS 0xAA
+#define PS2_DEVICE_RESPONSE_ST_ERROR 0xFC
+#define PS2_DEVICE_RESPONSE_ST_ERROR2 0xFD
 
 PS2Controller::PS2Controller() : Device(), m_DualChannel(false), m_Devices{{false, nullptr, nullptr}, {false, nullptr, nullptr}} {
 
@@ -79,8 +77,10 @@ void PS2Controller::Init() {
     SendCommand(PS2_CMD_DISABLE_PORT_2);
 
     // Flush the output buffer
-    if (GetStatus() & 1)
-        ReadData();
+    {
+        uint8_t data;
+        ReadData(&data, 1);
+    }
 
     // Set the controller configuration byte
     SendCommand(PS2_CMD_READ_CONFIG_BYTE);
@@ -111,7 +111,7 @@ void PS2Controller::Init() {
     SendCommand(PS2_CMD_ENABLE_PORT_2);
     SendCommand(PS2_CMD_READ_CONFIG_BYTE);
     configByte = ReadData();
-    m_DualChannel = (configByte & 0b00000010) != 0;
+    m_DualChannel = (configByte & (1 << 5)) == 0;
     if (m_DualChannel)
         SendCommand(PS2_CMD_DISABLE_PORT_2);
     
@@ -152,29 +152,26 @@ void PS2Controller::Init() {
         SendCommand(PS2_CMD_ENABLE_PORT_2);
 
     // Reset ports
-    //SendCommand(PS2_CMD_WRITE_PORT_1);
     WriteData(PS2_DEVICE_CMD_RESET);
     // read the result
     uint8_t attempts = UINT8_MAX;
-    bool stage = false; // false for no response, true for pending result
     bool done = false;
     do {
         unsigned char ResetResult = ReadData();
         switch (ResetResult) {
             case PS2_DEVICE_RESPONSE_ACK:
-                stage = true;
                 break;
             case PS2_DEVICE_RESPONSE_RESEND:
-                stage = false;
                 WriteData(PS2_DEVICE_CMD_RESET);
                 break;
-            case PS2_DEVICE_RESPONSE_RESET:
-                if (!stage)
-                    printf("PS/2 Controller Warning: PS/2 port 1 reset response before acknowledgement!\n");
+            case PS2_DEVICE_RESPONSE_ST_PASS:
                 done = true;
                 break;
+            case PS2_DEVICE_RESPONSE_ST_ERROR:
+            case PS2_DEVICE_RESPONSE_ST_ERROR2:
+                PANIC("PS/2 port 1 reset failed! (ST_ERROR)");
+                break;
             default:
-                PANIC("PS/2 port 1 reset failed! (UNKNOWN)");
                 break;
         }
     } while (--attempts > 0 && !done);
@@ -186,26 +183,24 @@ void PS2Controller::Init() {
         WriteData(PS2_DEVICE_CMD_RESET);
         // read the result
         uint8_t attempts = UINT8_MAX;
-        bool stage = false; // false for no response, true for pending result
         bool done = false;
         do {
-            unsigned char ResetResult = ReadData();
+            uint8_t ResetResult = ReadData();
             switch (ResetResult) {
                 case PS2_DEVICE_RESPONSE_ACK:
-                    stage = true;
                     break;
                 case PS2_DEVICE_RESPONSE_RESEND:
-                    stage = false;
                     SendCommand(PS2_CMD_WRITE_PORT_2);
                     WriteData(PS2_DEVICE_CMD_RESET);
                     break;
-                case PS2_DEVICE_RESPONSE_RESET:
-                    if (!stage)
-                        dbgprintf("PS/2 Controller Warning: PS/2 port 2 reset response before acknowledgement!\n");
+                case PS2_DEVICE_RESPONSE_ST_PASS:
                     done = true;
                     break;
+                case PS2_DEVICE_RESPONSE_ST_ERROR:
+                case PS2_DEVICE_RESPONSE_ST_ERROR2:
+                    PANIC("PS/2 port 2 reset failed! (ST_ERROR)");
+                    break;
                 default:
-                    PANIC("PS/2 port 2 reset failed! (UNKNOWN)");
                     break;
             }
         } while (--attempts > 0 && !done);
@@ -254,20 +249,16 @@ void PS2Controller::Init() {
     uint8_t bytes_received = 0;
     uint8_t bytes[2];
     {
-        uint16_t attempts = 0;
         do {
-            if (GetStatus() & 1) {
-                bytes[bytes_received++] = ReadData();
-                attempts = 0;
-            }
-        } while (++attempts < UINT16_MAX && bytes_received < 2);
+            uint8_t data;
+            if (ReadData(&data, 255))
+                bytes[bytes_received++] = data;
+            else
+                break;
+        } while (bytes_received < 2);
     }
     char const* device_type_name = GetDeviceTypeName(bytes, bytes_received);
     bool device_type = GetDeviceType(bytes, bytes_received);
-    printf("Detected PS/2 %s", device_type ? "Mouse" : "Keyboard");
-    if (device_type_name != nullptr)
-        printf(": %s", device_type_name);
-    putc('\n');
 
     {
         WriteData(PS2_DEVICE_CMD_ENABLE_SCANNING);
@@ -287,9 +278,7 @@ void PS2Controller::Init() {
     }
     {
         Device* device = nullptr;
-        if (device_type)
-            printf("PS/2 Mouse not supported yet!\n");
-        else {
+        if (!device_type) {
             PS2Keyboard* keyboard = new PS2Keyboard(this, false, device_type_name);
             keyboard->Initialise();
             device = (Device*)keyboard;
@@ -347,20 +336,16 @@ void PS2Controller::Init() {
         uint8_t bytes_received = 0;
         uint8_t bytes[2];
         {
-            uint16_t attempts = 0;
             do {
-                if (GetStatus() & 1) {
-                    bytes[bytes_received++] = ReadData();
-                    attempts = 0;
-                }
-            } while (++attempts < UINT16_MAX && bytes_received < 2);
+                uint8_t data;
+                if (ReadData(&data, 255))
+                    bytes[bytes_received++] = data;
+                else
+                    break;
+            } while (bytes_received < 2);
         }
         char const* device_type_name = GetDeviceTypeName(bytes, bytes_received);
         bool device_type = GetDeviceType(bytes, bytes_received);
-        printf("Detected PS/2 %s", device_type ? "Mouse" : "Keyboard");
-        if (device_type_name != nullptr)
-            printf(": %s", device_type_name);
-        putc('\n');
 
         {
             SendCommand(PS2_CMD_WRITE_PORT_2);
@@ -383,16 +368,14 @@ void PS2Controller::Init() {
         }
         {
             Device* device = nullptr;
-            if (device_type)
-                printf("PS/2 Mouse not supported yet!\n");
-            else {
+            if (!device_type) {
                 PS2Keyboard* keyboard = new PS2Keyboard(this, false, device_type_name);
                 keyboard->Initialise();
                 device = (Device*)keyboard;
             }
-            m_Devices[0].type = device_type;
-            m_Devices[0].name = device_type_name;
-            m_Devices[0].device = device;
+            m_Devices[1].type = device_type;
+            m_Devices[1].name = device_type_name;
+            m_Devices[1].device = device;
         }
     }
 }
@@ -446,8 +429,14 @@ void PS2Controller::SendCommand(uint8_t command) {
     x86_64_8042_WriteCommand(command);
 }
 
+bool PS2Controller::ReadData(uint8_t* data, uint64_t attempts) {
+    return x86_64_8042_ReadData(data, attempts);
+}
+
 uint8_t PS2Controller::ReadData() {
-    return x86_64_8042_ReadData();
+    uint8_t data;
+    ReadData(&data);
+    return data;
 }
 
 void PS2Controller::WriteData(uint8_t data) {
@@ -575,7 +564,7 @@ bool PS2Controller::GetDeviceType(uint8_t* type, uint8_t type_bytes) {
 void PS2Controller::PrintDeviceInfo(fd_t fd) const {
     fprintf(fd, "%s %s\n", getVendorName(), getDeviceName(), m_DualChannel ? "Dual" : "Single");
     fprintf(fd, "  Devices:\n");
-    fprintf(fd, "    Port 1: %s\n", m_Devices[0].name);
+    fprintf(fd, "    Port 1: %s\n", m_Devices[0].name == nullptr ? (m_Devices[0].type ? "Mouse" : "Keyboard") : m_Devices[0].name);
     if (m_DualChannel)
-        fprintf(fd, "    Port 2: %s\n", m_Devices[1].name);
+        fprintf(fd, "    Port 2: %s\n", m_Devices[1].name == nullptr ? (m_Devices[1].type ? "Mouse" : "Keyboard") : m_Devices[1].name);
 }

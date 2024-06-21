@@ -41,11 +41,23 @@ void x86_64_8042_WriteCommand(uint8_t command) {
     x86_64_outb(PS2_COMMAND_PORT, command);
 }
 
-uint8_t x86_64_8042_ReadData() {
-    while ((x86_64_8042_ReadStatusRegister_Raw() & 1) != 1) {
-        
+bool x86_64_8042_ReadData(uint8_t* out, uint64_t attempts) {
+    if (attempts != 0) {
+        for (uint8_t i = 0; i < attempts; i++) {
+            if ((x86_64_8042_ReadStatusRegister_Raw() & 1) == 1) {
+                *out = x86_64_inb(PS2_DATA_PORT);
+                return true;
+            }
+        }
+        return false;
     }
-    return x86_64_inb(PS2_DATA_PORT);
+    else {
+        while ((x86_64_8042_ReadStatusRegister_Raw() & 1) != 1) {
+            
+        }
+    }
+    *out = x86_64_inb(PS2_DATA_PORT);
+    return true;
 }
 
 void x86_64_8042_WriteData(uint8_t data) {

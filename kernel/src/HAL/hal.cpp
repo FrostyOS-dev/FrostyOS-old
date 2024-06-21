@@ -102,6 +102,8 @@ void HAL_Stage2(void* RSDP) {
     Scheduling::Scheduler::InitProcessorTimers();
     
     ACPI_FullInit();
+
+    HAL_RTCInit();
 }
 
 void HAL_FullInit() {

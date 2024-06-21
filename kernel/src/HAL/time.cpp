@@ -27,6 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "drivers/HPET.hpp"
 
+#include "drivers/ACPI/ACPIDevice.hpp"
+
 const char* days_of_week[7] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 const char* months[12] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
 
@@ -43,17 +45,24 @@ extern "C" void HAL_TimeInit() {
     x86_64_DisableInterrupts();
     g_HPET->StartTimer(1'000'000'000'000, TimerCallback, nullptr);
     x86_64_EnableInterrupts();
-    
-    RTC_Init();
-    for (int i = 0; i < 5; i++) { // 5 attempts
-        RTCTime time = RTC_getCurrentTime();
-        sleep(1); // minimum wait time
-        RTCTime time2 = RTC_getCurrentTime();
-        if (time == time2) {
-            printf("RTC Initialised Successfully. It is %s the %hhu of %s %hu, %.2hhu:%.2hhu:%.2hhu UTC\n", days_of_week[time.WeekDay - 1], time.DayOfMonth, months[time.Month - 1], time.Year, time.Hours, time.Minutes, time.Seconds);
-            break;
+}
+
+extern "C" void HAL_RTCInit() {
+    DeviceCheckStatus status = DoesRTCExist();
+    if (status.found) {
+        RTC_Init();
+        for (int i = 0; i < 5; i++) { // 5 attempts
+            RTCTime time = RTC_getCurrentTime();
+            sleep(1); // minimum wait time
+            RTCTime time2 = RTC_getCurrentTime();
+            if (time == time2) {
+                printf("RTC Initialised Successfully. It is %s the %hhu of %s %hu, %.2hhu:%.2hhu:%.2hhu UTC\n", days_of_week[time.WeekDay - 1], time.DayOfMonth, months[time.Month - 1], time.Year, time.Hours, time.Minutes, time.Seconds);
+                break;
+            }
         }
     }
+    else
+        puts("RTC Not Found\n");
 }
 
 extern "C" void HAL_TimeShutdown() {
@@ -87,6 +96,8 @@ extern "C" uint64_t GetTimer() {
 }
 
 extern "C" time_t getTime() {
+    if (!RTC_IsInitialised())
+        return 0;
     for (int i = 0; i < 5; i++) { // 5 attempts
         RTCTime time = RTC_getCurrentTime();
         sleep(1); // minimum wait time

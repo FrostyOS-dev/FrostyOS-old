@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 void HAL_TimeInit();
+void HAL_RTCInit();
 void HAL_TimeShutdown();
 
 void sleep(uint64_t ms);

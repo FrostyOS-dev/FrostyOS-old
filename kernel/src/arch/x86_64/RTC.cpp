@@ -55,25 +55,51 @@ uint8_t GetWeekDay(uint16_t y, uint8_t m, uint8_t d) {
 
 bool g_BCD = false; // true for BCD, false for binary
 bool g_12Hour = false; // true for 12-hour, false for 24-hour
-bool g_Initialised = false;
+bool g_RTCInitialised = false;
 
 void RTC_Init() {
     g_BCD = !((CMOS_Read((uint8_t)RTC_Registers::STATUSB) & 4) == 4);
     g_12Hour = (CMOS_Read((uint8_t)RTC_Registers::STATUSB) & 2) == 2;
+    g_RTCInitialised = true;
 }
 
 void RTC_WaitForUpdate() {
+    if (!g_RTCInitialised)
+        return;
     while (!((CMOS_Read((uint8_t)RTC_Registers::STATUSA) >> 7) & 1)); // wait until update starts
     while ((CMOS_Read((uint8_t)RTC_Registers::STATUSA) >> 7) & 1); // wait until update ends
 }
 
 bool RTC_IsUpdating() {
+    if (!g_RTCInitialised)
+        return false;
     return (CMOS_Read((uint8_t)RTC_Registers::STATUSA) >> 7) & 1;
 }
 
+/*
+struct RTCTime {
+    uint8_t Seconds; // 0-59
+    uint8_t Minutes; // 0-59
+    uint8_t Hours; // 0-23
+    uint8_t WeekDay; // 1-7, Sunday = 1
+    uint8_t DayOfMonth; // 1-31
+    uint8_t Month; // 1-12
+    uint16_t Year; // Should never have a value less than 0
+} __attribute__((packed)) __attribute__((aligned(0x8))); // must fit in 64 bits
+*/
+
 RTCTime RTC_getCurrentTime() {
-    if (!g_Initialised)
-        RTC_Init();
+    if (!g_RTCInitialised) {
+        return {
+            .Seconds = 0,
+            .Minutes = 0,
+            .Hours = 0,
+            .WeekDay = 5, // Thursday
+            .DayOfMonth = 1,
+            .Month = 1,
+            .Year = 1970
+        };
+    }
     x86_64_DisableInterrupts();
     while (RTC_IsUpdating()); // Wait for an update to finish
     uint8_t Seconds = CMOS_Read((uint8_t)RTC_Registers::SECONDS);
@@ -112,4 +138,8 @@ RTCTime RTC_getCurrentTime() {
     RTCTime time = {Seconds, Minutes, Hours, GetWeekDay(Year, Month, DayOfMonth), DayOfMonth, Month, Year};
     x86_64_EnableInterrupts();
     return time;
+}
+
+bool RTC_IsInitialised() {
+    return g_RTCInitialised;
 }

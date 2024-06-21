@@ -38,7 +38,7 @@ uint8_t x86_64_8042_ReadStatusRegister_Raw();
 
 void x86_64_8042_WriteCommand(uint8_t command);
 
-uint8_t x86_64_8042_ReadData();
+bool x86_64_8042_ReadData(uint8_t* out, uint64_t attempts = 0);
 void x86_64_8042_WriteData(uint8_t data);
 
 void x86_64_8042_RegisterIRQHandler(x86_64_8042_IRQHandler_t handler, void* data, bool channel);
