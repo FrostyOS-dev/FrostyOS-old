@@ -16,9 +16,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "PageManager.hpp"
+#include "Memory/PageObject.hpp"
+#include "Memory/kmalloc.hpp"
 #include "newdelete.hpp"
 #include "PhysicalPageFrameAllocator.hpp"
 #include "VirtualPageManager.hpp"
+#include "spinlock.h"
 
 #include <HAL/hal.hpp>
 
@@ -26,11 +29,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 PageManager* g_KPM = nullptr;
 
-PageManager::PageManager() : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(), m_VPM(), m_PT(false, this), m_mode(false), m_page_object_pool_used(false), m_auto_expand(false), m_lock(0) {
+PageManager::PageManager() : m_allocated_objects(true), m_allocated_object_count(0), m_Vregion(), m_VPM(), m_PT(false, this), m_mode(false), m_auto_expand(false), m_page_object_pool_used(false), m_lock(0) {
     
 }
 
-PageManager::PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand) : m_allocated_objects(nullptr), m_allocated_object_count(0), m_Vregion(region), m_VPM(VPM), m_PT(mode, this), m_mode(mode), m_page_object_pool_used(false), m_auto_expand(mode && auto_expand), m_lock(0) {
+PageManager::PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand) : m_allocated_objects(true), m_allocated_object_count(0), m_Vregion(region), m_VPM(VPM), m_PT(mode, this), m_mode(mode), m_auto_expand(mode && auto_expand), m_page_object_pool_used(false), m_lock(0) {
     if (!PageObjectPool_HasBeenInitialised())
         PageObjectPool_Init();
 }
@@ -46,17 +49,13 @@ PageManager::~PageManager() {
         }
     }
     spinlock_acquire(&m_lock);
-    for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-        PageObject* object = m_allocated_objects;
-        m_allocated_objects = object->next;
-        delete object;
-    }
+    m_allocated_objects.clear();
     spinlock_release(&m_lock);
 }
 
 void PageManager::InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand) {
     spinlock_acquire(&m_lock);
-    m_allocated_objects = nullptr;
+    m_allocated_objects.clear();
     m_allocated_object_count = 0;
     m_Vregion = region;
     m_VPM = VPM;
@@ -72,97 +71,49 @@ void PageManager::InitPageManager(const VirtualRegion& region, VirtualPageManage
 void* PageManager::AllocatePage(PagePermissions perms, void* addr) {
     spinlock_acquire(&m_lock);
     if (addr != nullptr) {
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
-            if (temp_region.IsInside(addr, PAGE_SIZE) && (object->flags & PO_STANDBY) && !(object->flags & PO_INUSE) && object->perms == perms) {
-                if (addr > object->virtual_address) {
-                    PageObject* po;
-                    if (NewDeleteInitialised())
-                        po = new PageObject;
-                    else {
-                        po = PageObjectPool_Allocate();
-                        m_page_object_pool_used = true;
-                    }
-                    if (po == nullptr) {
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    po->virtual_address = object->virtual_address;
-                    po->perms = perms;
-                    po->flags = object->flags;
-                    po->page_count = ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
-                    if (!InsertObject(po)) {
-                        if (PageObjectPool_IsInPool(po))
-                            PageObjectPool_Free(po);
-                        else if (NewDeleteInitialised())
-                            delete po;
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    object->page_count -= ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
-                    object->virtual_address = addr;
+        PageObject* obj = FindObject(VirtualRegion(addr, PAGE_SIZE));
+        if (obj != nullptr) {
+            if ((obj->flags & PO_INUSE) == 0 && (obj->flags & PO_STANDBY) != 0) {
+                // split the object
+                if (obj->virtual_address < addr) {
+                    // split the object from the left
+                    uint64_t new_page_count = (uint64_t)addr - (uint64_t)obj->virtual_address;
+                    PageObject* new_obj = CreateObject({obj->virtual_address, new_page_count, obj->flags, obj->perms});
+                    obj->virtual_address = addr;
+                    obj->page_count -= new_page_count;
+                    RemoveObject(obj);
+                    InsertObject(new_obj);
+                    InsertObject(obj); // reinsert the object because the address has changed
                 }
-
-                if (1 < object->page_count) {
-                    PageObject* po;
-                    if (NewDeleteInitialised())
-                        po = new PageObject;
-                    else {
-                        po = PageObjectPool_Allocate();
-                        m_page_object_pool_used = true;
-                    }
-                    if (po == nullptr) {
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    po->virtual_address = (void*)((uint64_t)(object->virtual_address) + PAGE_SIZE);
-                    po->perms = perms;
-                    po->flags = object->flags;
-                    po->page_count = object->page_count - 1;
-                    if (!InsertObject(po)) {
-                        if (PageObjectPool_IsInPool(po))
-                            PageObjectPool_Free(po);
-                        else if (NewDeleteInitialised())
-                            delete po;
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    object->page_count = 1;
+                if (((uint64_t)obj->virtual_address + obj->page_count * PAGE_SIZE) > ((uint64_t)addr + PAGE_SIZE)) {
+                    // split the object from the right
+                    uint64_t new_page_count = (uint64_t)obj->virtual_address + obj->page_count * PAGE_SIZE - (uint64_t)addr;
+                    PageObject* new_obj = CreateObject({addr, new_page_count, obj->flags, obj->perms});
+                    obj->page_count -= new_page_count;
+                    InsertObject(new_obj);
+                    obj = new_obj;
                 }
+                obj->flags |= PO_INUSE;
+                obj->flags &= ~PO_STANDBY;
+                obj->perms = perms;
 
-                PageObject_UnsetFlag(object, PO_STANDBY);
-                PageObject_SetFlag(object, PO_INUSE);
-                
+                // map the page
                 m_PT.MapPage(g_PPFA->AllocatePage(), addr, perms);
                 spinlock_release(&m_lock);
                 return addr;
             }
-            object = object->next;
+            else {
+                spinlock_release(&m_lock);
+                return nullptr; // already allocated
+            }
         }
     }
+    // at this point we know that addr is not allocated
     void* virt_addr;
     if (addr == nullptr)
         virt_addr = m_VPM->AllocatePage();
-    else {
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            if (object->virtual_address == addr) {
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            object = object->next;
-        }
+    else
         virt_addr = m_VPM->AllocatePage(addr);
-    }
     if (virt_addr == nullptr) {
         if (m_auto_expand) {
             if (ExpandVRegionToRight(PAGE_SIZE + m_Vregion.GetSize())) {
@@ -181,155 +132,70 @@ void* PageManager::AllocatePage(PagePermissions perms, void* addr) {
             return nullptr;
         }
     }
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr)
-        po = po->next;
-    if (NewDeleteInitialised())
-        po = new PageObject;
-    else {
-        po = PageObjectPool_Allocate();
-        m_page_object_pool_used = true;
-    }
-    if (po == nullptr) {
-        m_VPM->UnallocatePage(virt_addr);
-        spinlock_release(&m_lock);
-        return nullptr;
-    }
-    PageObject_SetFlag(po, PO_ALLOCATED);
+    PageObject* po = CreateObject();
+    po->flags = PO_ALLOCATED | PO_INUSE;
     if (m_mode)
-        PageObject_SetFlag(po, PO_USER);
-    PageObject_SetFlag(po, PO_INUSE);
+        po->flags |= PO_USER;
     po->virtual_address = virt_addr;
     po->page_count = 1;
-    if (m_allocated_object_count > 0) {
-        PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-        if (previous == nullptr) {
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_VPM->UnallocatePage(virt_addr);
-            spinlock_release(&m_lock);
-            return nullptr;
-        }
-        else
-            previous->next = po;
-    }
-    else
-        m_allocated_objects = po;
-    m_allocated_object_count++;
     po->perms = perms;
+    InsertObject(po);
     m_PT.MapPage(g_PPFA->AllocatePage(), virt_addr, perms);
     spinlock_release(&m_lock);
     return virt_addr;
 }
 
 void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* addr) {
-    if (count == 1)
-        return AllocatePage(perms, addr);
     spinlock_acquire(&m_lock);
     if (addr != nullptr) {
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
-            if (temp_region.IsInside(addr, count * PAGE_SIZE) && (object->flags & PO_STANDBY) && !(object->flags & PO_INUSE) && object->perms == perms) {
-                if (addr > object->virtual_address) {
-                    PageObject* po;
-                    if (NewDeleteInitialised())
-                        po = new PageObject;
-                    else {
-                        po = PageObjectPool_Allocate();
-                        m_page_object_pool_used = true;
-                    }
-                    if (po == nullptr) {
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    po->virtual_address = object->virtual_address;
-                    po->perms = perms;
-                    po->flags = object->flags;
-                    po->page_count = ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
-                    if (!InsertObject(po)) {
-                        if (PageObjectPool_IsInPool(po))
-                            PageObjectPool_Free(po);
-                        else if (NewDeleteInitialised())
-                            delete po;
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    object->page_count -= ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
-                    object->virtual_address = addr;
+        PageObject* obj = FindObject(VirtualRegion(addr, count * PAGE_SIZE));
+        if (obj != nullptr) {
+            if ((obj->flags & PO_INUSE) == 0 && (obj->flags & PO_STANDBY) != 0) {
+                // split the object
+                if (obj->virtual_address < addr) {
+                    // split the object from the left
+                    uint64_t new_page_count = (uint64_t)addr - (uint64_t)obj->virtual_address;
+                    PageObject* new_obj = CreateObject({obj->virtual_address, new_page_count, obj->flags, obj->perms});
+                    obj->virtual_address = addr;
+                    obj->page_count -= new_page_count;
+                    RemoveObject(obj);
+                    InsertObject(new_obj);
+                    InsertObject(obj); // reinsert the object because the address has changed
                 }
-
-                if (count < object->page_count) {
-                    PageObject* po;
-                    if (NewDeleteInitialised())
-                        po = new PageObject;
-                    else {
-                        po = PageObjectPool_Allocate();
-                        m_page_object_pool_used = true;
-                    }
-                    if (po == nullptr) {
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    po->virtual_address = (void*)((uint64_t)(object->virtual_address) + count * PAGE_SIZE);
-                    po->perms = perms;
-                    po->flags = object->flags;
-                    po->page_count = object->page_count - count;
-                    if (!InsertObject(po)) {
-                        if (PageObjectPool_IsInPool(po))
-                            PageObjectPool_Free(po);
-                        else if (NewDeleteInitialised())
-                            delete po;
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    object->page_count = count;
+                if (((uint64_t)obj->virtual_address + obj->page_count * PAGE_SIZE) > ((uint64_t)addr + count * PAGE_SIZE)) {
+                    // split the object from the right
+                    uint64_t new_page_count = (uint64_t)obj->virtual_address + obj->page_count * PAGE_SIZE - (uint64_t)addr;
+                    PageObject* new_obj = CreateObject({addr, new_page_count, obj->flags, obj->perms});
+                    obj->page_count -= new_page_count;
+                    InsertObject(new_obj);
+                    obj = new_obj;
                 }
+                obj->flags |= PO_INUSE;
+                obj->flags &= ~PO_STANDBY;
+                obj->perms = perms;
 
-                PageObject_UnsetFlag(object, PO_STANDBY);
-                PageObject_SetFlag(object, PO_INUSE);
-                
-                for (uint64_t j = 0; j < count; j++)
-                    m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + j * 0x1000), perms, false);
+                // map the pages
+                for (uint64_t i = 0; i < count; i++)
+                    m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)addr + i * PAGE_SIZE), perms, false);
                 m_PT.Flush(addr, count * PAGE_SIZE, true);
                 spinlock_release(&m_lock);
                 return addr;
             }
-            object = object->next;
+            else {
+                spinlock_release(&m_lock);
+                return nullptr; // already allocated
+            }
         }
     }
+    // at this point we know that addr is not allocated
     void* virt_addr;
     if (addr == nullptr)
         virt_addr = m_VPM->AllocatePages(count);
-    else {
-        if (!m_Vregion.IsInside(addr, count * PAGE_SIZE)) {
-            spinlock_release(&m_lock);
-            return nullptr;
-        }
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
-            if (temp_region.IsInside(addr, count * PAGE_SIZE)) {
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            object = object->next;
-        }
+    else
         virt_addr = m_VPM->AllocatePages(addr, count);
-    }
     if (virt_addr == nullptr) {
         if (m_auto_expand) {
-            if (ExpandVRegionToRight((PAGE_SIZE * count) + m_Vregion.GetSize())) {
+            if (ExpandVRegionToRight(count * PAGE_SIZE + m_Vregion.GetSize())) {
                 if (addr == nullptr)
                     virt_addr = m_VPM->AllocatePages(count);
                 else
@@ -345,71 +211,35 @@ void* PageManager::AllocatePages(uint64_t count, PagePermissions perms, void* ad
             return nullptr;
         }
     }
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr)
-        po = po->next;
-    if (NewDeleteInitialised())
-        po = new PageObject;
-    else {
-        po = PageObjectPool_Allocate();
-        m_page_object_pool_used = true;
-    }
-    if (po == nullptr) {
-        m_VPM->UnallocatePages(virt_addr, count);
-        spinlock_release(&m_lock);
-        return nullptr;
-    }
-    PageObject_SetFlag(po, PO_ALLOCATED);
+    PageObject* po = CreateObject();
+    po->flags = PO_ALLOCATED | PO_INUSE;
     if (m_mode)
-        PageObject_SetFlag(po, PO_USER);
-    PageObject_SetFlag(po, PO_INUSE);
+        po->flags |= PO_USER;
     po->virtual_address = virt_addr;
     po->page_count = count;
-    if (m_allocated_object_count > 0) {
-        PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-        if (previous == nullptr) {
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_VPM->UnallocatePages(virt_addr, count);
-            spinlock_release(&m_lock);
-            return nullptr;
-        }
-        else
-            previous->next = po;
-    }
-    else
-        m_allocated_objects = po;
-    m_allocated_object_count++;
     po->perms = perms;
+    InsertObject(po);
     for (uint64_t i = 0; i < count; i++)
-        m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * 0x1000), perms, false);
+        m_PT.MapPage(g_PPFA->AllocatePage(), (void*)((uint64_t)virt_addr + i * PAGE_SIZE), perms, false);
     m_PT.Flush(virt_addr, count * PAGE_SIZE, true);
     spinlock_release(&m_lock);
     return virt_addr;
 }
 
 void* PageManager::ReservePage(PagePermissions perms, void* addr) {
-    void* virt_addr;
     spinlock_acquire(&m_lock);
+    if (addr != nullptr) {
+        PageObject* obj = FindObject(VirtualRegion(addr, PAGE_SIZE));
+        if (obj != nullptr) {
+            spinlock_release(&m_lock);
+            return nullptr;
+        }
+    }
+    void* virt_addr;
     if (addr == nullptr)
         virt_addr = m_VPM->AllocatePage();
-    else {
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            if (object->virtual_address == addr) {
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            object = object->next;
-        }
+    else
         virt_addr = m_VPM->AllocatePage(addr);
-    }
     if (virt_addr == nullptr) {
         if (m_auto_expand) {
             if (ExpandVRegionToRight(PAGE_SIZE + m_Vregion.GetSize())) {
@@ -428,76 +258,35 @@ void* PageManager::ReservePage(PagePermissions perms, void* addr) {
             return nullptr;
         }
     }
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr)
-        po = po->next;
-    if (NewDeleteInitialised())
-        po = new PageObject;
-    else {
-        po = PageObjectPool_Allocate();
-        m_page_object_pool_used = true;
-    }
-    if (po == nullptr) {
-        m_VPM->UnallocatePage(virt_addr);
-        spinlock_release(&m_lock);
-        return nullptr;
-    }
-    PageObject_SetFlag(po, PO_ALLOCATED);
+    PageObject* po = CreateObject();
+    po->flags = PO_ALLOCATED | PO_STANDBY;
     if (m_mode)
-        PageObject_SetFlag(po, PO_USER);
-    PageObject_SetFlag(po, PO_STANDBY);
+        po->flags |= PO_USER;
     po->virtual_address = virt_addr;
     po->page_count = 1;
-    if (m_allocated_object_count > 0) {
-        PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-        if (previous == nullptr) {
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_VPM->UnallocatePage(virt_addr);
-            spinlock_release(&m_lock);
-            return nullptr;
-        }
-        else
-            previous->next = po;
-    }
-    else
-        m_allocated_objects = po;
-    m_allocated_object_count++;
     po->perms = perms;
+    InsertObject(po);
+    spinlock_release(&m_lock);
     return virt_addr;
 }
 
 void* PageManager::ReservePages(uint64_t count, PagePermissions perms, void* addr) {
-    if (count == 1)
-        return ReservePage(perms, addr);
-    void* virt_addr;
-    if (addr == nullptr)
-        virt_addr = m_VPM->AllocatePages(count);
-    else {
-        if (!m_Vregion.IsInside(addr, count * PAGE_SIZE)) {
+    spinlock_acquire(&m_lock);
+    if (addr != nullptr) {
+        PageObject* obj = FindObject(VirtualRegion(addr, count * PAGE_SIZE));
+        if (obj != nullptr) {
             spinlock_release(&m_lock);
             return nullptr;
         }
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
-            if (temp_region.IsInside(addr, count * PAGE_SIZE)) {
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            object = object->next;
-        }
-        virt_addr = m_VPM->AllocatePages(addr, count);
     }
+    void* virt_addr;
+    if (addr == nullptr)
+        virt_addr = m_VPM->AllocatePages(count);
+    else
+        virt_addr = m_VPM->AllocatePages(addr, count);
     if (virt_addr == nullptr) {
         if (m_auto_expand) {
-            if (ExpandVRegionToRight((PAGE_SIZE * count) + m_Vregion.GetSize())) {
+            if (ExpandVRegionToRight(count * PAGE_SIZE + m_Vregion.GetSize())) {
                 if (addr == nullptr)
                     virt_addr = m_VPM->AllocatePages(count);
                 else
@@ -513,214 +302,101 @@ void* PageManager::ReservePages(uint64_t count, PagePermissions perms, void* add
             return nullptr;
         }
     }
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr)
-        po = po->next;
-    if (NewDeleteInitialised())
-        po = new PageObject;
-    else {
-        po = PageObjectPool_Allocate();
-        m_page_object_pool_used = true;
-    }
-    if (po == nullptr) {
-        m_VPM->UnallocatePages(virt_addr, count);
-        spinlock_release(&m_lock);
-        return nullptr;
-    }
-    PageObject_SetFlag(po, PO_ALLOCATED);
+    PageObject* po = CreateObject();
+    po->flags = PO_ALLOCATED | PO_STANDBY;
     if (m_mode)
-        PageObject_SetFlag(po, PO_USER);
-    PageObject_SetFlag(po, PO_STANDBY);
+        po->flags |= PO_USER;
     po->virtual_address = virt_addr;
     po->page_count = count;
-    if (m_allocated_object_count > 0) {
-        PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-        if (previous == nullptr) {
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_VPM->UnallocatePages(virt_addr, count);
-            spinlock_release(&m_lock);
-            return nullptr;
-        }
-        else
-            previous->next = po;
-    }
-    else
-        m_allocated_objects = po;
-    m_allocated_object_count++;
     po->perms = perms;
+    InsertObject(po);
     spinlock_release(&m_lock);
     return virt_addr;
 }
 
 void PageManager::FreePage(void* addr) {
-    spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (po->virtual_address == addr && po->page_count == 1) {
-            g_PPFA->FreePage(m_PT.GetPhysicalAddress(addr));
-            m_VPM->UnallocatePage(addr);
-            m_PT.UnmapPage(addr);
-            PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-            if (previous != nullptr)
-                previous->next = po->next;
-            else
-                m_allocated_objects = po->next;
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_allocated_object_count--;
-            spinlock_release(&m_lock);
-            return;
-        }
-        po = po->next;
-    }
-    spinlock_release(&m_lock);
+    FreePages(addr);
 }
 
 void PageManager::FreePages(void* addr) {
     spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (po->virtual_address == addr && po->page_count > 1) {
-            m_VPM->UnallocatePages(addr, po->page_count);
-            for (uint64_t i = 0; i < po->page_count; i++) {
-                g_PPFA->FreePage(m_PT.GetPhysicalAddress((void*)((uint64_t)addr + i * 0x1000)));
-                m_PT.UnmapPage((void*)((uint64_t)addr + i * 0x1000), false);
-            }
-            m_PT.Flush(addr, po->page_count * PAGE_SIZE, true);
-            PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-            if (previous != nullptr)
-                previous->next = po->next;
-            else
-                m_allocated_objects = po->next;
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_allocated_object_count--;
-            spinlock_release(&m_lock);
-            return;
-        }
-        po = po->next;
+    PageObject* obj = FindObject(addr);
+    if (obj == nullptr) {
+        spinlock_release(&m_lock);
+        return;
     }
+    RemoveObject(obj);
+    m_VPM->UnallocatePages(addr, obj->page_count);
+    for (uint64_t i = 0; i < obj->page_count; i++) {
+        void* phys = m_PT.GetPhysicalAddress((void*)((uint64_t)addr + i * PAGE_SIZE));
+        m_PT.UnmapPage((void*)((uint64_t)addr + i * PAGE_SIZE), false);
+        g_PPFA->FreePage(phys);
+    }
+    m_PT.Flush(addr, obj->page_count * PAGE_SIZE, true);
+    DeleteObject(obj);
     spinlock_release(&m_lock);
 }
 
 void PageManager::Remap(void* addr, PagePermissions perms) {
     spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (po->virtual_address == addr) {
-            po->perms = perms;
-            for (uint64_t i = 0; i < po->page_count; i++)
-                m_PT.RemapPage((void*)((uint64_t)addr + i * 0x1000), perms, false);
-            m_PT.Flush(addr, po->page_count * PAGE_SIZE, true);
-            spinlock_release(&m_lock);
-            return;
-        }
-        po = po->next;
+    PageObject* obj = FindObject(addr);
+    if (obj == nullptr) {
+        spinlock_release(&m_lock);
+        return;
     }
+    obj->perms = perms;
+    for (uint64_t i = 0; i < obj->page_count; i++)
+        m_PT.RemapPage((void*)((uint64_t)addr + i * PAGE_SIZE), perms, false);
+    m_PT.Flush(addr, obj->page_count * PAGE_SIZE, true);
     spinlock_release(&m_lock);
 }
 
 void* PageManager::MapPage(void* phys, PagePermissions perms, void* addr) {
     spinlock_acquire(&m_lock);
     if (addr != nullptr) {
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
-            if (temp_region.IsInside(addr, PAGE_SIZE) && (object->flags & PO_STANDBY) && !(object->flags & PO_INUSE) && object->perms == perms) {
-                if (addr > object->virtual_address) {
-                    PageObject* po;
-                    if (NewDeleteInitialised())
-                        po = new PageObject;
-                    else {
-                        po = PageObjectPool_Allocate();
-                        m_page_object_pool_used = true;
-                    }
-                    if (po == nullptr) {
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    po->virtual_address = object->virtual_address;
-                    po->perms = perms;
-                    po->flags = object->flags;
-                    po->page_count = ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
-                    if (!InsertObject(po)) {
-                        if (PageObjectPool_IsInPool(po))
-                            PageObjectPool_Free(po);
-                        else if (NewDeleteInitialised())
-                            delete po;
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    object->page_count -= ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
-                    object->virtual_address = addr;
+        PageObject* obj = FindObject(VirtualRegion(addr, PAGE_SIZE));
+        if (obj != nullptr) {
+            if ((obj->flags & PO_INUSE) == 0 && (obj->flags & PO_STANDBY) != 0) {
+                // split the object
+                if (obj->virtual_address < addr) {
+                    // split the object from the left
+                    uint64_t new_page_count = (uint64_t)addr - (uint64_t)obj->virtual_address;
+                    PageObject* new_obj = CreateObject({obj->virtual_address, new_page_count, obj->flags, obj->perms});
+                    obj->virtual_address = addr;
+                    obj->page_count -= new_page_count;
+                    RemoveObject(obj);
+                    InsertObject(new_obj);
+                    InsertObject(obj); // reinsert the object because the address has changed
                 }
-
-                if (1 < object->page_count) {
-                    PageObject* po;
-                    if (NewDeleteInitialised())
-                        po = new PageObject;
-                    else {
-                        po = PageObjectPool_Allocate();
-                        m_page_object_pool_used = true;
-                    }
-                    if (po == nullptr) {
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    po->virtual_address = (void*)((uint64_t)(object->virtual_address) + PAGE_SIZE);
-                    po->perms = perms;
-                    po->flags = object->flags;
-                    po->page_count = object->page_count - 1;
-                    if (!InsertObject(po)) {
-                        if (PageObjectPool_IsInPool(po))
-                            PageObjectPool_Free(po);
-                        else if (NewDeleteInitialised())
-                            delete po;
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    object->page_count = 1;
+                if (((uint64_t)obj->virtual_address + obj->page_count * PAGE_SIZE) > ((uint64_t)addr + PAGE_SIZE)) {
+                    // split the object from the right
+                    uint64_t new_page_count = (uint64_t)obj->virtual_address + obj->page_count * PAGE_SIZE - (uint64_t)addr;
+                    PageObject* new_obj = CreateObject({addr, new_page_count, obj->flags, obj->perms});
+                    obj->page_count -= new_page_count;
+                    InsertObject(new_obj);
+                    obj = new_obj;
                 }
+                obj->flags |= PO_INUSE;
+                obj->flags &= ~PO_STANDBY;
+                obj->perms = perms;
 
-                PageObject_UnsetFlag(object, PO_STANDBY);
-                PageObject_SetFlag(object, PO_INUSE);
-                
+                // map the page
                 m_PT.MapPage(phys, addr, perms);
                 spinlock_release(&m_lock);
                 return addr;
             }
-            object = object->next;
+            else {
+                spinlock_release(&m_lock);
+                return nullptr; // already allocated
+            }
         }
     }
+    // at this point we know that addr is not allocated
     void* virt_addr;
     if (addr == nullptr)
         virt_addr = m_VPM->AllocatePage();
-    else {
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            if (object->virtual_address == addr) {
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            object = object->next;
-        }
+    else
         virt_addr = m_VPM->AllocatePage(addr);
-    }
     if (virt_addr == nullptr) {
         if (m_auto_expand) {
             if (ExpandVRegionToRight(PAGE_SIZE + m_Vregion.GetSize())) {
@@ -739,155 +415,70 @@ void* PageManager::MapPage(void* phys, PagePermissions perms, void* addr) {
             return nullptr;
         }
     }
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr)
-        po = po->next;
-    if (NewDeleteInitialised())
-        po = new PageObject;
-    else {
-        po = PageObjectPool_Allocate();
-        m_page_object_pool_used = true;
-    }
-    if (po == nullptr) {
-        m_VPM->UnallocatePage(virt_addr);
-        spinlock_release(&m_lock);
-        return nullptr;
-    }
-    PageObject_SetFlag(po, PO_ALLOCATED);
+    PageObject* po = CreateObject();
+    po->flags = PO_ALLOCATED | PO_INUSE;
     if (m_mode)
-        PageObject_SetFlag(po, PO_USER);
-    PageObject_SetFlag(po, PO_INUSE);
+        po->flags |= PO_USER;
     po->virtual_address = virt_addr;
     po->page_count = 1;
-    if (m_allocated_object_count > 0) {
-        PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-        if (previous == nullptr) {
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_VPM->UnallocatePage(virt_addr);
-            spinlock_release(&m_lock);
-            return nullptr;
-        }
-        else
-            previous->next = po;
-    }
-    else
-        m_allocated_objects = po;
-    m_allocated_object_count++;
     po->perms = perms;
+    InsertObject(po);
     m_PT.MapPage(phys, virt_addr, perms);
     spinlock_release(&m_lock);
     return virt_addr;
 }
 
 void* PageManager::MapPages(void* phys, uint64_t count, PagePermissions perms, void* addr) {
-    if (count == 1)
-        return MapPage(phys, perms, addr);
     spinlock_acquire(&m_lock);
     if (addr != nullptr) {
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
-            if (temp_region.IsInside(addr, count * PAGE_SIZE) && (object->flags & PO_STANDBY) && !(object->flags & PO_INUSE) && object->perms == perms) {
-                if (addr > object->virtual_address) {
-                    PageObject* po;
-                    if (NewDeleteInitialised())
-                        po = new PageObject;
-                    else {
-                        po = PageObjectPool_Allocate();
-                        m_page_object_pool_used = true;
-                    }
-                    if (po == nullptr) {
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    po->virtual_address = object->virtual_address;
-                    po->perms = perms;
-                    po->flags = object->flags;
-                    po->page_count = ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
-                    if (!InsertObject(po)) {
-                        if (PageObjectPool_IsInPool(po))
-                            PageObjectPool_Free(po);
-                        else if (NewDeleteInitialised())
-                            delete po;
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    object->page_count -= ((uint64_t)addr - (uint64_t)(object->virtual_address)) >> 12; // FIXME: don't assume page size
-                    object->virtual_address = addr;
+        PageObject* obj = FindObject(VirtualRegion(addr, count * PAGE_SIZE));
+        if (obj != nullptr) {
+            if ((obj->flags & PO_INUSE) == 0 && (obj->flags & PO_STANDBY) != 0) {
+                // split the object
+                if (obj->virtual_address < addr) {
+                    // split the object from the left
+                    RemoveObject(obj);
+                    uint64_t new_page_count = (uint64_t)addr - (uint64_t)obj->virtual_address;
+                    PageObject* new_obj = CreateObject({obj->virtual_address, new_page_count, obj->flags, obj->perms});
+                    obj->virtual_address = addr;
+                    obj->page_count -= new_page_count;
+                    InsertObject(new_obj);
+                    InsertObject(obj); // reinsert the object because the address has changed
                 }
-
-                if (count < object->page_count) {
-                    PageObject* po;
-                    if (NewDeleteInitialised())
-                        po = new PageObject;
-                    else {
-                        po = PageObjectPool_Allocate();
-                        m_page_object_pool_used = true;
-                    }
-                    if (po == nullptr) {
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    po->virtual_address = (void*)((uint64_t)(object->virtual_address) + count * PAGE_SIZE);
-                    po->perms = perms;
-                    po->flags = object->flags;
-                    po->page_count = object->page_count - count;
-                    if (!InsertObject(po)) {
-                        if (PageObjectPool_IsInPool(po))
-                            PageObjectPool_Free(po);
-                        else if (NewDeleteInitialised())
-                            delete po;
-                        spinlock_release(&m_lock);
-                        return nullptr;
-                    }
-                    object->page_count = count;
+                if (((uint64_t)obj->virtual_address + obj->page_count * PAGE_SIZE) > ((uint64_t)addr + count * PAGE_SIZE)) {
+                    // split the object from the right
+                    uint64_t new_page_count = (uint64_t)obj->virtual_address + obj->page_count * PAGE_SIZE - (uint64_t)addr;
+                    PageObject* new_obj = CreateObject({addr, new_page_count, obj->flags, obj->perms});
+                    obj->page_count -= new_page_count;
+                    InsertObject(new_obj);
+                    obj = new_obj;
                 }
+                obj->flags |= PO_INUSE;
+                obj->flags &= ~PO_STANDBY;
+                obj->perms = perms;
 
-                PageObject_UnsetFlag(object, PO_STANDBY);
-                PageObject_SetFlag(object, PO_INUSE);
-                
-                for (uint64_t j = 0; j < count; j++)
-                    m_PT.MapPage((void*)((uint64_t)phys + i * 0x1000), (void*)((uint64_t)addr + j * 0x1000), perms, false);
+                // map the pages
+                for (uint64_t i = 0; i < count; i++)
+                    m_PT.MapPage((void*)((uint64_t)phys + i * count), (void*)((uint64_t)addr + i * PAGE_SIZE), perms, false);
                 m_PT.Flush(addr, count * PAGE_SIZE, true);
                 spinlock_release(&m_lock);
                 return addr;
             }
-            object = object->next;
+            else {
+                spinlock_release(&m_lock);
+                return nullptr; // already allocated
+            }
         }
     }
+    // at this point we know that addr is not allocated
     void* virt_addr;
     if (addr == nullptr)
         virt_addr = m_VPM->AllocatePages(count);
-    else {
-        if (!m_Vregion.IsInside(addr, count * PAGE_SIZE)) {
-            spinlock_release(&m_lock);
-            return nullptr;
-        }
-        PageObject* object = m_allocated_objects;
-        for (uint64_t i = 0; i < m_allocated_object_count; i++) {
-            if (object == nullptr) { // should NEVER happen
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            VirtualRegion temp_region = VirtualRegion(object->virtual_address, object->page_count * PAGE_SIZE);
-            if (temp_region.IsInside(addr, count * PAGE_SIZE)) {
-                spinlock_release(&m_lock);
-                return nullptr;
-            }
-            object = object->next;
-        }
+    else
         virt_addr = m_VPM->AllocatePages(addr, count);
-    }
     if (virt_addr == nullptr) {
         if (m_auto_expand) {
-            if (ExpandVRegionToRight((PAGE_SIZE * count) + m_Vregion.GetSize())) {
+            if (ExpandVRegionToRight(count * PAGE_SIZE + m_Vregion.GetSize())) {
                 if (addr == nullptr)
                     virt_addr = m_VPM->AllocatePages(count);
                 else
@@ -903,101 +494,38 @@ void* PageManager::MapPages(void* phys, uint64_t count, PagePermissions perms, v
             return nullptr;
         }
     }
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr)
-        po = po->next;
-    if (NewDeleteInitialised())
-        po = new PageObject;
-    else {
-        po = PageObjectPool_Allocate();
-        m_page_object_pool_used = true;
-    }
-    if (po == nullptr) {
-        m_VPM->UnallocatePages(virt_addr, count);
-        spinlock_release(&m_lock);
-        return nullptr;
-    }
-    PageObject_SetFlag(po, PO_ALLOCATED);
+    PageObject* po = CreateObject();
+    po->flags = PO_ALLOCATED | PO_INUSE;
     if (m_mode)
-        PageObject_SetFlag(po, PO_USER);
-    PageObject_SetFlag(po, PO_INUSE);
+        po->flags |= PO_USER;
     po->virtual_address = virt_addr;
     po->page_count = count;
-    if (m_allocated_object_count > 0) {
-        PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-        if (previous == nullptr) {
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_VPM->UnallocatePages(virt_addr, count);
-            spinlock_release(&m_lock);
-            return nullptr;
-        }
-        else
-            previous->next = po;
-    }
-    else
-        m_allocated_objects = po;
-    m_allocated_object_count++;
     po->perms = perms;
+    InsertObject(po);
     for (uint64_t i = 0; i < count; i++)
-        m_PT.MapPage((void*)((uint64_t)phys + i * 0x1000), (void*)((uint64_t)virt_addr + i * 0x1000), perms, false);
+        m_PT.MapPage((void*)((uint64_t)phys + i * PAGE_SIZE), (void*)((uint64_t)virt_addr + i * PAGE_SIZE), perms, false);
     m_PT.Flush(virt_addr, count * PAGE_SIZE, true);
     spinlock_release(&m_lock);
     return virt_addr;
 }
 
 void PageManager::UnmapPage(void* addr) {
-    spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (po->virtual_address == addr && po->page_count == 1) {
-            m_VPM->UnallocatePage(addr);
-            m_PT.UnmapPage(addr);
-            PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-            if (previous != nullptr)
-                previous->next = po->next;
-            else
-                m_allocated_objects = po->next;
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_allocated_object_count--;
-            spinlock_release(&m_lock);
-            return;
-        }
-        po = po->next;
-    }
-    spinlock_release(&m_lock);
+    UnmapPages(addr);
 }
 
 void PageManager::UnmapPages(void* addr) {
     spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (po->virtual_address == addr && po->page_count > 1) {
-            m_VPM->UnallocatePages(addr, po->page_count);
-            for (uint64_t i = 0; i < po->page_count; i++) {
-                m_PT.UnmapPage((void*)((uint64_t)addr + i * 0x1000), false);
-            }
-            m_PT.Flush(addr, po->page_count * PAGE_SIZE, true);
-            PageObject* previous = PageObject_GetPrevious(m_allocated_objects, po);
-            if (previous != nullptr)
-                previous->next = po->next;
-            else
-                m_allocated_objects = po->next;
-            if (PageObjectPool_IsInPool(po))
-                PageObjectPool_Free(po);
-            else if (NewDeleteInitialised())
-                delete po;
-            m_allocated_object_count--;
-            spinlock_release(&m_lock);
-            return;
-        }
-        po = po->next;
+    PageObject* obj = FindObject(addr);
+    if (obj == nullptr) {
+        spinlock_release(&m_lock);
+        return;
     }
+    RemoveObject(obj);
+    m_VPM->UnallocatePages(addr, obj->page_count);
+    for (uint64_t i = 0; i < obj->page_count; i++)
+        m_PT.UnmapPage((void*)((uint64_t)addr + i * PAGE_SIZE), false);
+    m_PT.Flush(addr, obj->page_count * PAGE_SIZE, true);
+    DeleteObject(obj);
     spinlock_release(&m_lock);
 }
 
@@ -1005,67 +533,15 @@ bool PageManager::ExpandVRegionToRight(size_t new_size) {
     spinlock_acquire(&m_lock);
     if (new_size <= m_Vregion.GetSize()) {
         spinlock_release(&m_lock);
-        return false; // invalid size
+        return false; // bad size
     }
-    if (!(m_VPM->AttemptToExpandRight(new_size))) {
+    if (!m_VPM->AttemptToExpandRight(new_size)) {
         spinlock_release(&m_lock);
-        return false; // virtual page manager failed to expand
+        return false; // failed to expand
     }
     m_Vregion.ExpandRight(new_size);
     spinlock_release(&m_lock);
     return true;
-}
-
-bool PageManager::isWritable(void* addr, size_t size) const {
-    spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (addr >= po->virtual_address && (uint64_t)addr <= ((uint64_t)(po->virtual_address) + po->page_count * PAGE_SIZE)) {
-            if (!(po->perms == PagePermissions::WRITE || po->perms == PagePermissions::READ_WRITE)) {
-                spinlock_release(&m_lock);
-                return false;
-            }
-            if ((po->page_count * PAGE_SIZE) < size) {
-                size -= po->page_count * PAGE_SIZE;
-                addr = (void*)((uint64_t)addr + po->page_count * PAGE_SIZE);
-                spinlock_release(&m_lock);
-                return isWritable(addr, size);
-            }
-            spinlock_release(&m_lock);
-            return true;
-        }
-        po = po->next;
-    }
-    spinlock_release(&m_lock);
-    return false;
-}
-
-bool PageManager::isValidAllocation(void* addr, size_t size) const {
-    spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (addr >= po->virtual_address && size == (po->page_count * PAGE_SIZE)) {
-            spinlock_release(&m_lock);
-            return true;
-        }
-        po = po->next;
-    }
-    spinlock_release(&m_lock);
-    return false;
-}
-
-PagePermissions PageManager::GetPermissions(void* addr) const {
-    spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (addr >= po->virtual_address && (uint64_t)addr <= ((uint64_t)(po->virtual_address) + po->page_count * PAGE_SIZE)) {
-            spinlock_release(&m_lock);
-            return po->perms;
-        }
-        po = po->next;
-    }
-    spinlock_release(&m_lock);
-    return PagePermissions::READ;
 }
 
 const VirtualRegion& PageManager::GetRegion() const {
@@ -1074,48 +550,4 @@ const VirtualRegion& PageManager::GetRegion() const {
 
 const PageTable& PageManager::GetPageTable() const {
     return m_PT;
-}
-
-bool PageManager::InsertObject(PageObject* obj) { // it is assumed that the lock is already acquired, as this is a private function
-    if (m_allocated_object_count > 0) {
-        PageObject* previous = PageObject_GetPrevious(m_allocated_objects, obj);
-        if (previous == nullptr)
-            return false;
-        else
-            previous->next = obj;
-    }
-    else
-        m_allocated_objects = obj;
-    m_allocated_object_count++;
-    return true;
-}
-
-void PageManager::PrintRegions(fd_t fd) const {
-    spinlock_acquire(&m_lock);
-    PageObject* po = m_allocated_objects;
-    while (po != nullptr) {
-        if (po->flags & PO_ALLOCATED) {
-            if (po->flags & PO_USER)
-                fputs(fd, "User ");
-            else
-                fputs(fd, "Supervisor ");
-            if (po->flags & PO_INUSE)
-                fputs(fd, "In use ");
-            else if (po->flags & PO_STANDBY)
-                fputs(fd, "Standby ");
-            if (po->perms == PagePermissions::READ)
-                fputs(fd, "Read ");
-            else if (po->perms == PagePermissions::WRITE)
-                fputs(fd, "Write ");
-            else if (po->perms == PagePermissions::EXECUTE)
-                fputs(fd, "Execute ");
-            else if (po->perms == PagePermissions::READ_WRITE)
-                fputs(fd, "Read/Write ");
-            else if (po->perms == PagePermissions::READ_EXECUTE)
-                fputs(fd, "Read/Execute ");
-            fprintf(fd, "0x%016llX - 0x%016llX\n", (uint64_t)po->virtual_address, (uint64_t)po->virtual_address + po->page_count * PAGE_SIZE);
-        }
-        po = po->next;
-    }
-    spinlock_release(&m_lock);
 }

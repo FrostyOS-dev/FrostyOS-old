@@ -46,7 +46,7 @@ namespace AVLTree {
 	uint64_t height(Node* root);
 
 	// Helper function that allocates a new node with the given key, extra data and NULL left and right pointers.
-	Node* newNode(uint64_t key, uint64_t extraData);
+	Node* newNode(uint64_t key, uint64_t extraData, bool vmm = false);
 
 	// A utility function to right rotate subtree.
 	Node* rightRotate(Node* root);
@@ -58,7 +58,7 @@ namespace AVLTree {
 	int64_t getBalance(Node* N);
 
 	// Recursive function to insert a key in the subtree and returns the new root of the subtree.
-	void insert(Node*& root, uint64_t key, uint64_t extraData);
+	void insert(Node*& root, uint64_t key, uint64_t extraData, bool vmm = false);
 
 	// Get a pointer to a node from its key
 	Node* findNode(Node* root, uint64_t key);
@@ -70,7 +70,7 @@ namespace AVLTree {
 	Node* minValueNode(Node* root);
 
 	// Delete a node
-	void deleteNode(Node*& root, uint64_t key);
+	void deleteNode(Node*& root, uint64_t key, bool vmm = false);
 
 
 	// A utility function to print preorder traversal of the tree.
@@ -79,6 +79,49 @@ namespace AVLTree {
 	// find Parent node of a key
 	Node* getParent(Node* root, uint64_t key);
 
+	template <typename K, typename D>
+	class SimpleAVLTree {
+	public:
+		SimpleAVLTree(bool vmm = false) : m_root(nullptr), m_vmm(vmm) {}
+		~SimpleAVLTree() {
+			clear();
+		}
+
+		void insert(K key, D extraData) {
+			::AVLTree::insert(m_root, (uint64_t)key, (uint64_t)extraData, m_vmm);
+		}
+
+		void remove(K key) {
+			deleteNode(m_root, (uint64_t)key, m_vmm);
+		}
+
+		D find(K key) const {
+			Node* node = findNode(m_root, (uint64_t)key);
+			if (node == nullptr)
+				return (D)0;
+			return (D)node->extraData;
+		}
+
+		D findOrHigher(K key) const {
+			Node* node = findNodeOrHigher(m_root, (uint64_t)key);
+			if (node == nullptr)
+				return (D)0;
+			return (D)node->extraData;
+		}
+
+		void clear() {
+			while (m_root != nullptr)
+				deleteNode(m_root, m_root->key, m_vmm);
+		}
+
+		Node* GetRoot() const {
+			return m_root;
+		}
+
+	private:
+		Node* m_root;
+		bool m_vmm;
+	};
 }
 
 #endif /* _AVL_TREE_HPP */

@@ -17,7 +17,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "MCFG.hpp"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <uacpi/acpi.h>
+#pragma GCC diagnostic pop
 
 acpi_sdt_hdr* g_MCFG;
 

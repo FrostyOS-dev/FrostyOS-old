@@ -39,7 +39,7 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
         uint32_t uid = (uint32_t)ASCII_OCT_To_UInt(header->uid, 8);
         uint32_t gid = (uint32_t)ASCII_OCT_To_UInt(header->gid, 8);
         uint16_t ACL = (uint16_t)ASCII_OCT_To_UInt(header->mode, 8);
-        printf("initramfs item: path=\"%s\", size=%lu, type=%c, uid=%u, gid=%u, ACL=%03ho\n", header->filepath, size, header->TypeFlag, uid, gid, ACL);
+        dbgprintf("initramfs item: path=\"%s\", size=%lu, type=%c, uid=%u, gid=%u, ACL=%03ho\n", header->filepath, size, header->TypeFlag, uid, gid, ACL);
 
         uint8_t last_separator = 255;
         for (uint8_t i = 0; i < 99 && header->filepath[i]; i++) {
@@ -58,8 +58,6 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
         assert(g_VFS != nullptr);
 
         FilePrivilegeLevel privilege = {uid, gid, ACL};
-
-        printf("Creating item: parent=\"%s\", name=\"%s\"\n", parent, name);
         
         switch (header->TypeFlag - '0') {
         case 0: // File
@@ -67,27 +65,21 @@ bool Initialise_InitRAMFS(void* address, size_t size) {
             assert(g_VFS->CreateFile({0, 0, 07777}, parent, name, size, false, privilege) == ESUCCESS);
             if (size == 0)
                 break;
-            printf("file created\n");
             FileStream* stream = g_VFS->OpenStream({0, 0, 07777}, header->filepath, VFS_READ | VFS_WRITE, nullptr);
             assert(stream != nullptr);
             assert(stream->Open() == ESUCCESS);
-            printf("File opened\n");
             assert(stream->WriteStream((const uint8_t*)((uint64_t)header + 512), size) == (int64_t)size);
-            printf("File written\n");
 
             // Validate the data. can be excluded
 
             uint8_t* buffer = new uint8_t[size];
             assert(stream->Rewind() == ESUCCESS);
-            printf("File rewound\n");
             assert(stream->ReadStream(buffer, size) == (int64_t)size);
             assert(memcmp(buffer, (const void*)((uint64_t)header + 512), size) == 0);
             delete[] buffer;
-            printf("File validated\n");
 
             assert(stream->Close() == ESUCCESS);
             assert(g_VFS->CloseStream(stream) == ESUCCESS);
-            printf("File closed\n");
             }
             break;
         case 2: // Symbolic Link

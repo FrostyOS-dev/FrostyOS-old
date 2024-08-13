@@ -18,53 +18,51 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _KERNEL_TTY_HPP
 #define _KERNEL_TTY_HPP
 
-#include <Graphics/Colour.hpp>
-#include <Graphics/VGA.hpp>
+#include <util.h>
 
-#include <Memory/PageManager.hpp>
+#include "TTYBackend.hpp"
+#include "spinlock.h"
 
-#include "KeyboardInput.hpp"
+enum class TTYBackendMode {
+    IN,
+    OUT,
+    ERR,
+    DEBUG
+};
 
-#include <spinlock.h>
+typedef void (*TTYBackendCallback)(TTYBackendMode mode, TTYBackend* backend, void* data);
 
 class TTY {
 public:
     TTY();
-    TTY(BasicVGA* VGADevice, KeyboardInput* input, const Colour& fg_colour, const Colour& bg_colour); // Set the default foreground and background colours.
     ~TTY();
 
-    int getc();
-    void putc(char c);
-    void puts(const char* str);
+    void Initialise();
+    void Destroy();
 
-    void SetDefaultForeground(const Colour& colour);
-    void SetDefaultBackground(const Colour& colour);
+    int getc(TTYBackendMode mode = TTYBackendMode::IN);
+    void putc(char c, TTYBackendMode mode = TTYBackendMode::OUT);
+    void puts(const char* str, TTYBackendMode mode = TTYBackendMode::OUT);
+    void seek(uint64_t offset, TTYBackendMode mode = TTYBackendMode::OUT);
+    size_t tell(TTYBackendMode mode = TTYBackendMode::OUT);
 
-    BasicVGA* GetVGADevice();
-    void SetVGADevice(BasicVGA* device);
+    void SetBackend(TTYBackend* backend, TTYBackendMode mode);
+    TTYBackend* GetBackend(TTYBackendMode mode);
 
-    KeyboardInput* GetKeyboardInput();
-    void SetKeyboardInput(KeyboardInput* input);
-
-    void HandleKeyEvent(char c);
-
-    void EnableInputMirroring();
-    void DisableInputMirroring();
-
-    bool isInputMirroringEnabled() const;
+    void EnumerateBackends(TTYBackendCallback callback, void* data);
 
     void Lock() const;
     void Unlock() const;
 
 private:
-    BasicVGA* m_VGADevice;
-    KeyboardInput* m_keyboardInput;
-    Colour m_foreground;
-    Colour m_background;
-    bool m_inputMirroring;
+    struct TTYBackendData {
+        TTYBackend* backend;
+        TTYBackendMode mode;
+    };
+
+    TTYBackendData m_backends[4];
 
     mutable spinlock_t m_lock;
-    mutable bool m_locked;
 };
 
 extern TTY* g_CurrentTTY;

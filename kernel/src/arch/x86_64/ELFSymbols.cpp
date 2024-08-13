@@ -17,6 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "ELFSymbols.hpp"
 
+#include <util.h>
+
+// #ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
 extern "C" {
 
 const void* _text_start_addr   = &__text_start;
@@ -34,6 +37,7 @@ const void* _dtors_start_addr  = &__dtors_start;
 const void* _dtors_end_addr    = &__dtors_end;
 
 }
+// #endif
 
 #include <string.h>
 #include <stdlib.h>

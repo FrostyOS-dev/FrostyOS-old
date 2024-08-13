@@ -19,8 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <string.h> // just used for strlen function
 #include <errno.h>
+#include <util.h>
 
 #include <tty/TTY.hpp>
+
+#include <tty/backends/VGATTY.hpp>
 
 #include <fs/FileDescriptorManager.hpp>
 #include <fs/FileStream.hpp>
@@ -187,7 +190,6 @@ long internal_seek(fd_t file, long offset) {
 extern "C" int getc() {
     int c = EOF;
     long rc = internal_read(stdin, &c, 1);
-    dbgprintf("getc() -> %c, rc = %ld", c, rc);
     return rc == EOF ? EOF : c;
 }
 
@@ -197,40 +199,68 @@ extern "C" int fgetc(const fd_t file) {
     return rc == EOF ? EOF : c;
 }
 
-extern "C" void putc(const char c) {
-    internal_write(stdout, &c, 1);
-    g_CurrentTTY->GetVGADevice()->SwapBuffers();
+void internal_swap_buffers(const fd_t file) {
+#ifdef _FROSTYOS_BUILD_TARGET_IS_USERLAND
+    return;
+#elif defined(_FROSTYOS_BUILD_TARGET_IS_KERNEL)
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
+    if (descriptor == nullptr)
+        return;
+    if (descriptor->GetType() == FileDescriptorType::TTY) {
+        TTYFileDescriptor* tty_descriptor = (TTYFileDescriptor*)descriptor->GetData();
+        TTYBackend* backend = tty_descriptor->tty->GetBackend(tty_descriptor->mode);
+        if (backend->getType() == TTYBackendType::VGA)
+            ((TTYBackendVGA*)backend)->SwapBuffers();
+    }
+#endif
 }
 
-extern "C" void puts(const char* str) {
-    internal_write(stdout, str, strlen(str));
-    g_CurrentTTY->GetVGADevice()->SwapBuffers();
+void internal_lock(const fd_t file) {
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
+    if (descriptor == nullptr)
+        return;
+    if (descriptor->GetType() == FileDescriptorType::TTY) {
+        TTYFileDescriptor* tty_descriptor = (TTYFileDescriptor*)descriptor->GetData();
+        tty_descriptor->tty->Lock();
+    }
+}
+
+void internal_unlock(const fd_t file) {
+    FileDescriptor* descriptor = g_KFDManager->GetFileDescriptor(file);
+    if (descriptor == nullptr)
+        return;
+    if (descriptor->GetType() == FileDescriptorType::TTY) {
+        TTYFileDescriptor* tty_descriptor = (TTYFileDescriptor*)descriptor->GetData();
+        tty_descriptor->tty->Unlock();
+    }
 }
 
 void internal_fputc(const fd_t file, const char c, bool swap, bool lock) {
-    if (file == stdout && lock)
-        g_CurrentTTY->Lock();
+    if (lock)
+        internal_lock(file);
     internal_write(file, &c, 1);
-    if (file == stdout) {
-        if (swap)
-            g_CurrentTTY->GetVGADevice()->SwapBuffers();
-        if (lock)
-            g_CurrentTTY->Unlock();
-    }
+    if (swap)
+        internal_swap_buffers(file);
+    if (lock)
+        internal_unlock(file);
 }
 
 void internal_fputs(const fd_t file, const char* str, bool swap, bool lock) {
-    if (file == stdout && lock)
-        g_CurrentTTY->Lock();
+    if (lock)
+        internal_lock(file);
     internal_write(file, str, strlen(str));
-    if (file == stdout && swap)
-        g_CurrentTTY->GetVGADevice()->SwapBuffers();
-    if (file == stdout) {
-        if (swap)
-            g_CurrentTTY->GetVGADevice()->SwapBuffers();
-        if (lock)
-            g_CurrentTTY->Unlock();
-    }
+    if (swap)
+        internal_swap_buffers(file);
+    if (lock)
+        internal_unlock(file);
+}
+
+extern "C" void putc(const char c) {
+    internal_fputc(stdout, c, true, true);
+}
+
+extern "C" void puts(const char* str) {
+    internal_fputs(stdout, str, true, true);
 }
 
 extern "C" void dbgputc(const char c) {
@@ -435,8 +465,7 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
     int width = 0;
     int precision = -1;
 
-    if (file == stdout)
-        g_CurrentTTY->Lock();
+    internal_lock(file);
 
     while (c != 0) {
         switch (mode) {
@@ -837,8 +866,7 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
                 gotoNextChar = true;
                 break;
             default:
-                if (file == stdout)
-                    g_CurrentTTY->Unlock();
+                internal_unlock(file);
                 return -1; // invalid mode
         }
         if (gotoNextChar) {
@@ -848,8 +876,7 @@ extern "C" int vfprintf(fd_t file, const char* format, va_list args) {
     }
 
 
-    if (file == stdout)
-        g_CurrentTTY->Unlock();
+    internal_unlock(file);
 
     return symbols_printed;
 }
@@ -1444,8 +1471,7 @@ extern "C" int fprintf(const fd_t file, const char* format, ...) {
     va_start(args, format);
     int rc = vfprintf(file, format, args);
     va_end(args);
-    if (file == stdout)
-        g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    internal_swap_buffers(file);
     return rc;
 }
 
@@ -1454,13 +1480,13 @@ extern "C" int printf(const char* format, ...) {
     va_start(args, format);
     int rc = vfprintf(stdout, format, args);
     va_end(args);
-    g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    internal_swap_buffers(stdout);
     return rc;
 }
 
 extern "C" int vprintf(const char* format, va_list args) {
     int rc = vfprintf(stdout, format, args);
-    g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    internal_swap_buffers(stdout);
     return rc;
 }
 
@@ -1506,8 +1532,8 @@ extern "C" size_t fwrite(const void* ptr, const size_t size, const size_t count,
         else
             break;
     }
-    if (file == stdout && blocks_written > 0)
-        g_CurrentTTY->GetVGADevice()->SwapBuffers();
+    if (blocks_written > 0)
+        internal_swap_buffers(file);
 
     return blocks_written;
 }

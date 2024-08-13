@@ -72,7 +72,6 @@ namespace TempFS {
     int TempFileSystem::CreateFile(FilePrivilegeLevel current_privilege, TempFSInode* parent, const char* name, size_t size, bool inherit_permissions, FilePrivilegeLevel privilege) {
         if (name == nullptr)
             return -EFAULT;
-        printf("TempFS: Creating file \"%s\"\n", name);
         FilePrivilegeLevel parent_priv = parent == nullptr ? m_rootPrivilege : parent->GetPrivilegeLevel();
         if (current_privilege.UID == parent_priv.UID || current_privilege.UID == 0) {
             if (!((parent_priv.ACL & ACL_USER_WRITE) > 0))

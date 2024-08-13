@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _TIME_H
 
 #include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
 
 #ifdef __cplusplus

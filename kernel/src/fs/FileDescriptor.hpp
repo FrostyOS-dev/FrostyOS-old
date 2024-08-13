@@ -45,8 +45,7 @@ enum class FileDescriptorType {
     UNKNOWN,
     FILE_STREAM,
     DIRECTORY_STREAM,
-    TTY,
-    DEBUG
+    TTY
 };
 
 enum class FileDescriptorMode {
@@ -54,6 +53,11 @@ enum class FileDescriptorMode {
     WRITE,
     APPEND,
     READ_WRITE
+};
+
+struct TTYFileDescriptor {
+    TTY* tty;
+    TTYBackendMode mode;
 };
 
 class FileDescriptor {
@@ -82,7 +86,7 @@ public:
     void ForceUnlock(); // should only ever be used in a PANIC to get emergency access to resources.
 
 private:
-    TTY* m_TTY;
+    TTYFileDescriptor* m_TTYInfo;
     void* m_Stream; // works for both FileStream and DirectoryStream
     bool m_is_open;
     FileDescriptorType m_type;

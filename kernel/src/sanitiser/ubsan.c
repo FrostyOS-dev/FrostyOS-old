@@ -118,7 +118,7 @@ extern "C" {
 #endif
 
 void ubsan_print_error(const char* error, ubsan_source_location* location) {
-#ifdef __x86_64__
+#if defined(__x86_64__) && defined(_FROSTYOS_BUILD_TARGET_IS_KERNEL)
     x86_64_DisableInterrupts();
 #endif
     char buffer[1024];
@@ -164,7 +164,7 @@ void __ubsan_handle_out_of_bounds(ubsan_out_of_bounds_data* data, uintptr_t inde
 }
 
 void __ubsan_handle_type_mismatch_v1(ubsan_type_mismatch_v1_data* data, uintptr_t ptr) {
-    //dbgprintf("type mismatch: type = %s, alignment = %u, pointer = %lp\n", data->type->type_name, data->log_alignment, ptr);
+    dbgprintf("type mismatch: type = %s, alignment = %u, pointer = %lp\n", data->type->type_name, data->log_alignment, ptr);
     ubsan_print_error("type mismatch", &data->location);
 }
 

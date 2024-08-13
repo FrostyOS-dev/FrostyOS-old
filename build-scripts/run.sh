@@ -27,6 +27,11 @@ if [ -z "$TOOLCHAIN_PREFIX" ]; then
     TOOLCHAIN_PREFIX=$PWD/toolchain/local
 fi
 
+# Check if $FROSTYOS_ENABLE_KASAN is set, if not set it to no
+if [ -z "$FROSTYOS_ENABLE_KASAN" ]; then
+    FROSTYOS_ENABLE_KASAN=no
+fi
+
 # Check if $SYSROOT is set, if not set it to root
 if [ -z "$SYSROOT" ]; then
     SYSROOT=$PWD/root
@@ -52,5 +57,5 @@ else
     cd build
 fi
 
-cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DFROSTYOS_BUILD_CONFIG=$FROSTYOS_BUILD_CONFIG --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
+cmake -GNinja -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DFROSTYOS_BUILD_CONFIG=$FROSTYOS_BUILD_CONFIG -DFROSTYOS_ENABLE_KASAN=$FROSTYOS_ENABLE_KASAN --toolchain=build-scripts/Toolchain/x86_64/toolchain.cmake ..
 ninja run-qemu

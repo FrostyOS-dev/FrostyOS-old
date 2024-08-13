@@ -11,6 +11,7 @@ root/data/lib/
 root/data/include/
 ovmf/
 build/
+build-user/
 .cache/
 .vscode/
 
@@ -18,3 +19,4 @@ build/
 kernel/src/limine.h
 root/kernel.map
 compile_commands.json
+.clangd

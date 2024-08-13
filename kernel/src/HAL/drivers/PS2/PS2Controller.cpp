@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "PS2Controller.hpp"
 #include "PS2Keyboard.hpp"
+#include "arch/x86_64/io.h"
 
 #ifdef __x86_64__
 
@@ -403,6 +404,9 @@ uint8_t PS2Controller::SendCommandToDevice(uint8_t command, bool channel, uint8_
 }
 
 void PS2Controller::EnableInterrupts(bool channel) {
+    uint64_t flags;
+    __asm__ volatile("pushfq\n\t" "popq %0" : "=r"(flags));
+    x86_64_DisableInterrupts();
     SendCommand(PS2_CMD_READ_CONFIG_BYTE);
     unsigned char configByte = ReadData();
     if (channel)
@@ -411,6 +415,8 @@ void PS2Controller::EnableInterrupts(bool channel) {
         configByte |= 0b00000001;
     SendCommand(PS2_CMD_WRITE_CONFIG_BYTE);
     WriteData(configByte);
+    if (flags & 0x200)
+        x86_64_EnableInterrupts();
 }
 
 PS2Keyboard* PS2Controller::GetKeyboard() {

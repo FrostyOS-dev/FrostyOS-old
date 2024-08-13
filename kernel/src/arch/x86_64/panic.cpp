@@ -17,12 +17,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "E9.h"
 #include "ELFSymbols.hpp"
-#include "arch/x86_64/Processor.hpp"
-#include "arch/x86_64/interrupts/APIC/LocalAPIC.hpp"
+#include "Processor.hpp"
 #include "io.h"
 #include "panic.hpp"
 #include "Stack.hpp"
 
+#include "interrupts/APIC/LocalAPIC.hpp"
 #include "interrupts/APIC/IPI.hpp"
 
 #include "Scheduling/taskutil.hpp"
@@ -34,6 +34,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <Graphics/VGA.hpp>
 
 #include <tty/TTY.hpp>
+
+#include <tty/backends/VGATTY.hpp>
 
 #include <Scheduling/Scheduler.hpp>
 
@@ -139,7 +141,7 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
     else
         dbgputc('\n');
 
-    x86_64_walk_stack_frames((void*)(regs->RBP));
+    x86_64_walk_stack_frames((void*)(regs->RBP), stddebug);
 
     dbgputs("\nThreads:\n");
 
@@ -155,7 +157,10 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
         //g_VGADevice->SetCursorPosition({0,0});
         //g_VGADevice->SwapBuffers(false);
 
-        g_CurrentTTY->SetVGADevice(g_VGADevice);
+        g_CurrentTTY->EnumerateBackends([](TTYBackendMode, TTYBackend* backend, void* data){
+            if (backend->getType() == TTYBackendType::VGA)
+                ((TTYBackendVGA*)backend)->SetVGADevice(g_VGADevice);
+        }, nullptr);
 
         puts("KERNEL PANIC!\n");
         if (type)
@@ -192,8 +197,10 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
         else
             putc('\n');
 
-        x86_64_walk_stack_frames((void*)(regs->RBP));
+        x86_64_walk_stack_frames((void*)(regs->RBP), stdout);
     }
+
+    __asm__ volatile("cli");
 
     while (true) {
         // just hang

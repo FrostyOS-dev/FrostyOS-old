@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //#define MADT_DEBUG
 
 #include "MADT.hpp"
-#include "uacpi/acpi.h"
 
 #include <Data-structures/LinkedList.hpp>
 
@@ -41,7 +40,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../hal.hpp"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#include <uacpi/acpi.h>
 #include <uacpi/tables.h>
+#pragma GCC diagnostic pop
 
 acpi_sdt_hdr* g_MADT;
 

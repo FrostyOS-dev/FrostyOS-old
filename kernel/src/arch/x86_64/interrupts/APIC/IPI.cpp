@@ -26,6 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <spinlock.h>
 
+#include <Memory/kmalloc.hpp>
+
 #include <Scheduling/Scheduler.hpp>
 
 x86_64_IPI_List::x86_64_IPI_List() : m_start(nullptr), m_end(nullptr), m_count(0), m_lock(0) {
@@ -183,7 +185,7 @@ void x86_64_NMI_IPIHandler(x86_64_Interrupt_Registers* regs) {
             if (IPI->flags.wait)
                 IPI->flags.done = true;
             else
-                delete IPI;
+                kfree_vmm(IPI);
             IPIList.Unlock();
             processor->StopThis();
             break;
@@ -200,7 +202,7 @@ void x86_64_NMI_IPIHandler(x86_64_Interrupt_Registers* regs) {
         if (IPI->flags.wait)
             IPI->flags.done = true;
         else
-            delete IPI;
+            kfree_vmm(IPI);
     }
     IPIList.Unlock();
 }
@@ -229,13 +231,14 @@ void x86_64_IssueIPI(x86_64_IPI_DestinationShorthand destShorthand, uint8_t dest
         list_len = Scheduling::Scheduler::GetProcessorCount() - 1;
         break;
     }
-    x86_64_IPI** IPIs = new x86_64_IPI*[list_len];
+    x86_64_IPI** IPIs = (x86_64_IPI**)kcalloc_vmm(list_len, sizeof(x86_64_IPI*));
 
     switch (destShorthand) {
     case x86_64_IPI_DestinationShorthand::NoShorthand: {
         x86_64_IPI_List& IPIList = Scheduling::Scheduler::GetProcessor(destination)->GetIPIList();
-        x86_64_IPI* i_IPI = new x86_64_IPI(IPI);
-        IPIs[0] = i_IPI;
+        x86_64_IPI* i_IPI = (x86_64_IPI*)kcalloc_vmm(1, sizeof(x86_64_IPI));
+        *i_IPI = IPI;
+        IPIs[0] = i_IPI; 
         IPIList.Lock();
         IPIList.PushBack(i_IPI);
         IPIList.Unlock();
@@ -243,7 +246,8 @@ void x86_64_IssueIPI(x86_64_IPI_DestinationShorthand destShorthand, uint8_t dest
     }
     case x86_64_IPI_DestinationShorthand::Self: {
         x86_64_IPI_List& IPIList = GetCurrentProcessor()->GetIPIList();
-        x86_64_IPI* i_IPI = new x86_64_IPI(IPI);
+        x86_64_IPI* i_IPI = (x86_64_IPI*)kcalloc_vmm(1, sizeof(x86_64_IPI));
+        *i_IPI = IPI;
         IPIs[0] = i_IPI;
         IPIList.Lock();
         IPIList.PushBack(i_IPI);
@@ -259,7 +263,8 @@ void x86_64_IssueIPI(x86_64_IPI_DestinationShorthand destShorthand, uint8_t dest
         Scheduling::Scheduler::EnumerateProcessors([](Scheduling::Scheduler::ProcessorInfo* info, void* data) {
             Data* i_data = (Data*)data;
             x86_64_IPI_List& IPIList = info->processor->GetIPIList();
-            x86_64_IPI* i_IPI = new x86_64_IPI(i_data->IPI);
+            x86_64_IPI* i_IPI = (x86_64_IPI*)kcalloc_vmm(1, sizeof(x86_64_IPI));
+            *i_IPI = i_data->IPI;
             i_data->IPIs[i_data->i] = i_IPI;
             IPIList.Lock();
             IPIList.PushBack(i_IPI);
@@ -280,7 +285,8 @@ void x86_64_IssueIPI(x86_64_IPI_DestinationShorthand destShorthand, uint8_t dest
             Data* i_data = (Data*)data;
             if (info->id != i_data->info->id) {
                 x86_64_IPI_List& IPIList = info->processor->GetIPIList();
-                x86_64_IPI* i_IPI = new x86_64_IPI(i_data->IPI);
+                x86_64_IPI* i_IPI = (x86_64_IPI*)kcalloc_vmm(1, sizeof(x86_64_IPI));
+                *i_IPI = i_data->IPI;
                 i_data->IPIs[i_data->i] = i_IPI;
                 IPIList.Lock();
                 IPIList.PushBack(i_IPI);
@@ -299,8 +305,8 @@ void x86_64_IssueIPI(x86_64_IPI_DestinationShorthand destShorthand, uint8_t dest
     if (wait) {
         for (size_t i = 0; i < list_len; i++) {
             while (!IPIs[i]->flags.done) { __asm__ volatile ("" ::: "memory"); }
-            delete IPIs[i];
+            kfree_vmm(IPIs[i]);
         }
     }
-    delete[] IPIs;
+    kfree_vmm(IPIs);
 }

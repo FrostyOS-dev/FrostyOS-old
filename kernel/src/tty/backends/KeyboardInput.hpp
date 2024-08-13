@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,16 +15,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef _TTY_KEYBOARD_INPUT_HPP
-#define _TTY_KEYBOARD_INPUT_HPP
+#ifndef _TTY_BACKEND_KEYBOARD_INPUT_HPP
+#define _TTY_BACKEND_KEYBOARD_INPUT_HPP
 
 #include <HAL/drivers/Keyboard.hpp>
 
 #include <Data-structures/Buffer.hpp>
 
+#include "../TTYBackend.hpp"
+
 bool KeyboardEventHandler(void* data, KeyboardEvent event);
 
-class KeyboardInput {
+class KeyboardInput : public TTYBackend {
 public:
     KeyboardInput();
     ~KeyboardInput();
@@ -33,7 +35,7 @@ public:
     void Destroy();
 
     // Get first character in buffer. returns int to allow for better ISO C compatibility
-    int GetChar();
+    int getc() override;
     bool HandleEvent(KeyboardEvent event);
 
     // Gets called when a character is appended to the buffer
@@ -61,4 +63,4 @@ private:
     } m_keyCallback;
 };
 
-#endif /* _TTY_KEYBOARD_INPUT_HPP */
+#endif /* _TTY_BACKEND_KEYBOARD_INPUT_HPP */

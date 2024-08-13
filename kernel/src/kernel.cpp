@@ -16,23 +16,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "kernel.hpp"
+#include "Memory/VirtualPageManager.hpp"
+#include "fs/FileDescriptor.hpp"
 
 #include <assert.h>
-#include <errno.h>
 #include <icxxabi.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <util.h>
+#include <errno.h>
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
 #ifdef __x86_64__
-#include <arch/x86_64/ELFSymbols.hpp>
 #include <arch/x86_64/RTC.hpp>
 #endif
-
-#include <fs/FileDescriptorManager.hpp>
-#include <fs/initramfs.hpp>
-#include <fs/VFS.hpp>
 
 #include <Graphics/Colour.hpp>
 #include <Graphics/VGA.hpp>
@@ -43,8 +42,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <HAL/drivers/PS2/PS2Controller.hpp>
 
-#include <Memory/kmalloc.hpp>
-#include <Memory/PageManager.hpp>
 #include <Memory/Stack.hpp>
 
 #include <Scheduling/Scheduler.hpp>
@@ -52,22 +49,59 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <SystemCalls/exec.hpp>
 #include <SystemCalls/SystemCall.hpp>
 
-#include <tty/KeyboardInput.hpp>
+#include <tty/backends/KeyboardInput.hpp>
+#include <tty/backends/BochsDebugTTY.hpp>
+#include <tty/backends/VGATTY.hpp>
+#elif defined(_FROSTYOS_BUILD_TARGET_IS_USERLAND)
+#include <tty/backends/UserTTY.hpp>
+#endif
+
+#ifdef __x86_64__
+#include <arch/x86_64/ELFSymbols.hpp>
+#endif
+
 #include <tty/TTY.hpp>
 
+#include <Memory/kmalloc.hpp>
+#include <Memory/PageManager.hpp>
+#include <fs/FileDescriptorManager.hpp>
+#include <fs/initramfs.hpp>
+#include <fs/VFS.hpp>
+
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
 FrameBuffer m_InitialFrameBuffer;
 Colour g_fgcolour;
 Colour g_bgcolour;
-uint64_t m_Stage;
 ColourFormat g_ColourFormat;
 
-PageManager KPM;
 
 Scheduling::Process* KProcess;
 
 BasicVGA KBasicVGA;
+TTYBackendVGA KTTYBackendVGA;
+TTYBackendBochsDebug KTTYBackendBochsDebug;
+
+PS2Controller* KPS2Controller;
+
+KeyboardInput KInput;
+#elif defined(_FROSTYOS_BUILD_TARGET_IS_USERLAND)
+UserTTY KUserTTYInput;
+UserTTY KUserTTYOutput;
+UserTTY KUserTTYDebug;
+
+VirtualPageManager* vpm;
+#endif
+
+PageManager KPM;
 
 TTY KTTY;
+
+uint64_t m_Stage;
+
+TTYFileDescriptor KINTTYFileDescriptor;
+TTYFileDescriptor KOUTTTYFileDescriptor;
+TTYFileDescriptor KERRTTYFileDescriptor;
+TTYFileDescriptor KDEBUGTTYFileDescriptor;
 
 FileDescriptorManager KFDManager;
 uint8_t KFDManager_BitmapData[8]; // allows up to 64 file descriptors
@@ -75,10 +109,6 @@ FileDescriptor Kstdin;
 FileDescriptor Kstdout;
 FileDescriptor Kstderr;
 FileDescriptor Kstddebug;
-
-PS2Controller* KPS2Controller;
-
-KeyboardInput KInput;
 
 VFS_WorkingDirectory* KWorkingDirectory;
 
@@ -98,24 +128,59 @@ extern "C" void StartKernel(KernelParams* params) {
     }
 
     m_Stage = EARLY_STAGE;
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     m_InitialFrameBuffer = params->frameBuffer;
     g_ColourFormat = ColourFormat(m_InitialFrameBuffer.bpp, m_InitialFrameBuffer.red_mask_shift, m_InitialFrameBuffer.red_mask_size, m_InitialFrameBuffer.green_mask_shift, m_InitialFrameBuffer.green_mask_size, m_InitialFrameBuffer.blue_mask_shift, m_InitialFrameBuffer.blue_mask_size);
     g_fgcolour = Colour(g_ColourFormat, 0xFF, 0xFF, 0xFF);
     g_bgcolour = Colour(g_ColourFormat, 0, 0, 0);
 
     KBasicVGA.Init(m_InitialFrameBuffer, {0, 0}, g_fgcolour, g_bgcolour);
+    KTTYBackendVGA.SetVGADevice(&KBasicVGA);
+    KTTYBackendVGA.SetDefaultForeground(g_fgcolour);
+    KTTYBackendVGA.SetDefaultBackground(g_bgcolour);
 
-    KTTY = TTY(&KBasicVGA, nullptr, g_fgcolour, g_bgcolour); 
+    KTTY.SetBackend(nullptr, TTYBackendMode::IN);
+    KTTY.SetBackend(&KTTYBackendVGA, TTYBackendMode::OUT);
+    KTTY.SetBackend(&KTTYBackendVGA, TTYBackendMode::ERR);
+    KTTY.SetBackend(&KTTYBackendBochsDebug, TTYBackendMode::DEBUG);
+#elif defined(_FROSTYOS_BUILD_TARGET_IS_USERLAND)
+    KUserTTYInput = UserTTY(TTYBackendStreamDirection::INPUT, 0);
+    KUserTTYOutput = UserTTY(TTYBackendStreamDirection::OUTPUT, 1);
+    KUserTTYDebug = UserTTY(TTYBackendStreamDirection::OUTPUT, 2);
+
+    KTTY.SetBackend(&KUserTTYInput, TTYBackendMode::IN);
+    KTTY.SetBackend(&KUserTTYOutput, TTYBackendMode::OUT);
+    KTTY.SetBackend(&KUserTTYOutput, TTYBackendMode::ERR);
+    KTTY.SetBackend(&KUserTTYDebug, TTYBackendMode::DEBUG);
+#endif
+
+    KINTTYFileDescriptor = {
+        .tty = &KTTY,
+        .mode = TTYBackendMode::IN
+    };
+    KOUTTTYFileDescriptor = {
+        .tty = &KTTY,
+        .mode = TTYBackendMode::OUT
+    };
+    KERRTTYFileDescriptor = {
+        .tty = &KTTY,
+        .mode = TTYBackendMode::ERR
+    };
+    KDEBUGTTYFileDescriptor = {
+        .tty = &KTTY,
+        .mode = TTYBackendMode::DEBUG
+    };
 
     g_CurrentTTY = &KTTY;
 
     LinkedList::NodePool_Init();
 
     KFDManager = FileDescriptorManager(KFDManager_BitmapData, 8);
-    Kstdin = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::READ, 0);
-    Kstdout = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::WRITE, 1);
-    Kstderr = FileDescriptor(FileDescriptorType::TTY, &KTTY, FileDescriptorMode::WRITE, 2);
-    Kstddebug = FileDescriptor(FileDescriptorType::DEBUG, nullptr, FileDescriptorMode::WRITE, 3);
+
+    Kstdin = FileDescriptor(FileDescriptorType::TTY, &KINTTYFileDescriptor, FileDescriptorMode::READ, 0);
+    Kstdout = FileDescriptor(FileDescriptorType::TTY, &KOUTTTYFileDescriptor, FileDescriptorMode::WRITE, 1);
+    Kstderr = FileDescriptor(FileDescriptorType::TTY, &KERRTTYFileDescriptor, FileDescriptorMode::WRITE, 2);
+    Kstddebug = FileDescriptor(FileDescriptorType::TTY, &KDEBUGTTYFileDescriptor, FileDescriptorMode::WRITE, 3);
     assert(KFDManager.ReserveFileDescriptor(&Kstdin));
     assert(KFDManager.ReserveFileDescriptor(&Kstdout));
     assert(KFDManager.ReserveFileDescriptor(&Kstderr));
@@ -123,6 +188,7 @@ extern "C" void StartKernel(KernelParams* params) {
 
     g_KFDManager = &KFDManager;
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     uint64_t kernel_size = (uint64_t)_kernel_end_addr - (uint64_t)_text_start_addr;
 
     g_KPT = PageTable(false, nullptr);
@@ -131,10 +197,15 @@ extern "C" void StartKernel(KernelParams* params) {
     params->MemoryMapEntryCount = UpdateMemorySize(const_cast<const MemoryMapEntry**>(params->MemoryMap), params->MemoryMapEntryCount);
     HAL_EarlyInit(params->MemoryMap, params->MemoryMapEntryCount, params->kernel_virtual_addr, params->kernel_physical_addr, kernel_size, params->hhdm_start_addr, m_InitialFrameBuffer);
     KPM.InitPageManager(VirtualRegion((void*)(params->kernel_virtual_addr + kernel_size), (void*)UINT64_MAX), g_KVPM, false);
+#elif defined(_FROSTYOS_BUILD_TARGET_IS_USERLAND)
+    kmalloc_vmm_init();
+    KPM.InitPageManager();
+#endif
     g_KPM = &KPM;
     kmalloc_eternal_init();
     kmalloc_init();
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     if (params->frameBuffer.bpp % 8 > 0 || params->frameBuffer.bpp > 64) {
         PANIC("Bootloader Frame Buffer Bits per Pixel is either not byte aligned or larger than 64");
     }
@@ -143,10 +214,9 @@ extern "C" void StartKernel(KernelParams* params) {
 
     g_BSP.UpdateKernelStack(CreateKernelStack());
     g_BSP.EnableExceptionProtection();
-
-    printf("Very early init done.\n");
-
+    
     KBasicVGA.EnableDoubleBuffering(g_KPM);
+
 
     HAL_Stage2(params->RSDP_table);
 
@@ -158,7 +228,8 @@ extern "C" void StartKernel(KernelParams* params) {
     KInput = KeyboardInput();
     KInput.Initialise((Keyboard*)KPS2Controller->GetKeyboard());
 
-    KTTY.SetKeyboardInput(&KInput);
+    KTTY.SetBackend(&KInput, TTYBackendMode::IN);
+#endif
 
     uint8_t* ELF_map_data;
     uint64_t ELF_map_size = TarFS::USTAR_Lookup((uint8_t*)(params->initramfs_addr), "kernel.map", &ELF_map_data);
@@ -175,6 +246,7 @@ extern "C" void StartKernel(KernelParams* params) {
         .initramfs_size = params->initramfs_size
     };
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     KProcess = new Scheduling::Process(Kernel_Stage2, (void*)&Kernel_Stage2Params, 0, 0, Scheduling::Priority::KERNEL, Scheduling::KERNEL_DEFAULT, g_KPM);
     KProcess->SetDefaultWorkingDirectory(KWorkingDirectory);
     KProcess->Start();
@@ -187,19 +259,22 @@ extern "C" void StartKernel(KernelParams* params) {
     Scheduling::Scheduler::Start();
 
     PANIC("Scheduler Start returned!\n");
+#else
+    Kernel_Stage2((void*)&Kernel_Stage2Params);
+#endif
 }
 
 void Kernel_Stage2(void* params_addr) {
-    //dbgputs("Starting FrostyOS!\n");
+    dbgputs("Starting FrostyOS!\n");
     puts("Starting FrostyOS!\n");
-    printf("Build time: %s %s\n", __DATE__, __TIME__);
-    //dbgprintf("Build time: %s %s\n", __DATE__, __TIME__);
 
     m_Stage = STAGE2;
 
     Stage2_Params* params = (Stage2_Params*)params_addr;
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     HAL_FullInit();
+#endif
 
     VFS* KVFS = (VFS*)kcalloc_eternal(1, sizeof(VFS));
     g_VFS = KVFS;
@@ -208,32 +283,17 @@ void Kernel_Stage2(void* params_addr) {
     puts("VFS root mounted.\n");
 
     KWorkingDirectory = KVFS->GetRootWorkingDirectory();
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     KProcess->SetDefaultWorkingDirectory(KWorkingDirectory);
+#endif
 
     Initialise_InitRAMFS(params->initramfs_addr, params->initramfs_size);
 
     puts("Initial RAMFS initialised.\n");
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     SystemCallInit();
-
-    puts("Sleeping for 10 seconds...\n");
-
-    time_t time = getTime();
-    if (time > 0) {
-        while ((time + 10) > getTime()) {
-            
-        }
-    }
-    else
-        puts("Cannot sleep as RTC doesn't exist");
-
-
-    puts("Attempting ACPI Shutdown!\n");
-
-    int rc = Shutdown();
-    if (rc != 0) {
-        printf("ACPI Shutdown failed with error code %s (%d)\n", strerror(-rc), rc);
-    }
+#endif
 
     while (true) {
         

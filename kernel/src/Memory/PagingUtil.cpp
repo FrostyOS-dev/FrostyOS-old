@@ -17,8 +17,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "PagingUtil.hpp"
 
+#include <util.h>
+
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
+#ifdef __x86_64__
+
 #include <arch/x86_64/Memory/PageMapIndexer.hpp>
+#include <arch/x86_64/Memory/PagingUtil.hpp>
 
 void* to_HHDM(void* phys_addr) {
     return x86_64_to_HHDM(phys_addr);
 }
+
+void* hhdm_to_phys(void* hhdm_addr) {
+    return x86_64_hhdm_to_phys(hhdm_addr);
+}
+
+bool isInKernelSpace(void *base, size_t length) {
+    return x86_64_isInKernelSpace(base, length);
+}
+
+#endif /* __x86_64__ */
+#elif defined(_FROSTYOS_BUILD_TARGET_IS_USERLAND)
+
+void* to_HHDM(void* phys_addr) {
+    return phys_addr;
+}
+
+#endif /* _FROSTYOS_BUILD_TARGET_IS_KERNEL */

@@ -46,19 +46,19 @@ namespace LinkedList {
 
 
 	// Helper function that allocates a new node with the given data and NULL previous and next pointers.
-	Node* newNode(uint64_t data, bool eternal = false);
+	Node* newNode(uint64_t data, bool eternal = false, bool vmm = false);
 
 	// Recursive function to insert a node in the list with given data and returns the head node
-	void insertNode(Node*& head, uint64_t data, bool eternal = false);
+	void insertNode(Node*& head, uint64_t data, bool eternal = false, bool vmm = false);
 
 	// Get a pointer to a node from its data
 	Node* findNode(Node* head, uint64_t data);
 
 	// Delete a node
-	void deleteNode(Node*& head, uint64_t key);
+	void deleteNode(Node*& head, uint64_t key, bool vmm = false);
 
 	// Delete a specific node
-	void deleteNode(Node*& head, Node* node);
+	void deleteNode(Node*& head, Node* node, bool vmm = false);
 
 	// print the Linked list
 	void fprint(fd_t file, Node* head);
@@ -67,7 +67,7 @@ namespace LinkedList {
 
 	template <typename T> class SimpleLinkedList {
 	public:
-		SimpleLinkedList(bool eternal = false) : m_count(0), m_start(nullptr), m_eternal(eternal) {}
+		SimpleLinkedList(bool eternal = false, bool vmm = false) : m_count(0), m_start(nullptr), m_eternal(eternal), m_vmm(vmm) {}
 		~SimpleLinkedList() {
 			if (m_eternal) {
 				panic("Eternal SimpleLinkedList was deleted!");
@@ -81,7 +81,7 @@ namespace LinkedList {
 				dbgprintf("[%s] WARN: object already exists. Not inserting.\n", __extension__ __PRETTY_FUNCTION__);
 				return; // object already exists
 			}
-			insertNode(m_start, (uint64_t)obj, m_eternal);
+			insertNode(m_start, (uint64_t)obj, m_eternal, m_vmm);
 			m_count++;
 		}
 		T* get(uint64_t index) const {
@@ -112,14 +112,14 @@ namespace LinkedList {
 			if (m_eternal) {
 				panic("Eternal SimpleLinkedList node was deleted!");
 			}
-			deleteNode(m_start, (uint64_t)get(index));
+			deleteNode(m_start, (uint64_t)get(index), m_vmm);
 			m_count--;
 		}
 		void remove(const T* obj) {
 			if (m_eternal) {
 				panic("Eternal SimpleLinkedList node was deleted!");
 			}
-			deleteNode(m_start, (uint64_t)obj);
+			deleteNode(m_start, (uint64_t)obj, m_vmm);
 			m_count--;
 		}
 		void rotateLeft() {
@@ -176,6 +176,7 @@ namespace LinkedList {
 		uint64_t m_count;
 		Node* m_start;
 		bool m_eternal; // for a linked list that will never have nodes deleted
+		bool m_vmm;
 	};
 
 	template <typename T> class LockableLinkedList { // has a internal SimpleLinkedList and a spinlock. We do not lock automatically, so the user must lock the list before using it.

@@ -115,3 +115,32 @@ memcpy:
     mov rsp, rbp
     pop rbp
     ret
+
+global memcmp_b
+memcmp_b:
+    push rbp
+    mov rbp, rsp
+
+    xor rcx, rcx
+
+    cmp rcx, rdx
+    je .success
+
+.l:
+    cmp BYTE [rdi+rcx], sil
+    jne .fail
+    add rcx, 1
+    cmp rdx, rcx
+    jne .l
+
+.success:
+    mov rax, 1
+    jmp .end
+
+.fail:
+    xor rax, rax
+
+.end:
+    mov rsp, rbp
+    pop rbp
+    ret

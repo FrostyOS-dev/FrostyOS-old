@@ -21,10 +21,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stddef.h>
 #include <spinlock.h>
+#include <util.h>
+#include <stdio.h>
+
+#include <file.h>
 
 #include "PageObject.hpp"
+#include "VirtualRegion.hpp"
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
 #include "VirtualPageManager.hpp"
 #include "PageTable.hpp"
+#endif
+
+#include <Data-structures/AVLTree.hpp>
 
 enum class PagePermissions {
     READ,
@@ -38,11 +47,14 @@ class PageManager {
 public:
     PageManager();
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     /* mode is false for supervisor and true for user. auto_expand allows the page manager to try and expand the virtual region for user page managers. */
     PageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false);
-    ~PageManager();
-
     void InitPageManager(const VirtualRegion& region, VirtualPageManager* VPM, bool mode, bool auto_expand = false); // Extra function for later initialisation. mode is false for supervisor and true for user
+#elif defined(_FROSTYOS_BUILD_TARGET_IS_USERLAND)
+    void InitPageManager();
+#endif
+    ~PageManager();
     
     void* AllocatePage(PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
     void* AllocatePages(uint64_t count, PagePermissions perms = PagePermissions::READ_WRITE, void* addr = nullptr);
@@ -62,8 +74,11 @@ public:
     void UnmapPage(void* addr);
     void UnmapPages(void* addr);
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     bool ExpandVRegionToRight(size_t new_size);
+#endif
 
+    bool isReadable(void* addr, size_t size) const;
     bool isWritable(void* addr, size_t size) const;
 
     bool isValidAllocation(void* addr, size_t size) const;
@@ -71,29 +86,50 @@ public:
     // Get the permissions for a single page
     PagePermissions GetPermissions(void* addr) const;
 
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     const VirtualRegion& GetRegion() const;
 
     const PageTable& GetPageTable() const;
+#endif
 
     void PrintRegions(fd_t fd) const;
 
 private:
+    PageObject* CreateObject();
+    PageObject* CreateObject(const PageObject& obj);
+    void DeleteObject(const PageObject* obj);
     bool InsertObject(PageObject* obj);
+    bool RemoveObject(PageObject* obj);
+    void EnumerateObjects(bool (*callback)(PageObject* obj, void* data), void* data) const;
+    PageObject* FindObject(void* addr) const;
+    PageObject* FindObject(const VirtualRegion& region) const;
+    PageObject* FindObjectImpl(AVLTree::Node const* root, void* base, uint64_t size) const;
+
+    bool isReadableImpl(void* addr, size_t size) const;
+    bool isWritableImpl(void* addr, size_t size) const;
+    
 
 private:
-    PageObject* m_allocated_objects;
+    AVLTree::SimpleAVLTree<void*, PageObject*> m_allocated_objects;
     uint64_t m_allocated_object_count;
     
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
     VirtualRegion m_Vregion;
     VirtualPageManager* m_VPM; // uses a pointer to avoid wasted RAM
     PageTable m_PT;
 
     bool m_mode;
-    bool m_page_object_pool_used;
     bool m_auto_expand;
+#endif
+    bool m_page_object_pool_used;
 
     mutable spinlock_t m_lock;
 };
+
+#ifdef _FROSTYOS_BUILD_TARGET_IS_USERLAND
+void* __user_raw_mmap(void* addr, size_t size, PagePermissions perms);
+void __user_raw_mprotect(void* addr, size_t size, PagePermissions perms);
+#endif
 
 extern PageManager* g_KPM;
 

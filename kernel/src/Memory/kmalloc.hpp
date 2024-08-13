@@ -19,10 +19,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _KERNEL_MALLOC_HPP
 
 #include <stddef.h>
+#include <util.h>
 
 void kmalloc_init();
+bool IsKmallocInitialised();
+
+void kmalloc_vmm_init();
+bool IsKmallocVMMInitialised();
 
 void kmalloc_eternal_init();
+
+size_t kmalloc_SizeInHeap(void* ptr, size_t size);
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,8 +40,10 @@ void kfree(void* ptr);
 void* kmalloc(size_t size);
 void* krealloc(void* ptr, size_t size);
 
-void kmalloc_expand(size_t extra_size);
-
+void* kcalloc_vmm(size_t num, size_t size);
+void kfree_vmm(void* ptr);
+void* kmalloc_vmm(size_t size);
+void* krealloc_vmm(void* ptr, size_t size);
 
 void* kmalloc_eternal(size_t size);
 void* kcalloc_eternal(size_t num, size_t size);

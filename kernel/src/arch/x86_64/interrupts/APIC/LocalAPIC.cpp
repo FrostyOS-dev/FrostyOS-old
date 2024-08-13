@@ -71,7 +71,7 @@ void x86_64_LocalAPIC::StartCPU() {
         x86_64_DisableInterrupts();
         //x86_64_PIC_Disable();
         // copy the ap trampoline to 0x0000
-        memcpy((void*)0x0000, &ap_trampoline, 0x1000);
+        memcpy_nokasan((void*)0x0000, &ap_trampoline, 0x1000);
         uint32_t* CR3_value = (uint32_t*)0xFFC;
         uint32_t* start_lock = (uint32_t*)0xFF8;
         uint64_t* jump_addr = (uint64_t*)0xFF0;

@@ -29,6 +29,9 @@ void* x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr);
 // Get the HHDM version of an address under 512GiB
 void* x86_64_to_HHDM(void* physaddr);
 
+// Get the physical address of an HHDM address
+void* x86_64_hhdm_to_phys(void* hhdmaddr);
+
 // Map a page. physaddr and virtualaddr must be page aligned. Can potentially map 512 pages instead of just 1 due to x86_64 limitations.
 void x86_64_map_page(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags);
 

@@ -15,11 +15,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "time.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <time.h>
 
 #include <HAL/time.h>
 
-#include <stdbool.h>
 
 time_t time(time_t* timer) {
     time_t current_time = getTime();

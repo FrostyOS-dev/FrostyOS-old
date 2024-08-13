@@ -21,24 +21,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <util.h>
 
-void PageObject_SetFlag(PageObject*& obj, uint64_t flag) {
-    obj->flags |= flag;
-}
-
-void PageObject_UnsetFlag(PageObject*& obj, uint64_t flag) {
-    obj->flags &= ~flag;
-}
-
-PageObject* PageObject_GetPrevious(PageObject* root, PageObject* current) {
-    if (root == nullptr || root == current)
-        return nullptr;
-    if (root->next == nullptr)
-        return root;
-    if (root->next == current)
-        return root;
-    return PageObject_GetPrevious(root->next, current);
-}
-
 
 PageObject g_PageObjectPool[PAGE_OBJECT_POOL_SIZE];
 
@@ -73,7 +55,7 @@ bool PageObjectPool_HasBeenInitialised() {
     return g_PageObjectPool_HasBeenInitialised;
 }
 
-bool PageObjectPool_IsInPool(PageObject* obj) {
+bool PageObjectPool_IsInPool(const PageObject* obj) {
     return (((uint64_t)obj >= (uint64_t)g_PageObjectPool) && ((uint64_t)obj < ((uint64_t)g_PageObjectPool + PAGE_OBJECT_POOL_SIZE * sizeof(PageObject))));
 }
 
@@ -91,7 +73,7 @@ PageObject* PageObjectPool_Allocate() {
     return nullptr;
 }
 
-void PageObjectPool_Free(PageObject* obj) {
+void PageObjectPool_Free(const PageObject* obj) {
     if (!g_PageObjectPool_HasBeenInitialised)
         return;
     if (g_PageObjectPool_UsedCount == 0) return;

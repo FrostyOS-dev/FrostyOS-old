@@ -70,7 +70,7 @@ void BasicVGA::SetBackgroundColour(const Colour& colour) {
     m_bgcolour = colour;
 }
 
-void BasicVGA::ClearScreen(const Colour& colour) {
+void __attribute__((no_sanitize("address","kernel-address"))) BasicVGA::ClearScreen(const Colour& colour) {
     for (uint64_t y = 0; y < m_FrameBuffer.FrameBufferHeight; y++) {
         for (uint64_t x = 0; x < m_FrameBuffer.FrameBufferWidth; x++) {
             PlotPixel(x, y, colour);
@@ -78,7 +78,7 @@ void BasicVGA::ClearScreen(const Colour& colour) {
     }
 }
 
-void BasicVGA::PlotPixel(uint64_t x, uint64_t y, const Colour& colour) {
+void __attribute__((no_sanitize("address","kernel-address"))) BasicVGA::PlotPixel(uint64_t x, uint64_t y, const Colour& colour) {
     uint8_t* buffer;
     if (m_DoubleBuffer)
         buffer = m_buffer;
@@ -113,14 +113,14 @@ void BasicVGA::PlotPixel(uint64_t x, uint64_t y, const Colour& colour) {
         *(uint64_t*)((uint64_t)buffer + m_FrameBuffer.pitch * y + 8 * x) = data;
 }
 
-void BasicVGA::NewLine() {
+void __attribute__((no_sanitize("address","kernel-address"))) BasicVGA::NewLine() {
     m_CursorPosition.y += 16;
     if (m_CursorPosition.y >= ALIGN_DOWN(m_FrameBuffer.FrameBufferHeight, 16))
         ScrollText();
     m_CursorPosition.x = 0;
 }
 
-void BasicVGA::Backspace() {
+void __attribute__((no_sanitize("address","kernel-address"))) BasicVGA::Backspace() {
     if (m_CursorPosition.x < 10 && m_CursorPosition.y < 16)
         return; // Cannot backspace
     // Rewind
@@ -135,7 +135,7 @@ void BasicVGA::Backspace() {
     }
 }
 
-void BasicVGA::putc(const char c) {
+void __attribute__((no_sanitize("address","kernel-address"))) BasicVGA::putc(const char c) {
 
     if (c == '\n') {
         NewLine();
@@ -187,7 +187,7 @@ void BasicVGA::putc(const char c) {
         NewLine();
 }
 
-void BasicVGA::ScrollText() {
+void __attribute__((no_sanitize("address","kernel-address"))) BasicVGA::ScrollText() {
     uint8_t* buffer;
     if (m_DoubleBuffer)
         buffer = m_buffer;
@@ -196,11 +196,11 @@ void BasicVGA::ScrollText() {
 
     /* Copy everything up one row */
     for (uint64_t y = 16; y < (GetAmountOfTextRows() * 16); y += 16) {
-        memcpy((void*)((uint64_t)buffer + ((y - 16) * m_FrameBuffer.pitch)), (void*)((uint64_t)buffer + (y * m_FrameBuffer.pitch)), m_FrameBuffer.pitch * 16);
+        memcpy_nokasan((void*)((uint64_t)buffer + ((y - 16) * m_FrameBuffer.pitch)), (void*)((uint64_t)buffer + (y * m_FrameBuffer.pitch)), m_FrameBuffer.pitch * 16);
     }
 
     /* Set everything in the last row to zero */
-    memset((void*)((uint64_t)buffer + m_FrameBuffer.pitch * 16 * (GetAmountOfTextRows() - 1)), 0, m_FrameBuffer.pitch * 16);
+    memset_nokasan((void*)((uint64_t)buffer + m_FrameBuffer.pitch * 16 * (GetAmountOfTextRows() - 1)), 0, m_FrameBuffer.pitch * 16);
 
     m_CursorPosition.y -= 16;
 }
@@ -240,7 +240,7 @@ void BasicVGA::EnableDoubleBuffering(PageManager* pm) {
     m_buffer = (uint8_t*)m_pm->AllocatePages(DIV_ROUNDUP(GetScreenSizeBytes(), 0x1000));
     if (m_buffer == nullptr)
         return;
-    fast_memset(m_buffer, 0, ALIGN_UP(GetScreenSizeBytes(), 0x1000) / 8);
+    memset_nokasan(m_buffer, 0, ALIGN_UP(GetScreenSizeBytes(), 0x1000));
     m_DoubleBuffer = true;
 }
 
@@ -251,7 +251,7 @@ void BasicVGA::DisableDoubleBuffering() {
     m_pm->FreePages(m_buffer);
 }
 
-void BasicVGA::SwapBuffers(bool disable_interrupts) {
+void __attribute__((no_sanitize("address","kernel-address"))) BasicVGA::SwapBuffers(bool disable_interrupts) {
     if (!m_DoubleBuffer)
         return;
     if (disable_interrupts) {
@@ -259,7 +259,7 @@ void BasicVGA::SwapBuffers(bool disable_interrupts) {
         x86_64_DisableInterrupts();
 #endif
     }
-    fast_memcpy(m_FrameBuffer.FrameBufferAddress, m_buffer, GetScreenSizeBytes());
+    memcpy_nokasan(m_FrameBuffer.FrameBufferAddress, m_buffer, GetScreenSizeBytes());
     if (disable_interrupts) {
 #ifdef __x86_64__
         x86_64_EnableInterrupts();

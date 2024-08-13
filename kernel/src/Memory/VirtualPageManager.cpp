@@ -46,7 +46,7 @@ void* Internal_FindANDMarkPagesNotFree(AVLTree::Node* root, uint64_t count) {
     void* mem = (void*)list->data;
     if (mem == nullptr)
         return nullptr; // once again, this should **NEVER** happen, but is here just in case.
-    LinkedList::deleteNode(list, list->data);
+    LinkedList::deleteNode(list, list->data, true);
     node->extraData = (uint64_t)list;
     uint64_t sizeFound = node->key;
     if (sizeFound > count) {
@@ -55,7 +55,7 @@ void* Internal_FindANDMarkPagesNotFree(AVLTree::Node* root, uint64_t count) {
             list = nullptr;
         else
             list = (LinkedList::Node*)node->extraData;
-        LinkedList::insertNode(list, (uint64_t)mem + (sizeFound - count) * 4096);
+        LinkedList::insertNode(list, (uint64_t)mem + (sizeFound - count) * 4096, false, true);
         node->extraData = (uint64_t)list;
     }
     return mem;
@@ -72,7 +72,7 @@ void Internal_SplitRUBlock(AVLTree::Node* root, void* addr, uint64_t count) {
         return; // ignore invalid addr/count combo
     uint64_t upperBlockSize = node->extraData - count;
     node->extraData = count | (isReserved ? (UINT64_C(1) << 63) : 0);
-    AVLTree::insert(root, (uint64_t)addr + upperBlockSize * 4096, upperBlockSize | (isReserved ? (UINT64_C(1) << 63) : 0));
+    AVLTree::insert(root, (uint64_t)addr + upperBlockSize * 4096, upperBlockSize | (isReserved ? (UINT64_C(1) << 63) : 0), true);
 }
 
 // Split a Free block. addr is original block starting address, original_count is the original size of the block, new_count is the page count wanted for the first section
@@ -88,32 +88,32 @@ AVLTree::Node* Internal_SplitFreeBlock(AVLTree::Node* root, void* addr, uint64_t
     LinkedList::Node* item = LinkedList::findNode(list, (uint64_t)addr);
     if (item == nullptr || item->data != (uint64_t)addr)
         return root; // ignore invalid addr/size combo
-    LinkedList::deleteNode(list, item->data); // delete list entry
+    LinkedList::deleteNode(list, item, true); // delete list entry
     if (list == nullptr)
-        AVLTree::deleteNode(root, original_count); // delete old size entry as there are no list entries left
+        AVLTree::deleteNode(root, original_count, true); // delete old size entry as there are no list entries left
     else
         node->extraData = (uint64_t)list;
     // insert the first section of the block
     node = AVLTree::findNode(root, new_count);
     if (node == nullptr) {
         list = nullptr;
-        AVLTree::insert(root, new_count, (uint64_t)nullptr);
+        AVLTree::insert(root, new_count, (uint64_t)nullptr, true);
         node = AVLTree::findNode(root, new_count);
     }
     else
         list = (LinkedList::Node*)node->extraData;
-    LinkedList::insertNode(list, (uint64_t)addr);
+    LinkedList::insertNode(list, (uint64_t)addr, false, true);
     node->extraData = (uint64_t)list;
     // insert the second section of the block
     node = AVLTree::findNode(root, original_count - new_count);
     if (node == nullptr) {
         list = nullptr;
-        AVLTree::insert(root, original_count - new_count, (uint64_t)nullptr);
+        AVLTree::insert(root, original_count - new_count, (uint64_t)nullptr, true);
         node = AVLTree::findNode(root, original_count - new_count);
     }
     else
         list = (LinkedList::Node*)node->extraData;
-    LinkedList::insertNode(list, (uint64_t)addr + new_count * 4096);
+    LinkedList::insertNode(list, (uint64_t)addr + new_count * 4096, false, true);
     node->extraData = (uint64_t)list;
     return root;
 }
@@ -130,7 +130,7 @@ void Internal_mergeRUBlocks(AVLTree::Node* root, AVLTree::Node* parent, AVLTree:
         // update parent node with new combined node
         node->extraData = totalSize | (nodeReserved ? (UINT64_C(1) << 63) : 0);
         // delete the sibling node
-        AVLTree::deleteNode(parent, sibling->key);
+        AVLTree::deleteNode(parent, sibling->key, true);
         // recursively check if the new node can be merged with its siblings
         if (parent != nullptr) {
             AVLTree::Node* grandparent = getParent(root, parent->key);
@@ -161,7 +161,7 @@ void Internal_OrganiseFPSTIntoNewAVLTree(AVLTree::Node* new_root, AVLTree::Node*
                 node->extraData = node->key;
         }
         else
-            AVLTree::insert(new_root, list->data, root->key);
+            AVLTree::insert(new_root, list->data, root->key, true);
         list = list->next;
     }
 }
@@ -175,7 +175,7 @@ void Internal_mergeFreeBlocks(AVLTree::Node* root, AVLTree::Node* parent, AVLTre
     // update parent node with new combined node
     node->extraData = totalSize;
     // delete the sibling node
-    AVLTree::deleteNode(parent, sibling->key);
+    AVLTree::deleteNode(parent, sibling->key, true);
     // recursively check if the new node can be merged with its siblings
     if (parent != nullptr) {
         AVLTree::Node* grandparent = getParent(root, parent->key);
@@ -210,7 +210,7 @@ void Internal_clearFreePagesSizeTree(AVLTree::Node* root) {
             using namespace LinkedList;
             deleteNode(list, list); // will automatically assign list to the next node in line
         }
-        AVLTree::deleteNode(root, root->key);
+        AVLTree::deleteNode(root, root->key, true);
     }
 }
 
@@ -228,11 +228,11 @@ void Internal_OrganiseNewAVLTreeIntoFPST(AVLTree::Node* new_root, AVLTree::Node*
         Internal_OrganiseNewAVLTreeIntoFPST(new_root, root->right);
     AVLTree::Node* node = AVLTree::findNode(new_root, root->extraData);
     if (node == nullptr) {
-        AVLTree::insert(new_root, root->extraData, (uint64_t)nullptr);
+        AVLTree::insert(new_root, root->extraData, (uint64_t)nullptr, true);
         node = AVLTree::findNode(new_root, root->extraData);
     }
     LinkedList::Node* list = (LinkedList::Node*)new_root->extraData;
-    LinkedList::insertNode(list, root->key);
+    LinkedList::insertNode(list, root->key, false, true);
 }
 
 
@@ -376,7 +376,7 @@ void VirtualPageManager::ReservePages(void* addr, uint64_t count) {
         spinlock_release(&m_ReservedANDUsedPagesLock);
         return; // ignore request if entry with same address already exists
     }
-    AVLTree::insert(m_ReservedANDUsedPages, addr_i, (count | (UINT64_C(1) << 63)));
+    AVLTree::insert(m_ReservedANDUsedPages, addr_i, (count | (UINT64_C(1) << 63)), true);
     spinlock_release(&m_ReservedANDUsedPagesLock);
     spinlock_acquire(&m_GlobalLock);
     m_ReservedPagesCount += count;
@@ -407,7 +407,7 @@ void VirtualPageManager::UnreservePages(void* addr, uint64_t count) {
         spinlock_release(&m_ReservedANDUsedPagesLock);
         return; // ignore request if entry with same address doesn't exist
     }
-    AVLTree::deleteNode(m_ReservedANDUsedPages, addr_i);
+    AVLTree::deleteNode(m_ReservedANDUsedPages, addr_i, true);
     spinlock_release(&m_ReservedANDUsedPagesLock);
     spinlock_acquire(&m_GlobalLock);
     m_ReservedPagesCount -= count;
@@ -422,6 +422,7 @@ void* VirtualPageManager::AllocatePage() {
 
 // Allocate requested amount of pages
 void* VirtualPageManager::AllocatePages(uint64_t count) {
+    // Verify();
     if (count == 0)
         return nullptr;
     // START FindFreePages code
@@ -442,7 +443,9 @@ void* VirtualPageManager::AllocatePages(uint64_t count) {
     if (node->key > count)
         m_FreePagesSizeTree = Internal_SplitFreeBlock(m_FreePagesSizeTree, mem, node->key, count);
     spinlock_release(&m_FreePagesSizeTreeLock);
+    // Verify();
     LockPages(mem, count, true, false); // checks have already been performed and there should be an exact block match
+    // Verify();
     return mem;
 }
 
@@ -453,6 +456,7 @@ void* VirtualPageManager::AllocatePage(void* addr) {
 
 // Allocate requested amount of pages at requested address. Returns nullptr if address is invalid.
 void* VirtualPageManager::AllocatePages(void* addr, uint64_t count) {
+    // Verify();
     spinlock_acquire(&m_RegionLock);
     if (count == 0 || !m_region.IsInside(addr, count << 12)) {
         spinlock_release(&m_RegionLock);
@@ -462,6 +466,7 @@ void* VirtualPageManager::AllocatePages(void* addr, uint64_t count) {
     if (!UnfreePages(addr, count))
         return nullptr;
     LockPages(addr, count, false, false); // no need to check as everything is already safe
+    // Verify();
     return addr;
 }
 
@@ -470,7 +475,15 @@ void VirtualPageManager::UnallocatePage(void* addr) {
 }
 
 void VirtualPageManager::UnallocatePages(void* addr, uint64_t count) {
+    // Verify();
     UnlockPages(addr, count);
+    // Verify();
+}
+
+void VirtualPageManager::UnallocatePages(void* addr) {
+    // Verify();
+    UnlockPages(addr, 0, false);
+    // Verify();
 }
 
 const VirtualRegion& VirtualPageManager::GetVirtualRegion() const {
@@ -518,7 +531,7 @@ void VirtualPageManager::LockPages(void* addr, uint64_t count, bool unfree, bool
         spinlock_release(&m_ReservedANDUsedPagesLock);
         return; // ignore request if entry with same address already exists
     }
-    AVLTree::insert(m_ReservedANDUsedPages, addr_i, (count & ~(UINT64_C(1) << 63)));
+    AVLTree::insert(m_ReservedANDUsedPages, addr_i, (count & ~(UINT64_C(1) << 63)), true);
     spinlock_release(&m_ReservedANDUsedPagesLock);
     spinlock_acquire(&m_GlobalLock);
     m_UsedPagesCount += count;
@@ -531,29 +544,33 @@ void VirtualPageManager::UnlockPage(void* addr) {
     UnlockPages(addr, 1);
 }
 
-void VirtualPageManager::UnlockPages(void* addr, uint64_t count) {
-    size_t length = count << 12;
-    spinlock_acquire(&m_RegionLock);
-    if (!m_region.EnsureIsInside(addr, length)) {
+void VirtualPageManager::UnlockPages(void* addr, uint64_t count, bool check_size) {
+    if (check_size) {
+        size_t length = count << 12;
+        spinlock_acquire(&m_RegionLock);
+        if (!m_region.EnsureIsInside(addr, length)) {
+            spinlock_release(&m_RegionLock);
+            return;
+        }
         spinlock_release(&m_RegionLock);
-        return;
+        count = length >> 12;
+        if (count == 0)
+            return;
     }
-    spinlock_release(&m_RegionLock);
-    count = length >> 12;
     uint64_t addr_i = (uint64_t)addr;
-    if (count == 0)
-        return;
     spinlock_acquire(&m_ReservedANDUsedPagesLock);
     AVLTree::Node* node = nullptr;
     node = AVLTree::findNode(m_ReservedANDUsedPages, addr_i);
-    if (node == nullptr || node->extraData != (count & ~(UINT64_C(1) << 63))) {
+    if (node == nullptr || (check_size && node->extraData != (count & ~(UINT64_C(1) << 63)))) {
         spinlock_release(&m_ReservedANDUsedPagesLock);
         return; // ignore request if entry with same address doesn't exist
     }
-    AVLTree::deleteNode(m_ReservedANDUsedPages, addr_i);
+    if (!check_size)
+        count = node->extraData & ~(UINT64_C(1) << 63);
+    AVLTree::deleteNode(m_ReservedANDUsedPages, addr_i, true);
     spinlock_release(&m_ReservedANDUsedPagesLock);
     spinlock_acquire(&m_GlobalLock);
-    m_FreePagesCount -= count;
+    m_UsedPagesCount -= count;
     spinlock_release(&m_GlobalLock);
     FreePages((void*)addr_i, count);
 }
@@ -579,11 +596,11 @@ void VirtualPageManager::FreePages(void* addr, uint64_t count) {
     AVLTree::Node* node = nullptr;
     node = AVLTree::findNode(m_FreePagesSizeTree, count);
     if (node == nullptr) {
-        AVLTree::insert(m_FreePagesSizeTree, count, (uint64_t)nullptr);
+        AVLTree::insert(m_FreePagesSizeTree, count, (uint64_t)nullptr, true);
         node = AVLTree::findNode(m_FreePagesSizeTree, count);
     }
     LinkedList::Node* list = (LinkedList::Node*)(node->extraData);
-    LinkedList::insertNode(list, addr_i);
+    LinkedList::insertNode(list, addr_i, false, true);
     node->extraData = (uint64_t)list;
     spinlock_release(&m_FreePagesSizeTreeLock);
     spinlock_acquire(&m_GlobalLock);
@@ -608,6 +625,7 @@ bool VirtualPageManager::UnfreePages(void* addr, uint64_t count, bool exact) {
     if (count == 0)
         return false;
     if (exact) { // must exactly match. no splitting allowed
+        // Verify();
         spinlock_acquire(&m_FreePagesSizeTreeLock);
         AVLTree::Node* node = AVLTree::findNode(m_FreePagesSizeTree, count);
         if (node == nullptr) {
@@ -624,15 +642,16 @@ bool VirtualPageManager::UnfreePages(void* addr, uint64_t count, bool exact) {
             spinlock_release(&m_FreePagesSizeTreeLock);
             return false;
         }
-        LinkedList::deleteNode(list, sub_node);
+        LinkedList::deleteNode(list, sub_node, true);
         if (list == nullptr)
-            AVLTree::deleteNode(m_FreePagesSizeTree, node->key);
+            AVLTree::deleteNode(m_FreePagesSizeTree, node->key, true);
         else
             node->extraData = (uint64_t)list;
         spinlock_release(&m_FreePagesSizeTreeLock);
         spinlock_acquire(&m_GlobalLock);
         m_FreePagesCount -= count;
         spinlock_release(&m_GlobalLock);
+        // Verify();
         return true;
     }
     spinlock_acquire(&m_FreePagesSizeTreeLock);
@@ -677,9 +696,9 @@ bool VirtualPageManager::UnfreePages(void* addr, uint64_t count, bool exact) {
             if (node->key > count)
                 m_FreePagesSizeTree = Internal_SplitFreeBlock(m_FreePagesSizeTree, addr, node->key, count);
             else { // perfect match
-                LinkedList::deleteNode(list, sub_node);
+                LinkedList::deleteNode(list, sub_node, true);
                 if (list == nullptr)
-                    AVLTree::deleteNode(m_FreePagesSizeTree, node->key);
+                    AVLTree::deleteNode(m_FreePagesSizeTree, node->key, true);
                 else
                     node->extraData = (uint64_t)list;
                 correct = true;
@@ -705,9 +724,9 @@ bool VirtualPageManager::UnfreePages(void* addr, uint64_t count, bool exact) {
             spinlock_release(&m_FreePagesSizeTreeLock);
             return false;
         }
-        LinkedList::deleteNode(list, sub_node);
+        LinkedList::deleteNode(list, sub_node, true);
         if (list == nullptr)
-            AVLTree::deleteNode(m_FreePagesSizeTree, node->key);
+            AVLTree::deleteNode(m_FreePagesSizeTree, node->key, true);
         else
             node->extraData = (uint64_t)list;
         correct = true;
@@ -720,6 +739,48 @@ bool VirtualPageManager::UnfreePages(void* addr, uint64_t count, bool exact) {
     }
     return found && correct;
 }
+
+void VirtualPageManager::Verify() {
+    // enumerate through everything in the FreePagesSizeTree and check that the size matches
+    // spinlock_acquire(&m_FreePagesSizeTreeLock);
+    uint64_t currentSize = 0;
+    struct Data {
+        uint64_t* currentSize;
+        bool success;
+    } data = { &currentSize, true };
+    EnumerateFPSTNodes([](AVLTree::Node* node, void* data) -> bool {
+        Data* d = (Data*)data;
+        LinkedList::Node* list = (LinkedList::Node*)node->extraData;
+        uint64_t count = 0;
+        while (list != nullptr) {
+            count++;
+            if (list->data == 0) {
+                d->success = false;
+                return false;
+            }
+            list = list->next;
+        }
+        *(d->currentSize) += count * node->key;
+        return true;
+    }, &data);
+    // spinlock_release(&m_FreePagesSizeTreeLock);
+    assert(data.success);
+    assert(currentSize == m_FreePagesCount);
+}
+
+void Internal_doEnumerateFPSTNodes(AVLTree::Node* node, bool (*callback)(AVLTree::Node*, void*), void* data) {
+    if (node == nullptr)
+        return;
+    Internal_doEnumerateFPSTNodes(node->left, callback, data);
+    if (!callback(node, data))
+        return;
+    Internal_doEnumerateFPSTNodes(node->right, callback, data);
+}
+
+void VirtualPageManager::EnumerateFPSTNodes(bool (*callback)(AVLTree::Node*, void*), void* data) const {
+    Internal_doEnumerateFPSTNodes(m_FreePagesSizeTree, callback, data);
+}
+
 
 VirtualPageManager* g_VPM = nullptr;
 VirtualPageManager* g_KVPM = nullptr;

@@ -20,7 +20,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <uacpi/tables.h>
+#pragma GCC diagnostic pop
 
 struct HPETACPIHeader {
     uint8_t HardwareRevID;

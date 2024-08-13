@@ -1,9 +1,12 @@
 #include "ACPI.hpp"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <uacpi/uacpi.h>
 #include <uacpi/event.h>
 #include <uacpi/sleep.h>
 #include <uacpi/status.h>
+#pragma GCC diagnostic pop
 
 #include <stdio.h>
 #include <errno.h>
@@ -12,10 +15,8 @@ int ACPI_EarlyInit(void* RSDP) {
     uacpi_phys_addr rsdp_phys = (uacpi_phys_addr)RSDP;
     uacpi_init_params init_params = {
         .rsdp = rsdp_phys,
-        .rt_params = {
-            .log_level = UACPI_LOG_TRACE,
-            .flags = 0
-        }
+        .log_level = UACPI_LOG_INFO,
+        .flags = 0
     };
 
     uacpi_status rc = uacpi_initialize(&init_params);
@@ -34,7 +35,7 @@ int ACPI_FullInit() {
         return -ENODEV;
     }
 
-    printf("ACPI namespace loaded\n");
+    // printf("ACPI namespace loaded\n");
 
     rc = uacpi_namespace_initialize();
     if (uacpi_unlikely_error(rc)) {
@@ -42,7 +43,7 @@ int ACPI_FullInit() {
         return -ENODEV;
     }
 
-    printf("ACPI namespace initialized\n");
+    // printf("ACPI namespace initialized\n");
 
     rc = uacpi_finalize_gpe_initialization();
     if (uacpi_unlikely_error(rc)) {
@@ -50,7 +51,7 @@ int ACPI_FullInit() {
         return -ENODEV;
     }
 
-    printf("GPE initialization finalized\n");
+    // printf("GPE initialization finalized\n");
 
     return 0;
 }

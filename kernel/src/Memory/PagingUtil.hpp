@@ -19,7 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _PAGING_UTIL_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 void* to_HHDM(void* phys_addr);
+void* hhdm_to_phys(void* hhdm_addr);
+
+bool isInKernelSpace(void *base, size_t length);
 
 #endif /* _PAGING_UTIL_H */

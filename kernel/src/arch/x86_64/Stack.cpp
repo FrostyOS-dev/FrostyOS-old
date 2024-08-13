@@ -35,23 +35,23 @@ struct stack_frame {
     uint64_t RIP;
 } __attribute__((packed));
 
-void x86_64_walk_stack_frames(void* RBP) {
+void x86_64_walk_stack_frames(void* RBP, fd_t fd) {
     if (RBP == nullptr) {
-        printf("[%s(%lp)] WARN: no stack frames.\n", __extension__ __PRETTY_FUNCTION__, RBP);
+        fprintf(fd, "[%s(%lp)] WARN: no stack frames.\n", __extension__ __PRETTY_FUNCTION__, RBP);
         return;
     }
 
     stack_frame* frame = (stack_frame*)RBP;
 
-    while (isInKernelSpace(frame, sizeof(stack_frame))) {
+    while (x86_64_isInKernelSpace(frame, sizeof(stack_frame))) {
         char const* name = nullptr;
         if (g_KernelSymbols != nullptr)
             name = g_KernelSymbols->LookupSymbol(frame->RIP);
-        printf("%016lx", frame->RIP);
+        fprintf(fd, "%016lx", frame->RIP);
         if (name != nullptr)
-            printf(": %s\n", name);
+            fprintf(fd, ": %s\n", name);
         else
-            putc('\n');
+            fputc(fd, '\n');
         frame = frame->RBP;
     }
 }

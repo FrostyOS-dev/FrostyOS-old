@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stddef.h>
 
+#include <fs/FileDescriptor.hpp>
 #include <Memory/Memory.hpp>
 #include <Graphics/Graphics.h>
 
@@ -50,5 +51,13 @@ namespace Scheduling {
 }
 
 extern Scheduling::Process* KProcess;
+
+extern TTYFileDescriptor KINTTYFileDescriptor;
+extern TTYFileDescriptor KOUTTTYFileDescriptor;
+extern TTYFileDescriptor KERRTTYFileDescriptor;
+extern TTYFileDescriptor KDEBUGTTYFileDescriptor;
+
+class BasicVGA;
+extern BasicVGA KBasicVGA;
 
 #endif /* _KERNEL_HPP */

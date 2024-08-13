@@ -66,7 +66,7 @@ void* x86_64_get_physaddr(Level4Group* PML4Array, void* virtualaddr) {
 
     if (PML2.PageSize == 1) {
         PageMapLevel2Entry_LargePages PML2_Large = *(PageMapLevel2Entry_LargePages*)(&PML2);
-        return (void*)(((uint64_t)(PML2_Large.Address) << 21) | (PT_i << 12) | offset);
+        return (void*)(((uint64_t)(PML2_Large.Address) << 21) | ((uint64_t)PT_i << 12) | offset);
     }
 
     PageMapLevel1Entry PML1 = (((PageMapLevel1Entry*)x86_64_to_HHDM((void*)((uint64_t)PML2.Address << 12)))[PT_i]);
@@ -82,6 +82,14 @@ void* x86_64_to_HHDM(void* physaddr) {
     else if ((uint64_t)physaddr > (GiB(512) - 1))
         return physaddr;
     return (void*)((uint64_t)physaddr + (uint64_t)g_HHDM_start);
+}
+
+void* x86_64_hhdm_to_phys(void* hhdmaddr) {
+    if ((uint64_t)hhdmaddr < (uint64_t)g_HHDM_start)
+        return nullptr;
+    else if ((uint64_t)hhdmaddr > ((uint64_t)g_HHDM_start + GiB(512)))
+        return (void*)((uint64_t)hhdmaddr - (uint64_t)g_HHDM_start);
+    return hhdmaddr;
 }
 
 void x86_64_map_page_noflush(Level4Group* PML4Array, void* physaddr, void* virtualaddr, uint32_t flags) {
@@ -192,7 +200,7 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
         }
     }
     if (!used) {
-        g_PPFA->FreePage(group);
+        g_PPFA->FreePage(x86_64_hhdm_to_phys(group));
         PML2->Present = 0;
     }
     Level2Group* group2 = (Level2Group*)x86_64_to_HHDM((void*)((uint64_t)(PML3->Address) << 12));
@@ -204,7 +212,7 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
         }
     }
     if (!used) {
-        g_PPFA->FreePage(group2);
+        g_PPFA->FreePage(x86_64_hhdm_to_phys(group2));
         PML3->Present = 0;
     }
     Level3Group* group3 = (Level3Group*)x86_64_to_HHDM((void*)((uint64_t)(PML4->Address) << 12));
@@ -216,7 +224,7 @@ void x86_64_unmap_page_noflush(Level4Group* PML4Array, void* virtualaddr) {
         }
     }
     if (!used) {
-        g_PPFA->FreePage(group3);
+        g_PPFA->FreePage(x86_64_hhdm_to_phys(group3));
         PML4->Present = 0;
     }
 }
@@ -370,7 +378,7 @@ void x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) 
         }
     }
     if (!used) {
-        g_PPFA->FreePage(group2);
+        g_PPFA->FreePage(x86_64_hhdm_to_phys(group2));
         PML3->Present = 0;
     }
     Level3Group* group3 = (Level3Group*)x86_64_to_HHDM((void*)((uint64_t)(PML4->Address) << 12));
@@ -382,7 +390,7 @@ void x86_64_unmap_large_page_noflush(Level4Group* PML4Array, void* virtualaddr) 
         }
     }
     if (!used) {
-        g_PPFA->FreePage(group3);
+        g_PPFA->FreePage(x86_64_hhdm_to_phys(group3));
         PML3->Present = 0;
     }
 }

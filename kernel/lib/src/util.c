@@ -15,31 +15,50 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "util.h"
+#include <stddef.h>
+#include <util.h>
 
-// Faster assembly alternatives for memset and memcpy are used on x86_64
-#ifndef __x86_64__
+// Faster assembly alternatives for memset, memcpy and memcmp_b are used on x86_64 when KASAN is off
+#if !(defined(__x86_64__)) || _FROSTYOS_ENABLE_KASAN
 
 void* memset(void* dst, const uint8_t value, const size_t n) {
-    uint8_t* d = (uint8_t*) dst;
+    uint8_t* d = (uint8_t*)dst;
 
-    for (size_t i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++)
         d[i] = value;
-    }
 
     return dst;
 }
 
 void* memcpy(void* dst, const void* src, const size_t n) {
-    uint8_t* d = (uint8_t*) dst;
-    const uint8_t* s = (const uint8_t*) src;
+    if (dst == src)
+        return dst;
+    /*if (dst == nullptr || src == nullptr)
+        return dst;*/
+    uint8_t* d = (uint8_t*)dst;
+    const uint8_t* s = (const uint8_t*)src;
 
-    for (size_t i = 0; i < n; i++) {
+    for (size_t i = 0; i < n; i++)
         d[i] = s[i];
-    }
 
     return dst;
 }
+
+#endif /* !(defined(__x86_64__)) || _FROSTYOS_ENABLE_KASAN */
+
+#ifndef __x86_64__
+
+__attribute__((no_sanitize("address","kernel-address"))) bool memcmp_b(const void* s, uint8_t b, const size_t n) {
+    const uint8_t* src = (const uint8_t*)s;
+
+    for (size_t i = 0; i < n; i++) {
+        if (src[i] != b)
+            return false;
+    }
+
+    return true;
+}
+
 
 #endif /* __x86_64__ */
 

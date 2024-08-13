@@ -55,7 +55,7 @@ void x86_64_Cleanup_SMP_Startup() {
     x86_64_InvalidatePage(0);
 }
 
-bool isInKernelSpace(void* base, size_t length) {
+bool x86_64_isInKernelSpace(void* base, size_t length) {
     VirtualRegion region(base, length);
     VirtualRegion HHDMRegion(x86_64_GetHHDMStart(), GetMemorySize(nullptr, 0));
     if (HHDMRegion.contains(region))

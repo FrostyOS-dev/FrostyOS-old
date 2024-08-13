@@ -18,17 +18,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "PagingInit.hpp"
 #include "PageMapIndexer.hpp"
 #include "PagingUtil.hpp"
+#include "PAT.hpp"
 
+#include "../ELFKernel.hpp"
+
+#include <Memory/kmalloc.hpp>
 #include <Memory/PhysicalPageFrameAllocator.hpp>
 #include <Memory/VirtualPageManager.hpp>
 
-#include <HAL/hal.hpp>
-
-#include "../ELFKernel.hpp"
-#include "arch/x86_64/Memory/PAT.hpp"
-
 #include <stdio.h>
 #include <util.h>
+
+#include <HAL/hal.hpp>
 
 PhysicalPageFrameAllocator PPFA;
 VirtualPageManager KVPM;
@@ -152,6 +153,8 @@ void x86_64_InitPaging(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64
     // Fully initialise physical MM
     PPFA.FullInit(MemoryMap[0], MMEntryCount, g_MemorySize);
     g_PPFA = &PPFA;
+
+    kmalloc_vmm_init();
 
     KVRegion = VirtualRegion((void*)(kernel_virtual + kernel_size), (void*)(~UINT64_C(0)));
     VAddressSpace = VirtualRegion((void*)0, (void*)(~UINT64_C(0)));

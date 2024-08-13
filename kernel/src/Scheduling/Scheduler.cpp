@@ -369,7 +369,7 @@ namespace Scheduling {
                 g_total_threads--;
         }
 
-        void AddProcessor(Processor* processor) {
+        void __attribute__((no_sanitize("undefined"))) AddProcessor(Processor* processor) {
             /*__asm__ volatile("cli");
             while (true) {
                 __asm__ volatile ("hlt");

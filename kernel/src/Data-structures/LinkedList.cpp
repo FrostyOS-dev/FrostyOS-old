@@ -15,16 +15,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "LinkedList.hpp"
 #include "Bitmap.hpp"
+#include "LinkedList.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <util.h>
 
-#include <Memory/newdelete.hpp> // required for creating and deleting nodes
-
 #include <HAL/hal.hpp>
+
+#include <Memory/kmalloc.hpp>
+#include <Memory/newdelete.hpp> // required for creating and deleting nodes
 
 bool operator==(LinkedList::Node left, LinkedList::Node right) {
 	return ((left.data == right.data) && (left.next == right.next) && (left.previous == right.previous));
@@ -57,6 +58,7 @@ namespace LinkedList {
 			if (nodePool_Bitmap[i] == 0) {
 				nodePool_Bitmap.Set(i, true);
 				nodePool_UsedCount++;
+				memset(&(nodePool[i]), 0, sizeof(Node));
 				return &(nodePool[i]);
 			}
 		}
@@ -101,10 +103,12 @@ namespace LinkedList {
 		return count;
 	}
 
-	Node* newNode(uint64_t data, bool eternal) {
+	Node* newNode(uint64_t data, bool eternal, bool vmm) {
 		Node* node = nullptr;
 		if (eternal)
 			node = (Node*)kcalloc_eternal(1, sizeof(Node));
+		else if (vmm)
+			node = (Node*)kcalloc_vmm(1, sizeof(Node));
 		else if (NewDeleteInitialised())
 			node = new Node();
 		else
@@ -119,10 +123,10 @@ namespace LinkedList {
 		return node;
 	}
 
-	void insertNode(Node*& head, uint64_t data, bool eternal) {
+	void insertNode(Node*& head, uint64_t data, bool eternal, bool vmm) {
 		// check if head is NULL
 		if (head == nullptr) {
-			head = newNode(data, eternal);
+			head = newNode(data, eternal, vmm);
 			return;
 		}
 
@@ -134,7 +138,7 @@ namespace LinkedList {
 		}
 
 		// get new node and set last node's next to it
-		current->next = newNode(data, eternal);
+		current->next = newNode(data, eternal, vmm);
 
 		// update newly created node's previous to the last node
 		current->next->previous = current;
@@ -152,7 +156,7 @@ namespace LinkedList {
 		return nullptr;
 	}
 
-	void deleteNode(Node*& head, uint64_t data) {
+	void deleteNode(Node*& head, uint64_t data, bool vmm) {
 		Node* temp = head;
 		if (temp != nullptr && temp->data == data) {
 			head = temp->next;
@@ -163,6 +167,8 @@ namespace LinkedList {
 			}
 			if (NodePool_IsInPool(temp))
 				NodePool_FreeNode(temp);
+			else if (vmm)
+				kfree_vmm(temp);
 			else if (NewDeleteInitialised())
 				delete temp;
 			return;
@@ -180,11 +186,13 @@ namespace LinkedList {
 			temp->previous->next = temp->next;
 		if (NodePool_IsInPool(temp))
 			NodePool_FreeNode(temp);
+		else if (vmm)
+			kfree_vmm(temp);
 		else if (NewDeleteInitialised())
 			delete temp;
 	}
 
-	void deleteNode(Node*& head, Node* node) {
+	void deleteNode(Node*& head, Node* node, bool vmm) {
 		if (node == nullptr || head == nullptr)
 			return;
 		if (node->next != nullptr)
@@ -195,6 +203,8 @@ namespace LinkedList {
 			head = node->next;
 		if (NodePool_IsInPool(node))
 			NodePool_FreeNode(node);
+		else if (vmm)
+			kfree_vmm(node);
 		else if (NewDeleteInitialised())
 			delete node;
 	}

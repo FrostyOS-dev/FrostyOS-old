@@ -26,6 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define KERNEL_STACK_SIZE 16384
 #endif
 
+#include <stdio.h>
+
 extern "C" {
 
 extern unsigned char __attribute__((aligned(0x1000))) kernel_stack[INITIAL_KERNEL_STACK_SIZE];
@@ -34,6 +36,6 @@ extern unsigned long int kernel_stack_size;
 
 }
 
-void x86_64_walk_stack_frames(void* RBP);
+void x86_64_walk_stack_frames(void* RBP, fd_t fd);
 
 #endif /* _x86_64_STACK_HPP */

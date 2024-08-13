@@ -27,8 +27,6 @@ struct PageObject {
     uint64_t page_count;
     uint64_t flags;
     PagePermissions perms;
-
-    PageObject* next;
 };
 
 enum PageObjectFlags {
@@ -38,10 +36,6 @@ enum PageObjectFlags {
     PO_INUSE      = 0b01000, // invert bit for unused
     PO_STANDBY    = 0b10000  // invert bit for not standby
 };
-
-void PageObject_SetFlag(PageObject*& obj, uint64_t flag);
-void PageObject_UnsetFlag(PageObject*& obj, uint64_t flag);
-PageObject* PageObject_GetPrevious(PageObject* root, PageObject* current);
 
 
 /* Page Object Pool stuff */
@@ -54,10 +48,10 @@ void PageObjectPool_Init();
 void PageObjectPool_Destroy();
 
 bool PageObjectPool_HasBeenInitialised();
-bool PageObjectPool_IsInPool(PageObject* obj);
+bool PageObjectPool_IsInPool(const PageObject* obj);
 
 PageObject* PageObjectPool_Allocate();
 
-void PageObjectPool_Free(PageObject* obj);
+void PageObjectPool_Free(const PageObject* obj);
 
 #endif /* _KERNEL_PAGE_OBJECT_HPP */

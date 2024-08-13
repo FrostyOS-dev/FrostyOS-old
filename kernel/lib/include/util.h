@@ -18,8 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _KERNEL_UTIL_H
 #define _KERNEL_UTIL_H
 
-#include "stdint.h"
-#include "stddef.h"
+#include <stdint.h>
+#include <stddef.h>
 
 #define KiB(x) ((uint64_t)x * (uint64_t)1024)
 #define MiB(x) (KiB(x) * (uint64_t)1024)
@@ -39,6 +39,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define volatile_write16(x, y) (*(volatile uint16_t*)&(x) = (y))
 #define volatile_write32(x, y) (*(volatile uint32_t*)&(x) = (y))
 #define volatile_write64(x, y) (*(volatile uint64_t*)&(x) = (y))
+
+#define _TEST_FOR_FOS_BT_kernel 1
+#define _TEST_FOR_FOS_BT_Userland 2
+#define _DO_TEST_FOR_FOS_BT(a, b) _DO_TEST_FOR_FOS_BT_impl(a, b)
+#define _DO_TEST_FOR_FOS_BT_impl(a, b) _TEST_FOR_FOS_BT_ ## a == _TEST_FOR_FOS_BT_ ## b
+
+
+#if _DO_TEST_FOR_FOS_BT(_FROSTYOS_BUILD_TARGET, kernel)
+#define _FROSTYOS_BUILD_TARGET_IS_KERNEL 1
+#elif _DO_TEST_FOR_FOS_BT(_FROSTYOS_BUILD_TARGET, Userland)
+#define _FROSTYOS_BUILD_TARGET_IS_USERLAND 1
+#endif
+
+#undef _TEST_FOR_FOS_BT_kernel
+#undef _TEST_FOR_FOS_BT_Userland
+#undef _DO_TEST_FOR_FOS_BT
+#undef _DO_TEST_FOR_FOS_BT_impl
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,6 +85,14 @@ void* memset(void* dst, const uint8_t value, const size_t n);
 void* memcpy(void* dst, const void* src, const size_t n);
 void* memmove(void* dst, const void* src, const size_t n);
 
+#if _FROSTYOS_ENABLE_KASAN
+void* memset_nokasan(void* dst, const uint8_t value, const size_t n);
+void* memcpy_nokasan(void* dst, const void* src, const size_t n);
+#else
+#define memset_nokasan memset
+#define memcpy_nokasan memcpy
+#endif
+
 /*
 Uses 64-bit operations to quick fill a buffer.
 dst is where you write to
@@ -93,9 +118,59 @@ n is the amount of data you want to copy, and must be a multiple of 8. If it isn
 void* fast_memmove(void* dst, const void* src, const size_t n);
 
 int memcmp(const void* s1, const void* s2, const size_t n);
+bool memcmp_b(const void* s, uint8_t c, const size_t n);
 
 #define FLAG_SET(x, flag) x |= (flag)
 #define FLAG_UNSET(x, flag) x &= ~(flag)
+
+#ifdef _FROSTYOS_BUILD_TARGET_IS_USERLAND
+
+#undef SEEK_SET
+#undef SEEK_CUR
+#undef SEEK_END
+
+# define SEEK_SET	0	/* Seek from beginning of file.  */
+# define SEEK_CUR	1	/* Seek from current position.  */
+# define SEEK_END	2	/* Seek from end of file.  */
+
+typedef unsigned int time_t;
+
+struct timespec {
+    time_t tv_sec;
+    long tv_nsec;
+};
+
+struct stat {
+    unsigned long st_dev;
+    unsigned long st_ino;
+    unsigned int st_mode;
+    unsigned long st_nlink;
+    unsigned int st_uid;
+    unsigned int st_gid;
+    unsigned long st_rdev;
+    long st_size;
+    long st_blksize;
+    long st_blocks;
+
+    struct timespec st_atim;
+    struct timespec st_mtim;
+    struct timespec st_ctim;
+};
+
+long __user_read(int fd, void* buf, size_t count);
+long __user_write(int fd, const void* buf, size_t count);
+int __user_open(const char* pathname, int flags);
+int __user_close(int fd);
+int __user_stat(const char* filename, struct stat* buf);
+int __user_fstat(int fd, struct stat* buf);
+long __user_seek(int fd, long offset, int whence);
+void* __user_mmap(void* addr, size_t len, int prot, int flags, int fd, int offset);
+int __user_mprotect(void* addr, size_t len, int prot);
+int __user_munmap(void* addr, size_t len);
+int __user_nanosleep(const struct timespec* req, struct timespec* rem);
+long __attribute__((noreturn)) __user_exit(int status);
+time_t __user_time(time_t* tloc);
+#endif
 
 #ifdef __cplusplus
 }

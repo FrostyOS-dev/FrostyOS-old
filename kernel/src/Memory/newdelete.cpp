@@ -25,13 +25,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 void* operator new(size_t size) {
     if (NewDeleteInitialised())
-        return kcalloc(DIV_ROUNDUP(size, 8), 8);
+        return kcalloc(1, size);
     PANIC("operator new attempted when unavailable.");
 }
 
 void* operator new[](size_t size) {
     if (NewDeleteInitialised())
-        return kcalloc(DIV_ROUNDUP(size, 8), 8);
+        return kcalloc(1, size);
     PANIC("operator new[] attempted when unavailable.");
 }
 

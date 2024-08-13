@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "PageFault.hpp"
 
-#include <cstdio>
 #include <stdio.h>
 #include <util.h>
 

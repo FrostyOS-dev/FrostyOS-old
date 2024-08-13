@@ -43,6 +43,7 @@ else()
 endif()
 
 set(FROSTYOS_ARCHITECTURE x86_64)
+set(FROSTYOS_BUILD_TARGET kernel)
 
 set(SYSROOT ${CMAKE_SOURCE_DIR}/root)
 

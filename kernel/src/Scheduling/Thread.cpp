@@ -18,6 +18,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "Thread.hpp"
 #include "Scheduler.hpp"
 #include "Semaphore.hpp"
+#include "fs/FileDescriptor.hpp"
+#include "kernel.hpp"
+#include "tty/TTY.hpp"
+#include "tty/TTYBackend.hpp"
+#include "tty/backends/VGATTY.hpp"
 
 #include <errno.h>
 #include <string.h>
@@ -108,12 +113,16 @@ namespace Scheduling {
     }
 
     void Thread::Start() {
-        m_FDManager.ReserveFileDescriptor(FileDescriptorType::TTY, g_CurrentTTY, FileDescriptorMode::READ, 0); // not properly supported yet, but here to reserve the file descriptor ID
-        Position pos = g_CurrentTTY->GetVGADevice()->GetCursorPosition(); // save the current position
-        m_FDManager.ReserveFileDescriptor(FileDescriptorType::TTY, g_CurrentTTY, FileDescriptorMode::WRITE, 1);
-        m_FDManager.ReserveFileDescriptor(FileDescriptorType::TTY, g_CurrentTTY, FileDescriptorMode::WRITE, 2);
-        g_CurrentTTY->GetVGADevice()->SetCursorPosition(pos); // restore the position
-        m_FDManager.ReserveFileDescriptor(FileDescriptorType::DEBUG, nullptr, FileDescriptorMode::APPEND, 3);
+        m_FDManager.ReserveFileDescriptor(FileDescriptorType::TTY, &KINTTYFileDescriptor, FileDescriptorMode::READ, 0); // not properly supported yet, but here to reserve the file descriptor ID
+        size_t out_offset = g_CurrentTTY->tell(TTYBackendMode::OUT);
+        size_t err_offset = g_CurrentTTY->tell(TTYBackendMode::ERR);
+        size_t debug_offset = g_CurrentTTY->tell(TTYBackendMode::DEBUG);
+        m_FDManager.ReserveFileDescriptor(FileDescriptorType::TTY, &KOUTTTYFileDescriptor, FileDescriptorMode::WRITE, 1);
+        m_FDManager.ReserveFileDescriptor(FileDescriptorType::TTY, &KERRTTYFileDescriptor, FileDescriptorMode::WRITE, 2);
+        m_FDManager.ReserveFileDescriptor(FileDescriptorType::TTY, &KDEBUGTTYFileDescriptor, FileDescriptorMode::APPEND, 3);
+        g_CurrentTTY->seek(out_offset, TTYBackendMode::OUT);
+        g_CurrentTTY->seek(err_offset, TTYBackendMode::ERR);
+        g_CurrentTTY->seek(debug_offset, TTYBackendMode::DEBUG);
         Scheduler::ScheduleThread(this);
     }
 
@@ -286,8 +295,7 @@ namespace Scheduling {
                 return status;
         }
 
-        if (descriptor->GetType() == FileDescriptorType::TTY)
-            ((TTY*)descriptor->GetData())->GetVGADevice()->SwapBuffers(false);
+        
 
         return rc;
     }

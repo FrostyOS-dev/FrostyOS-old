@@ -16,7 +16,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "hal.hpp"
-#include "arch/x86_64/interrupts/APIC/IPI.hpp"
 #include "time.h"
 
 #include "drivers/HPET.hpp"
@@ -30,6 +29,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 
+#include <kernel.hpp>
+
+#ifdef __x86_64__
 #include <arch/x86_64/io.h>
 #include <arch/x86_64/panic.hpp>
 #include <arch/x86_64/Processor.hpp>
@@ -38,25 +40,35 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <arch/x86_64/Scheduling/syscall.h>
 
+#include <arch/x86_64/interrupts/APIC/IPI.hpp>
+#endif
+
 #include <Memory/PagingUtil.hpp>
 
 #include <Scheduling/Scheduler.hpp>
 
 #include <tty/TTY.hpp>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <uacpi/tables.h>
+#pragma GCC diagnostic pop
 
 Processor g_BSP(true);
 
 void HAL_EarlyInit(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb) {
+#ifdef __x86_64__
     x86_64_DisableInterrupts();
+#endif
 
     g_BSP = Processor(true);
     g_BSP.Init(MemoryMap, MMEntryCount, kernel_virtual, kernel_physical, kernel_size, HHDM_start, fb);
 
-    x86_64_SetPanicVGADevice(g_CurrentTTY->GetVGADevice());
+#ifdef __x86_64__
+    x86_64_SetPanicVGADevice(&KBasicVGA);
 
     x86_64_EnableInterrupts();
+#endif
 }
 
 extern void* g_HHDM_start;
@@ -65,35 +77,32 @@ void HAL_Stage2(void* RSDP) {
     ACPI_EarlyInit((void*)((uint64_t)RSDP - (uint64_t)g_HHDM_start));
     assert(InitFADT());
 
-    uacpi_table* MADT;
+    uacpi_table MADT;
     uacpi_status rc = uacpi_table_find_by_signature("APIC", &MADT);
     if (rc != UACPI_STATUS_OK) {
         printf("MADT table not found: %s\n", uacpi_status_to_string(rc));
         PANIC("MADT table not found");
     }
-    assert(InitAndValidateMADT(MADT));
+    assert(InitAndValidateMADT(&MADT));
     EnumerateMADTEntries();
-    printf("MADT init done\n");
 
-    uacpi_table* HPETTable;
+    uacpi_table HPETTable;
     rc = uacpi_table_find_by_signature("HPET", &HPETTable);
     if (rc != UACPI_STATUS_OK) {
         PANIC("HPET table not found");
     }
-    assert(InitAndValidateHPET(HPETTable));
+    assert(InitAndValidateHPET(&HPETTable));
 
     HPET* hpet = new HPET();
     hpet->Init((HPETRegisters*)GetHPETAddress());
     g_HPET = hpet;
 
-    printf("HPET init done\n");
-
-    uacpi_table* MCFG;
+    uacpi_table MCFG;
     rc = uacpi_table_find_by_signature("MCFG", &MCFG);
     if (rc != UACPI_STATUS_OK) {
         PANIC("MCFG table not found");
     }
-    assert(InitAndValidateMCFG(MCFG));
+    assert(InitAndValidateMCFG(&MCFG));
     
     x86_64_LocalAPIC* LAPIC = g_BSP.GetLocalAPIC();
     HAL_TimeInit();

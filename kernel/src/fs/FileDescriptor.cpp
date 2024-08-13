@@ -23,8 +23,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cstdint>
 #include <errno.h>
-#include <math.h>
 #include <spinlock.h>
+#include <util.h>
 
 #include <file.h>
 
@@ -34,11 +34,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <arch/x86_64/E9.h>
 #endif
 
-FileDescriptor::FileDescriptor() : m_TTY(nullptr), m_Stream(nullptr), m_is_open(false), m_type(FileDescriptorType::UNKNOWN), m_mode(FileDescriptorMode::READ), m_ID(-1), m_init_successful(false), m_lock(0) {
+FileDescriptor::FileDescriptor() : m_TTYInfo(nullptr), m_Stream(nullptr), m_is_open(false), m_type(FileDescriptorType::UNKNOWN), m_mode(FileDescriptorMode::READ), m_ID(-1), m_init_successful(false), m_lock(0) {
 
 }
 
-FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode, fd_t ID) : m_TTY(nullptr), m_Stream(nullptr), m_is_open(false), m_type(type), m_mode(mode), m_ID(ID), m_init_successful(false), m_lock(0) {
+FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescriptorMode mode, fd_t ID) : m_TTYInfo(nullptr), m_Stream(nullptr), m_is_open(false), m_type(type), m_mode(mode), m_ID(ID), m_init_successful(false), m_lock(0) {
     spinlock_acquire(&m_lock);
     switch (m_type) {
     case FileDescriptorType::FILE_STREAM:
@@ -60,26 +60,12 @@ FileDescriptor::FileDescriptor(FileDescriptorType type, void* data, FileDescript
         switch (m_mode) {
         case FileDescriptorMode::READ_WRITE:
         case FileDescriptorMode::WRITE:
-            m_TTY = (TTY*)data;
-            m_TTY->GetVGADevice()->SetCursorPosition({0,0}); // start at offset 0, but don't clear the screen
+            m_TTYInfo = (TTYFileDescriptor*)data;
+            m_TTYInfo->tty->seek(0, m_TTYInfo->mode);
             break;
         case FileDescriptorMode::READ:
         case FileDescriptorMode::APPEND:
-            m_TTY = (TTY*)data;
-            break;
-        default:
-            spinlock_release(&m_lock);
-            return;
-        }
-        m_is_open = true;
-        break;
-    case FileDescriptorType::DEBUG:
-        switch (m_mode) {
-        case FileDescriptorMode::READ:
-        case FileDescriptorMode::READ_WRITE:
-            return;
-        case FileDescriptorMode::WRITE:
-        case FileDescriptorMode::APPEND:
+            m_TTYInfo = (TTYFileDescriptor*)data;
             break;
         default:
             spinlock_release(&m_lock);
@@ -103,7 +89,6 @@ FileDescriptor::~FileDescriptor() {
 int FileDescriptor::Open() {
     spinlock_acquire(&m_lock);
     switch (m_type) {
-    case FileDescriptorType::DEBUG:
     case FileDescriptorType::TTY:
         spinlock_release(&m_lock);
         m_is_open = true;
@@ -144,7 +129,6 @@ int FileDescriptor::Open() {
 int FileDescriptor::Close() {
     spinlock_acquire(&m_lock);
     switch (m_type) {
-    case FileDescriptorType::DEBUG:
     case FileDescriptorType::TTY:
         m_is_open = false;
         spinlock_release(&m_lock);
@@ -190,7 +174,7 @@ int64_t FileDescriptor::Read(uint8_t* buffer, int64_t count, int* status) {
     case FileDescriptorType::TTY: {
         int64_t i = 0;
         while (i < count) {
-            int c = m_TTY->getc();
+            int c = m_TTYInfo->tty->getc(m_TTYInfo->mode);
             if (c == EOF)
                 break;
             buffer[i] = (uint8_t)c;
@@ -205,9 +189,6 @@ int64_t FileDescriptor::Read(uint8_t* buffer, int64_t count, int* status) {
         }
         return i; // NOTE: partial reads from TTYs mean the keyboard device had an error or was disconnected.
     }
-    case FileDescriptorType::DEBUG:
-        spinlock_release(&m_lock);
-        return -ENOSYS;
     case FileDescriptorType::FILE_STREAM: {
         FileStream* fileStream = (FileStream*)m_Stream;
         int i_status = 0;
@@ -264,13 +245,9 @@ int64_t FileDescriptor::Write(const uint8_t* buffer, int64_t count, int* status)
     case FileDescriptorType::TTY: {
         int64_t i = 0;
         while (i < count) {
-#ifdef __x86_64__
-            x86_64_debug_putc(buffer[i]); // write everything to debug as well
-#endif
-            m_TTY->putc(buffer[i]);
+            m_TTYInfo->tty->putc(buffer[i], m_TTYInfo->mode);
             i++;
         }
-        //m_TTY->GetVGADevice()->SwapBuffers();
         spinlock_release(&m_lock);
         if (status != nullptr) {
             if (i < count)
@@ -292,25 +269,6 @@ int64_t FileDescriptor::Write(const uint8_t* buffer, int64_t count, int* status)
     case FileDescriptorType::DIRECTORY_STREAM:
         spinlock_release(&m_lock);
         return -EACCES;
-    case FileDescriptorType::DEBUG: {
-        int64_t i = 0;
-#ifndef NDEBUG
-        while (i < count) {
-#ifdef __x86_64__
-            x86_64_debug_putc(buffer[i]);
-#endif
-            i++;
-        }
-#endif
-        spinlock_release(&m_lock);
-        if (status != nullptr) {
-            if (i < count)
-                *status = -EAGAIN;
-            else
-                *status = ESUCCESS;
-        }
-        return i;
-    }
     default:
         spinlock_release(&m_lock);
         return -ENOSYS;
@@ -331,12 +289,8 @@ int FileDescriptor::Seek(int64_t offset) {
         return -EBADF;
     }
     switch (m_type) {
-    case FileDescriptorType::DEBUG:
-        spinlock_release(&m_lock);
-        return -ENOSYS;
     case FileDescriptorType::TTY: {
-        uldiv_t out = uldiv(offset, m_TTY->GetVGADevice()->GetAmountOfTextRows());
-        m_TTY->GetVGADevice()->SetCursorPosition({out.rem * 10, out.quot * 16});
+        m_TTYInfo->tty->seek(offset, m_TTYInfo->mode);
         spinlock_release(&m_lock);
         return ESUCCESS;
     }
@@ -369,11 +323,8 @@ int FileDescriptor::Rewind() {
         return -EBADF;
     }
     switch (m_type) {
-    case FileDescriptorType::DEBUG:
-        spinlock_release(&m_lock);
-        return -ENOSYS;
     case FileDescriptorType::TTY:
-        m_TTY->putc('\f'); // clear the screen
+        m_TTYInfo->tty->seek(0, m_TTYInfo->mode);
         spinlock_release(&m_lock);
         return ESUCCESS;
     case FileDescriptorType::FILE_STREAM: {
@@ -404,8 +355,7 @@ void* FileDescriptor::GetData() const {
     case FileDescriptorType::DIRECTORY_STREAM:
         return m_Stream;
     case FileDescriptorType::TTY:
-        return m_TTY;
-    case FileDescriptorType::DEBUG:
+        return m_TTYInfo;
     default:
         return nullptr;
     }
@@ -421,6 +371,6 @@ bool FileDescriptor::WasInitSuccessful() const {
 
 void FileDescriptor::ForceUnlock() {
     spinlock_release(&m_lock);
-    if (m_type == FileDescriptorType::TTY)
-        m_TTY->Unlock();
+    /*if (m_type == FileDescriptorType::TTY)
+        m_TTYInfo->tty->Unlock();*/
 }

@@ -17,135 +17,110 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "TTY.hpp"
 
+#include <spinlock.h>
 #include <util.h>
 
 #include <file.h>
 
-void HandleKeyboardEvent(void* data, char c) {
-    if (data == nullptr)
-        return;
-    ((TTY*)data)->HandleKeyEvent(c);
-}
-
 TTY* g_CurrentTTY = nullptr;
 
-TTY::TTY() : m_VGADevice(nullptr), m_foreground(), m_background(), m_lock(0), m_locked(false) {
+TTY::TTY() {
 
-}
-
-TTY::TTY(BasicVGA* VGADevice, KeyboardInput* input, const Colour& fg_colour, const Colour& bg_colour) : m_VGADevice(VGADevice), m_keyboardInput(input), m_foreground(fg_colour), m_background(bg_colour), m_lock(0), m_locked(false) {
-    if (m_keyboardInput != nullptr)
-        m_keyboardInput->OnKey(HandleKeyboardEvent, this);
 }
 
 TTY::~TTY() {
-    if (m_keyboardInput != nullptr)
-        m_keyboardInput->OnKey(nullptr, nullptr);
+
 }
 
-int TTY::getc() {
-    if (m_keyboardInput == nullptr)
+void TTY::Initialise() {
+
+}
+
+void TTY::Destroy() {
+
+}
+
+int TTY::getc(TTYBackendMode mode) {
+    TTYBackend* backend = GetBackend(mode);
+    if (backend == nullptr)
         return EOF;
-    int c;
-    do {
-        c = m_keyboardInput->GetChar();
-    } while (c == EOF);
-    return c;
+    return backend->getc();
 }
 
-void TTY::putc(char c) {
-    if (m_VGADevice == nullptr)
+void TTY::putc(char c, TTYBackendMode mode) {
+    TTYBackend* backend = GetBackend(mode);
+    if (backend == nullptr)
         return;
-    switch (c) {
-        case '\b':
-            m_VGADevice->Backspace();
+    backend->putc(c);
+}
+
+void TTY::puts(const char* str, TTYBackendMode mode) {
+    TTYBackend* backend = GetBackend(mode);
+    if (backend == nullptr)
+        return;
+    backend->puts(str);
+}
+
+void TTY::seek(uint64_t offset, TTYBackendMode mode) {
+    TTYBackend* backend = GetBackend(mode);
+    if (backend == nullptr)
+        return;
+    backend->seek(offset);
+}
+
+size_t TTY::tell(TTYBackendMode mode) {
+    TTYBackend* backend = GetBackend(mode);
+    if (backend == nullptr)
+        return 0;
+    return backend->tell();
+}
+
+void TTY::SetBackend(TTYBackend* backend, TTYBackendMode mode) {
+    switch (mode) {
+        case TTYBackendMode::IN:
+            m_backends[0].backend = backend;
+            m_backends[0].mode = mode;
             break;
-        case '\a':
-            break; // Do nothing
-        case '\n':
-        case '\v':
-            m_VGADevice->NewLine();
+        case TTYBackendMode::OUT:
+            m_backends[1].backend = backend;
+            m_backends[1].mode = mode;
             break;
-        case '\t':
-            for (int i = 0; i < 4; i++)
-                m_VGADevice->putc(' ');
+        case TTYBackendMode::ERR:
+            m_backends[2].backend = backend;
+            m_backends[2].mode = mode;
             break;
-        case '\r':
-            m_VGADevice->SetCursorPosition({0, m_VGADevice->GetCursorPosition().y});
-            break;
-        case '\f':
-            m_VGADevice->ClearScreen(m_background);
-            m_VGADevice->SetCursorPosition({0, 0});
-            break;
-        default:
-            m_VGADevice->putc(c);
+        case TTYBackendMode::DEBUG:
+            m_backends[3].backend = backend;
+            m_backends[3].mode = mode;
             break;
     }
 }
 
-void TTY::puts(const char* str) {
-    if (m_VGADevice == nullptr)
-        return;
-    uint64_t i = 0;
-    char c = str[i];
-    while (c) {
-        putc(c);
-        c = str[++i];
+TTYBackend* TTY::GetBackend(TTYBackendMode mode) {
+    switch (mode) {
+        case TTYBackendMode::IN:
+            return m_backends[0].backend;
+        case TTYBackendMode::OUT:
+            return m_backends[1].backend;
+        case TTYBackendMode::ERR:
+            return m_backends[2].backend;
+        case TTYBackendMode::DEBUG:
+            return m_backends[3].backend;
     }
+    return nullptr;
 }
 
-
-void TTY::SetDefaultForeground(const Colour& colour) {
-    m_foreground = colour;
-}
-
-void TTY::SetDefaultBackground(const Colour& colour) {
-    m_background = colour;
-}
-
-BasicVGA* TTY::GetVGADevice() {
-    return m_VGADevice;
-}
-
-void TTY::SetVGADevice(BasicVGA* device) {
-    m_VGADevice = device;
-}
-
-KeyboardInput* TTY::GetKeyboardInput() {
-    return m_keyboardInput;
-}
-
-void TTY::SetKeyboardInput(KeyboardInput* input) {
-    if (m_keyboardInput != nullptr) // if input was enabled before, disable it
-        m_keyboardInput->OnKey(nullptr, nullptr);
-    m_keyboardInput = input;
-    if (m_keyboardInput != nullptr)
-        m_keyboardInput->OnKey(HandleKeyboardEvent, this);
-}
-
-void TTY::HandleKeyEvent(char c) {
-    if (m_inputMirroring)
-        putc(c);
-}
-
-void TTY::EnableInputMirroring() {
-    m_inputMirroring = true;
-}
-
-void TTY::DisableInputMirroring() {
-    m_inputMirroring = false;
-}
-
-bool TTY::isInputMirroringEnabled() const {
-    return m_inputMirroring;
+void TTY::EnumerateBackends(TTYBackendCallback callback, void* data) {
+    for (size_t i = 0; i < 4; i++) {
+        if (m_backends[i].backend != nullptr)
+            callback(m_backends[i].mode, m_backends[i].backend, data);
+    }
 }
 
 void TTY::Lock() const {
     spinlock_acquire(&m_lock);
-    m_locked = true;
 }
 
 void TTY::Unlock() const {
-    m_locked = false;
     spinlock_release(&m_lock);
 }

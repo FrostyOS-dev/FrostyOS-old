@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <HAL/hal.hpp>
 
 #include "PagingUtil.hpp"
+#include "arch/x86_64/panic.hpp"
 
 PhysicalPageFrameAllocator* g_PPFA = nullptr;
 uint8_t g_EarlyBitmap[128 * 1024] = {0};
@@ -97,8 +98,12 @@ void PhysicalPageFrameAllocator::FullInit(const MemoryMapEntry* FirstMemoryMapEn
     // Setup
     m_MemSize = MemorySize;
 
-    if (m_MemSize <= GiB(4))
+    if (m_MemSize <= GiB(4)) {
+        m_fullyInitialised = true;
+        spinlock_init(&m_BitmapLock);
+        spinlock_init(&m_globalLock);
         return;
+    }
 
     size_t BitmapSize = DIV_ROUNDUP(m_MemSize, (PAGE_SIZE * 8));
     void* BitmapAddress = AllocatePages(DIV_ROUNDUP(BitmapSize, PAGE_SIZE));
@@ -166,6 +171,9 @@ void* PhysicalPageFrameAllocator::AllocatePage() {
     if (index == UINT64_MAX) { // Out of memory. Panic immediately
         PANIC("OUT OF MEMORY. No physical pages are available.");
     }
+    if (index == 0) { // Attempted to allocate the first page of memory. This is not allowed. Panic immediately
+        PANIC("Attempted to allocate the first page of memory. This is not allowed.");
+    }
     LockPage((void*)(index * 4096));
     return (void*)(index * 4096);
 }
@@ -174,6 +182,9 @@ void* PhysicalPageFrameAllocator::AllocatePages(uint64_t count) {
     uint64_t index = FindFreePages(count);
     if (index == UINT64_MAX)
         return nullptr;
+    if (index == 0) { // Attempted to allocate the first page of memory. This is not allowed. Panic immediately
+        PANIC("Attempted to allocate the first page of memory. This is not allowed.");
+    }
     LockPages((void*)(index * 4096), count);
     return (void*)(index * 4096);
 }
@@ -362,7 +373,7 @@ uint64_t PhysicalPageFrameAllocator::FindFreePages(uint64_t count) {
                     spinlock_release(&m_globalLock);
                     spinlock_release(&m_BitmapLock);
                 }
-                return i * 8;
+                return i;
             }
             bool found = true;
             next = 1;

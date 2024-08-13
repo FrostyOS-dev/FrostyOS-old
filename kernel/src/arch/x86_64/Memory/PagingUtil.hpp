@@ -45,6 +45,6 @@ void x86_64_InvalidatePages(uint64_t address, uint64_t length);
 void x86_64_Prep_SMP_Startup();
 void x86_64_Cleanup_SMP_Startup();
 
-bool isInKernelSpace(void* base, size_t length);
+bool x86_64_isInKernelSpace(void* base, size_t length);
 
 #endif /* _x86_64_PAGING_UTIL_HPP */

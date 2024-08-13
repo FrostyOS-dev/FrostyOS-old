@@ -1,5 +1,5 @@
 /*
-Copyright (©) 2023  Frosty515
+Copyright (©) 2023-2024  Frosty515
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ bool KeyboardEventHandler(void* data, KeyboardEvent event) {
     return input->HandleEvent(event);
 }
 
-KeyboardInput::KeyboardInput() : m_bufferOffset(0), m_bufferReadOffset(0), m_keyboard(nullptr), m_keyboardState({false, false, false, false, false}), m_bufferSize(0), m_buffer(nullptr), m_keyCallback({nullptr, nullptr}) {
+KeyboardInput::KeyboardInput() : TTYBackend(TTYBackendType::KeyboardInput, TTYBackendStreamDirection::INPUT), m_bufferOffset(0), m_bufferReadOffset(0), m_keyboard(nullptr), m_keyboardState({false, false, false, false, false}), m_bufferSize(0), m_buffer(nullptr), m_keyCallback({nullptr, nullptr}) {
 
 }
 
@@ -45,7 +45,7 @@ void KeyboardInput::Destroy() {
     delete m_buffer;
 }
 
-int KeyboardInput::GetChar() {
+int KeyboardInput::getc() {
     if (m_bufferSize == 0)
         return -1;
     char c = (char)-1;

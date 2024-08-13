@@ -20,8 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 #include <stddef.h>
+#include <util.h>
 
-
+// #ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
 extern "C" {
 
 extern uint8_t __text_start;
@@ -53,6 +54,7 @@ extern const void* _dtors_start_addr;
 extern const void* _dtors_end_addr;
  
 }
+// #endif
 
 
 #include <Data-structures/LinkedList.hpp>

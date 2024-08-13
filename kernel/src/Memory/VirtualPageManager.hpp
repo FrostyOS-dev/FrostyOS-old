@@ -51,22 +51,28 @@ public:
     void* AllocatePages(void* addr, uint64_t count);
     void UnallocatePage(void* addr);
     void UnallocatePages(void* addr, uint64_t count);
+    void UnallocatePages(void* addr);
 
     const VirtualRegion& GetVirtualRegion() const;
 
     bool AttemptToExpandRight(size_t new_size);
+    void Verify();
 
 private:
     void LockPage(void* addr, bool unfree = true, bool check = true);
     void LockPages(void* addr, uint64_t count, bool unfree = true, bool check = true);
     void UnlockPage(void* addr);
-    void UnlockPages(void* addr, uint64_t count);
+    void UnlockPages(void* addr, uint64_t count, bool check_size = true);
     void FreePage(void* addr);
     void FreePages(void* addr, uint64_t count);
     bool UnfreePage(void* addr, bool exact = false);
     bool UnfreePages(void* addr, uint64_t count, bool exact = false);
 
     void do_cleanupRUTree(AVLTree::Node* node, AVLTree::Node* parent);
+
+
+    // Does not do any locking
+    void EnumerateFPSTNodes(bool (*callback)(AVLTree::Node*, void*), void* data) const;
 
 private:
     uint64_t m_FreePagesCount;
@@ -76,10 +82,10 @@ private:
     uint64_t m_UsedPagesCount;
     VirtualRegion m_region;
 
-    spinlock_t m_FreePagesSizeTreeLock;
-    spinlock_t m_ReservedANDUsedPagesLock;
-    spinlock_t m_GlobalLock;
-    spinlock_t m_RegionLock;
+    mutable spinlock_t m_FreePagesSizeTreeLock;
+    mutable spinlock_t m_ReservedANDUsedPagesLock;
+    mutable spinlock_t m_GlobalLock;
+    mutable spinlock_t m_RegionLock;
 };
 
 extern VirtualPageManager* g_VPM;

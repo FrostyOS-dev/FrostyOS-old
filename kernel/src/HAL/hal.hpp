@@ -18,6 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef _KERNEL_HAL_HPP
 #define _KERNEL_HAL_HPP
 
+#include <util.h>
+
+#ifdef _FROSTYOS_BUILD_TARGET_IS_KERNEL
 #ifdef __x86_64__
 #include <arch/x86_64/panic.hpp>
 #include <arch/x86_64/Scheduling/task.h>
@@ -46,5 +49,16 @@ void PrepareForShutdown();
 int Shutdown();
 
 extern Processor g_BSP;
+#endif
+
+#ifdef _FROSTYOS_BUILD_TARGET_IS_USERLAND
+
+#include <HAL/UserPanic.hpp>
+
+
+
+void __attribute__((noreturn)) Shutdown();
+
+#endif
 
 #endif /* _KERNEL_HAL_HPP */
