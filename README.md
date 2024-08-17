@@ -1,5 +1,9 @@
 # FrostyOS (formerly WorldOS)
 
+## UPDATE
+
+This project is an old version, and will no longer be updated.
+
 ## COPYING
 
 Copyright (©) 2022-2024  Frosty515
