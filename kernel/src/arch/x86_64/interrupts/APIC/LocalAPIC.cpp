@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "../../Memory/PAT.hpp"
 
 #include "../../Scheduling/taskutil.hpp"
+#include "arch/x86_64/E9.h"
 
 #include <math.h>
 #include <string.h>
@@ -132,6 +133,9 @@ void x86_64_LocalAPIC::Init() {
     spurious |= 0xFF; // spurious vector
     volatile_write32(m_registers->SpuriousInterruptVector, spurious);
 
+    // stop the timer for now
+    volatile_write32(m_registers->InitialCount, 0);
+
     uint32_t TPR = volatile_read32(m_registers->TaskPriority);
     // set the TPR so that all interrupts are accepted
     TPR &= 0xFFFFFF00;
@@ -140,6 +144,7 @@ void x86_64_LocalAPIC::Init() {
 
 void x86_64_LocalAPIC::InitTimer() {
     spinlock_acquire(&(this->m_timerLock)); // we must wait until the HPET is ready
+    x86_64_debug_puts("Initializing LAPIC timer\n");
 
     // we set the APIC timer to periodic mode
     uint32_t lvt_timer = volatile_read32(m_registers->LVT_TIMER);

@@ -18,6 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "isr.hpp"
 
 #include "../Scheduling/taskutil.hpp"
+#include "../E9.h"
+#include "arch/x86_64/Processor.hpp"
 
 #include <stdio.h>
 #include <util.h>
@@ -73,7 +75,10 @@ void x86_64_ISR_RegisterHandler(uint8_t interrupt, x86_64_ISRHandler_t handler) 
 bool in_interrupt = false;
 
 extern "C" void x86_64_ISR_Handler(x86_64_Interrupt_Registers* regs) {
-    //dbgprintf("ISR: %d\n", regs->interrupt);
+    char buffer[128];
+    snprintf(buffer, 127, "ISR: %u, CPU %hhu\n", regs->interrupt, GetCurrentProcessorInfo()->id);
+    buffer[127] = '\0';
+    x86_64_debug_puts(buffer);
 
     /* Check if there is a designated handler */
     if (g_ISRHandlers[regs->interrupt] != nullptr)

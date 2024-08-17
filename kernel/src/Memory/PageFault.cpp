@@ -48,7 +48,6 @@ void __attribute__((noreturn)) PageFaultHandler(PageFaultErrorCode error_code, v
             void* kernelStack = (void*)(thread->GetKernelStack() - KERNEL_STACK_SIZE);
             void* preStackGuardStart = (void*)((uint64_t)kernelStack - PAGE_SIZE);
             void* postStackGuardStart = (void*)((uint64_t)kernelStack + KERNEL_STACK_SIZE);
-            dbgprintf("Potential kernel stack violation! kernelStack = %lp, preStackGuardStart = %lp, postStackGuardStart = %lp\n", kernelStack, preStackGuardStart, postStackGuardStart);
             if ((faulting_address >= preStackGuardStart && faulting_address < kernelStack) || (faulting_address >= postStackGuardStart && faulting_address < (void*)((uint64_t)postStackGuardStart + PAGE_SIZE))) {
                 // We are in a kernel stack guard page, so we PANIC with information about the stack.
                 uint64_t bytesOutsideStack = 0;

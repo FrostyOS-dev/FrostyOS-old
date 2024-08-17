@@ -370,11 +370,13 @@ namespace Scheduling {
         }
 
         void __attribute__((no_sanitize("undefined"))) AddProcessor(Processor* processor) {
+            dbgputs("Scheduler: Adding processor\n");
             /*__asm__ volatile("cli");
             while (true) {
                 __asm__ volatile ("hlt");
             }
             */
+            __asm__ volatile ("movq %%rax, %%cr8" :: "a"(1) : "memory");
             ProcessorInfo* info = new ProcessorInfo();
             info->processor = processor;
             info->kernel_run_count = 0;
@@ -391,8 +393,11 @@ namespace Scheduling {
 #ifdef __x86_64__
             x86_64_set_kernel_gs_base((uint64_t)info);
             x86_64_LocalAPIC* LAPIC = processor->GetLocalAPIC();
-            if (LAPIC == nullptr)
-                return; // should be unreachable
+            if (LAPIC == nullptr) {
+                dbgprintf("FATAL: Processor does not have a Local APIC!\n");
+                __asm__ volatile("cli");
+                while (true){}
+            }
 #endif
             while (info->start_allowed == 0) {
                 // wait for the processor to be allowed to start
@@ -403,12 +408,19 @@ namespace Scheduling {
             if (info->current_thread == nullptr) {
                 PANIC("Scheduler: No available threads. This means all threads have ended and there is nothing else to run.");
             }
-            assert(info->current_thread->GetCPURegisters() != nullptr);
+            if (info->current_thread->GetCPURegisters() == nullptr) {
+                info->current_thread->PrintInfo(stddebug);
+                __asm__ volatile("cli");
+                while (true) {}
+                __asm__ volatile ("movq %%rax, %%cr8" :: "a"(0) : "memory");
+                PANIC("Thread does not have CPU registers.");
+            }
 #ifdef __x86_64__
             LAPIC->InitTimer();
 #endif
             SetThreadFrame(info, info->current_thread->GetStackRegisterFrame());
 #ifdef __x86_64__
+            __asm__ volatile ("movq %%rax, %%cr8" :: "a"(0) : "memory");
             x86_64_context_switch(info->current_thread->GetCPURegisters());
 #endif
             PANIC("Failed to start Scheduler. This should never happen and most likely means the task switch code for the relevant architecture returned.");

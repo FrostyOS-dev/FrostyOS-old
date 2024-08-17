@@ -83,7 +83,7 @@ if (FROSTYOS_BUILD_TARGET STREQUAL "kernel")
 
 	if(FROSTYOS_BUILD_CONFIG STREQUAL "Debug")
 		add_custom_target(run-qemu
-			COMMAND qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=${CMAKE_SOURCE_DIR}/ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=${CMAKE_SOURCE_DIR}/iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -M q35 -cpu qemu64 -s -smp 4 -no-reboot -no-shutdown
+			COMMAND qemu-system-x86_64 -drive if=pflash,file=/usr/share/edk2/x64/OVMF_CODE.fd,format=raw,readonly=on -drive if=pflash,file=${CMAKE_SOURCE_DIR}/ovmf/x86-64/OVMF_VARS.fd,format=raw -drive format=raw,file=${CMAKE_SOURCE_DIR}/iso/hdimage.bin,index=0,media=disk -m 256M -debugcon stdio -M q35 -cpu qemu64 -s -smp 4 #-no-reboot -no-shutdown
 			USES_TERMINAL
 		)
 	else()

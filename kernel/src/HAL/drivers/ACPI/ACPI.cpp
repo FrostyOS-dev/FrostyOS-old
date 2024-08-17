@@ -75,3 +75,13 @@ int ACPI_shutdown() {
 
     return 0; // should be unreachable.
 }
+
+int ACPI_reboot() {
+    uacpi_status rc = uacpi_reboot();
+    if (uacpi_unlikely_error(rc)) {
+        dbgprintf("Failed to reboot: %s\n", uacpi_status_to_string(rc));
+        return -EIO;
+    }
+
+    return 0; // should be unreachable.
+}

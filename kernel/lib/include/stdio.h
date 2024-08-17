@@ -77,6 +77,8 @@ void rewind(const fd_t file);
 
 size_t fgetsize(const fd_t file);
 
+void stdio_force_unlock();
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,3 @@
-#include "Scheduling/Scheduler.hpp"
-#include "process.h"
 #define UACPI_FORMATTED_LOGGING 1
 
 #pragma GCC diagnostic push
@@ -20,6 +18,8 @@
 #include <Memory/PagingUtil.hpp>
 #include <Memory/kmalloc.hpp>
 #include <Memory/PageManager.hpp>
+
+#include <Scheduling/Scheduler.hpp>
 
 #include "../../IRQ.hpp"
 #include "../../time.h"
@@ -445,9 +445,16 @@ void uacpi_kernel_release_mutex(uacpi_handle handle) {
  *
  * A successful wait is indicated by returning UACPI_TRUE.
  */
-uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle handle, uacpi_u16) {
+uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle handle, uacpi_u16 timeout) {
     // printf("uacpi_kernel_wait_for_event(%lp)\n", handle);
-    return UACPI_FALSE;
+    uint64_t now = GetTimer();
+    size_t* counter = (size_t*)handle;
+    do {
+        if ((GetTimer() - now) > timeout && timeout != 0xFFFF)
+            return UACPI_FALSE;
+    } while (*counter == 0);
+    (*counter)--;
+    return UACPI_TRUE;
 }
 
 /*
@@ -457,6 +464,8 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle handle, uacpi_u16) {
  */
 void uacpi_kernel_signal_event(uacpi_handle handle) {
     // printf("uacpi_kernel_signal_event(%lp)\n", handle);
+    size_t* counter = (size_t*)handle;
+    (*counter)++;
 }
 
 /*
@@ -464,6 +473,8 @@ void uacpi_kernel_signal_event(uacpi_handle handle) {
  */
 void uacpi_kernel_reset_event(uacpi_handle handle) {
     // printf("uacpi_kernel_reset_event(%lp)\n", handle);
+    size_t* counter = (size_t*)handle;
+    *counter = 0;
 }
 
 /*
@@ -553,7 +564,7 @@ void uacpi_kernel_spinlock_unlock(uacpi_handle handle, uacpi_cpu_flags flags) {
  * Schedules deferred work for execution.
  * Might be invoked from an interrupt context.
  */
-uacpi_status uacpi_kernel_schedule_work(uacpi_work_type, uacpi_work_handler, uacpi_handle ctx) {
+uacpi_status uacpi_kernel_schedule_work(uacpi_work_type type, uacpi_work_handler handler, uacpi_handle ctx) {
     // printf("uacpi_kernel_schedule_work(%u, %lp, %lp)\n", ctx);
     return UACPI_STATUS_UNIMPLEMENTED;
 }

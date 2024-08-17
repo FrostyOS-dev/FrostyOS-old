@@ -295,6 +295,10 @@ void Kernel_Stage2(void* params_addr) {
     SystemCallInit();
 #endif
 
+    // sleep(10'000);
+
+    ACPI_reboot();
+
     while (true) {
         
     }

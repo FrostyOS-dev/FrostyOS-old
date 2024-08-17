@@ -1,8 +1,12 @@
 #include "ACPIDevice.hpp"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <uacpi/namespace.h>
 #include <uacpi/types.h>
 #include <uacpi/utilities.h>
+#include <uacpi/resources.h>
+#pragma GCC diagnostic pop
 
 uacpi_ns_iteration_decision match_device(void* user, uacpi_namespace_node* node) {
     DeviceCheckStatus* status = (DeviceCheckStatus*)user;

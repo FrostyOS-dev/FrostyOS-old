@@ -62,6 +62,8 @@ extern "C" void __attribute__((noreturn)) x86_64_Panic(const char* reason, void*
 
     /* we have to force unlock all the kernel file descriptors so we can actually print debug info. */
 
+    stdio_force_unlock();
+
     if (g_KFDManager != nullptr)
         g_KFDManager->ForceUnlock();
     else // this means we have a very early boot panic. This should not happen under any condition.

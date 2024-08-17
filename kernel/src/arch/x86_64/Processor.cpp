@@ -45,6 +45,7 @@ Processor::~Processor() {
 }
 
 void Processor::Init(MemoryMapEntry** MemoryMap, uint64_t MMEntryCount, uint64_t kernel_virtual, uint64_t kernel_physical, uint64_t kernel_size, uint64_t HHDM_start, const FrameBuffer& fb) {
+    memset(&m_TSS, 0, sizeof(x86_64_TSS));
     {
         x86_64_GDTInit(&(m_GDT[0]));
         x86_64_GDT_SetTSS(&(m_GDT[0]), &m_TSS);

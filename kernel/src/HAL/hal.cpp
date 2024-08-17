@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "hal.hpp"
+#include "HAL/drivers/ACPI/ACPIDevice.hpp"
 #include "time.h"
 
 #include "drivers/HPET.hpp"
@@ -113,6 +114,8 @@ void HAL_Stage2(void* RSDP) {
     ACPI_FullInit();
 
     HAL_RTCInit();
+
+    DoesLegacyPITExist();
 }
 
 void HAL_FullInit() {
